@@ -317,7 +317,7 @@ export function mainPage(): string {
             <i class="fas fa-cloud-upload-alt text-2xl text-gray-300 group-hover:text-primary-400 transition-colors"></i>
           </div>
           <p class="text-sm font-medium text-gray-600">파일을 드래그하거나 클릭하여 업로드</p>
-          <p class="text-xs text-gray-400 mt-2">.xlsx, .xls, .csv 파일 지원</p>
+          <p class="text-xs text-gray-400 mt-2">.xlsx, .xls, .csv 파일 지원 | SAP 형식 자동 감지</p>
         </div>
 
         <div id="upload-preview" class="hidden mt-6">
@@ -347,26 +347,45 @@ export function mainPage(): string {
         </div>
 
         <div class="mt-6 p-5 bg-slate-50 rounded-xl">
-          <h4 class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3">업로드 양식</h4>
-          <div class="overflow-x-auto">
-            <table class="text-xs w-full">
-              <thead><tr class="border-b border-gray-200">
-                <th class="py-2 text-left font-semibold text-gray-500">컬럼명</th>
-                <th class="py-2 text-left font-semibold text-gray-500">설명</th>
-                <th class="py-2 text-left font-semibold text-gray-500">예시</th>
-                <th class="py-2 text-left font-semibold text-gray-500">필수</th>
-              </tr></thead>
-              <tbody>
-                <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">호기코드</td><td class="text-gray-500">호기 코드</td><td class="text-gray-400">PM2, PM3, CHEM, TISSUE</td><td><span class="text-red-500">*</span></td></tr>
-                <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">자재코드</td><td class="text-gray-500">자재 코드</td><td class="text-gray-400">RM-001, SM-001</td><td><span class="text-red-500">*</span></td></tr>
-                <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">년도</td><td class="text-gray-500">실적 년도</td><td class="text-gray-400">2026</td><td><span class="text-red-500">*</span></td></tr>
-                <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">월</td><td class="text-gray-500">실적 월</td><td class="text-gray-400">6</td><td><span class="text-red-500">*</span></td></tr>
-                <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">사용량</td><td class="text-gray-500">사용 수량</td><td class="text-gray-400">3200</td><td><span class="text-red-500">*</span></td></tr>
-                <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">단가</td><td class="text-gray-500">원 단위</td><td class="text-gray-400">880000</td><td><span class="text-red-500">*</span></td></tr>
-                <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">생산량</td><td class="text-gray-500">생산 수량</td><td class="text-gray-400">12500</td><td class="text-gray-400">선택</td></tr>
-                <tr><td class="py-2 font-mono text-primary-600">비고</td><td class="text-gray-500">메모</td><td class="text-gray-400"></td><td class="text-gray-400">선택</td></tr>
-              </tbody>
-            </table>
+          <h4 class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3">지원 형식</h4>
+          
+          <div class="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="inline-flex items-center px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs font-bold">SAP 형식</span>
+              <span class="text-xs text-purple-600 font-medium">자동 감지</span>
+            </div>
+            <p class="text-xs text-gray-600 mb-2">SAP에서 추출한 원재료 DB 파일을 그대로 업로드하면 자동으로 인식합니다.</p>
+            <div class="text-xs text-gray-500 space-y-1">
+              <p><b>필수 컬럼:</b> 달력연도/월, 생산호기, 자재, 출고수량, 실제단가, 출고금액</p>
+              <p><b>자동 처리:</b> 신규 자재 자동 등록 | 동일 호기/자재/월 데이터 합산 | 단가 재계산</p>
+            </div>
+          </div>
+          
+          <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-bold">기본 형식</span>
+              <span class="text-xs text-blue-600 font-medium">'양식 다운로드' 참고</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="text-xs w-full">
+                <thead><tr class="border-b border-gray-200">
+                  <th class="py-2 text-left font-semibold text-gray-500">컬럼명</th>
+                  <th class="py-2 text-left font-semibold text-gray-500">설명</th>
+                  <th class="py-2 text-left font-semibold text-gray-500">예시</th>
+                  <th class="py-2 text-left font-semibold text-gray-500">필수</th>
+                </tr></thead>
+                <tbody>
+                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">호기코드</td><td class="text-gray-500">호기 코드</td><td class="text-gray-400">PM2, PM3</td><td><span class="text-red-500">*</span></td></tr>
+                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">자재코드</td><td class="text-gray-500">자재 코드</td><td class="text-gray-400">RM-001</td><td><span class="text-red-500">*</span></td></tr>
+                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">년도</td><td class="text-gray-500">실적 년도</td><td class="text-gray-400">2026</td><td><span class="text-red-500">*</span></td></tr>
+                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">월</td><td class="text-gray-500">실적 월</td><td class="text-gray-400">6</td><td><span class="text-red-500">*</span></td></tr>
+                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">사용량</td><td class="text-gray-500">사용 수량</td><td class="text-gray-400">3200</td><td><span class="text-red-500">*</span></td></tr>
+                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">단가</td><td class="text-gray-500">원 단위</td><td class="text-gray-400">880000</td><td><span class="text-red-500">*</span></td></tr>
+                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">생산량</td><td class="text-gray-500">생산 수량</td><td class="text-gray-400">12500</td><td class="text-gray-400">선택</td></tr>
+                  <tr><td class="py-2 font-mono text-primary-600">비고</td><td class="text-gray-500">메모</td><td class="text-gray-400"></td><td class="text-gray-400">선택</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -820,42 +839,170 @@ export function mainPage(): string {
     }
 
     // Excel Upload
+    let uploadMode = 'simple'; // 'simple' or 'sap'
     function handleDrop(e) { e.preventDefault(); e.currentTarget.classList.remove('border-primary-400','bg-primary-50/50'); processFile(e.dataTransfer.files[0]); }
     function handleFileSelect(e) { processFile(e.target.files[0]); }
+    
+    // SAP 형식 자동 감지
+    function detectSAPFormat(headers) {
+      const sapIndicators = ['달력연도/월', '생산호기', '자재 그룹', '출고수량', '출고금액', '실제단가', '실제 원단위'];
+      const matchCount = sapIndicators.filter(ind => headers.some(h => (h||'').includes(ind))).length;
+      return matchCount >= 3;
+    }
+
+    // SAP 형식 데이터를 내부 구조로 변환
+    function parseSAPData(json, headers) {
+      // SAP 컬럼 인덱스 매핑 (헤더에서 찾기)
+      const findCol = (keywords) => headers.findIndex(h => h && keywords.some(k => h.includes(k)));
+      
+      const colMap = {
+        period: findCol(['달력연도/월', '달력연도']),
+        machine: findCol(['생산호기']),
+        matGroupCode: findCol(['자재 그룹']),
+        productType: findCol(['지종/제품구분', '지종']),
+        productLevel1: findCol(['제품계층 구조레벨 1', '제품계층']),
+        matGroupDesc: findCol(['자재그룹(대분류)']),
+        matCode: findCol(['자재']),
+        unit: findCol(['단위']),
+        matName: headers.indexOf('-3') > -1 ? headers.indexOf('-3') : findCol(['자재명']),
+        totalProduction: findCol(['총생산량']),
+        productionQty: findCol(['생산수량']),
+        actualUnitConsumption: findCol(['실제 원단위(KG/Ton)']),
+        actualUnitPrice: findCol(['실제단가']),
+        actualDistQty: findCol(['실제 배부수량']),
+        issueQty: findCol(['출고수량']),
+        issueAmount: findCol(['출고금액']),
+        planVsUsageDiff: findCol(['계획대비\\n사용량차이', '사용량차이']),
+        planVsPriceDiff: findCol(['계획대비\\n단가차이', '단가차이']),
+      };
+      
+      // 자재명은 보통 '-3' 컬럼 (col index 14) 에 있음
+      // 자재그룹 설명은 '-' 컬럼 (col index 3)
+      const matDescCol = headers.indexOf('-');
+      
+      return json.map(row => {
+        const vals = Object.values(row);
+        // json_to_json gives us object with header keys
+        return {
+          period: row[headers[colMap.period]] || '',
+          machine: row[headers[colMap.machine]] || '',
+          mat_group_code: row[headers[colMap.matGroupCode]] || '',
+          mat_group_desc: colMap.matGroupDesc >= 0 ? (row[headers[colMap.matGroupDesc]] || '') : (matDescCol >= 0 ? (row[headers[matDescCol]] || '') : ''),
+          product_type: row[headers[colMap.productType]] || '',
+          product_level1: colMap.productLevel1 >= 0 ? (row[headers[colMap.productLevel1]] || '') : '',
+          mat_code: row[headers[colMap.matCode]] || '',
+          mat_name: colMap.matName >= 0 ? (row[headers[colMap.matName]] || '') : '',
+          unit: row[headers[colMap.unit]] || 'KG',
+          total_production: colMap.totalProduction >= 0 ? (row[headers[colMap.totalProduction]] || 0) : 0,
+          production_qty: colMap.productionQty >= 0 ? (row[headers[colMap.productionQty]] || 0) : 0,
+          actual_unit_consumption: colMap.actualUnitConsumption >= 0 ? (row[headers[colMap.actualUnitConsumption]] || 0) : 0,
+          actual_unit_price: colMap.actualUnitPrice >= 0 ? (row[headers[colMap.actualUnitPrice]] || 0) : 0,
+          issue_qty: colMap.issueQty >= 0 ? (row[headers[colMap.issueQty]] || 0) : 0,
+          issue_amount: colMap.issueAmount >= 0 ? (row[headers[colMap.issueAmount]] || 0) : 0,
+          plan_vs_usage_diff: colMap.planVsUsageDiff >= 0 ? (row[headers[colMap.planVsUsageDiff]] || 0) : 0,
+          plan_vs_price_diff: colMap.planVsPriceDiff >= 0 ? (row[headers[colMap.planVsPriceDiff]] || 0) : 0,
+        };
+      }).filter(r => r.period && r.machine && r.mat_code);
+    }
+
     function processFile(file) {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (e) => {
         const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
-        const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(ws);
         if (!json.length) { alert('데이터가 없습니다.'); return; }
-        uploadData = json;
-        document.getElementById('upload-area').classList.add('hidden');
-        document.getElementById('upload-preview').classList.remove('hidden');
-        document.getElementById('upload-filename').textContent = file.name;
-        document.getElementById('upload-info').textContent = json.length+'행';
-        document.getElementById('upload-count').textContent = json.length;
-        const h = Object.keys(json[0]);
-        document.getElementById('preview-head').innerHTML = '<tr>'+h.map(x=>'<th>'+x+'</th>').join('')+'</tr>';
-        document.getElementById('preview-body').innerHTML = json.slice(0,15).map(r=>'<tr>'+h.map(x=>'<td>'+(r[x]??'')+'</td>').join('')+'</tr>').join('');
+        
+        const headers = Object.keys(json[0]);
+        const isSAP = detectSAPFormat(headers);
+        
+        if (isSAP) {
+          uploadMode = 'sap';
+          const parsed = parseSAPData(json, headers);
+          uploadData = parsed;
+          
+          document.getElementById('upload-area').classList.add('hidden');
+          document.getElementById('upload-preview').classList.remove('hidden');
+          document.getElementById('upload-filename').textContent = file.name;
+          document.getElementById('upload-info').innerHTML = '<span class="inline-flex items-center px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs font-medium mr-2">SAP 형식 감지</span>' + parsed.length + '행 (유효 데이터)';
+          document.getElementById('upload-count').textContent = parsed.length;
+          
+          // SAP preview table
+          const previewHeaders = ['기간','호기','자재코드','자재명','자재그룹','제품구분','출고수량','실제단가','출고금액','생산수량'];
+          document.getElementById('preview-head').innerHTML = '<tr>'+previewHeaders.map(x=>'<th class="text-xs">'+x+'</th>').join('')+'</tr>';
+          document.getElementById('preview-body').innerHTML = parsed.slice(0,20).map(r => 
+            '<tr><td>'+r.period+'</td><td><span class="unit-chip '+(r.machine==='PM2'?'unit-chip-pm2':'unit-chip-pm3')+'">'+r.machine+'</span></td><td class="font-mono text-xs">'+r.mat_code+'</td><td>'+r.mat_name+'</td><td>'+r.mat_group_desc+'</td><td class="text-xs text-gray-400">'+r.product_type+'</td><td class="text-right">'+fmt(r.issue_qty)+'</td><td class="text-right">'+fmt(Math.round(r.actual_unit_price))+'</td><td class="text-right">'+fmt(r.issue_amount)+'</td><td class="text-right">'+fmt(Math.round(r.production_qty))+'</td></tr>'
+          ).join('');
+        } else {
+          uploadMode = 'simple';
+          uploadData = json;
+          document.getElementById('upload-area').classList.add('hidden');
+          document.getElementById('upload-preview').classList.remove('hidden');
+          document.getElementById('upload-filename').textContent = file.name;
+          document.getElementById('upload-info').innerHTML = '<span class="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-medium mr-2">기본 형식</span>' + json.length + '행';
+          document.getElementById('upload-count').textContent = json.length;
+          const h = Object.keys(json[0]);
+          document.getElementById('preview-head').innerHTML = '<tr>'+h.map(x=>'<th class="text-xs">'+x+'</th>').join('')+'</tr>';
+          document.getElementById('preview-body').innerHTML = json.slice(0,15).map(r=>'<tr>'+h.map(x=>'<td class="text-xs">'+(r[x]??'')+'</td>').join('')+'</tr>').join('');
+        }
       };
       reader.readAsArrayBuffer(file);
     }
+    
     async function submitUpload() {
       if (!uploadData.length) return;
-      const records = uploadData.map(row => {
-        const uc = row['호기코드']||row['unit_code']||row['호기'];
-        const mc = row['자재코드']||row['material_code']||row['자재'];
-        const unit = unitsCache.find(u=>u.unit_code===uc||u.unit_name===uc);
-        const mat = materialsCache.find(m=>m.material_code===mc||m.material_name===mc);
-        if (!unit||!mat) return null;
-        return { unit_id:unit.id, material_id:mat.id, year:parseInt(row['년도']||row['year']||2026), month:parseInt(row['월']||row['month']||6), usage_qty:parseFloat(row['사용량']||row['usage_qty']||0), unit_price:parseFloat(row['단가']||row['unit_price']||0), production_qty:parseFloat(row['생산량']||row['production_qty']||0), notes:row['비고']||'' };
-      }).filter(Boolean);
-      if (!records.length) { alert('매핑 실패. 컬럼명을 확인하세요.'); return; }
-      const res = await fetch('/api/records/bulk', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({records})});
-      if (res.ok) { alert((await res.json()).count+'건 업로드 완료!'); resetUpload(); loadAnalysis(); }
+      
+      if (uploadMode === 'sap') {
+        // SAP 형식: 스마트 업로드 API 호출
+        const btn = event.target;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>처리중...';
+        try {
+          const res = await fetch('/api/upload/smart', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ rows: uploadData })
+          });
+          const result = await res.json();
+          if (res.ok && result.success) {
+            alert('업로드 완료!\\n\\n' +
+              '총 입력 행: ' + result.summary.total_rows + '건\\n' +
+              '등록된 레코드: ' + result.summary.records_inserted + '건\\n' +
+              '신규 자재 등록: ' + result.summary.new_materials + '건\\n' +
+              '스킵: ' + result.summary.skipped + '건\\n' +
+              '(동일 호기/자재/월 데이터는 합산됨)');
+            resetUpload();
+            loadAnalysis();
+            // Refresh caches
+            unitsCache = await fetch('/api/units').then(r=>r.json());
+            materialsCache = await fetch('/api/materials').then(r=>r.json());
+          } else {
+            alert('업로드 실패: ' + (result.error || '알 수 없는 오류'));
+          }
+        } catch(err) {
+          alert('업로드 중 오류: ' + err.message);
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-check mr-1"></i>업로드 (<span id="upload-count">0</span>건)';
+        }
+      } else {
+        // 기본 형식: 기존 로직
+        const records = uploadData.map(row => {
+          const uc = row['호기코드']||row['unit_code']||row['호기'];
+          const mc = row['자재코드']||row['material_code']||row['자재'];
+          const unit = unitsCache.find(u=>u.unit_code===uc||u.unit_name===uc);
+          const mat = materialsCache.find(m=>m.material_code===mc||m.material_name===mc);
+          if (!unit||!mat) return null;
+          return { unit_id:unit.id, material_id:mat.id, year:parseInt(row['년도']||row['year']||2026), month:parseInt(row['월']||row['month']||6), usage_qty:parseFloat(row['사용량']||row['usage_qty']||0), unit_price:parseFloat(row['단가']||row['unit_price']||0), production_qty:parseFloat(row['생산량']||row['production_qty']||0), notes:row['비고']||'' };
+        }).filter(Boolean);
+        if (!records.length) { alert('매핑 실패. 컬럼명을 확인하세요.'); return; }
+        const res = await fetch('/api/records/bulk', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({records})});
+        if (res.ok) { alert((await res.json()).count+'건 업로드 완료!'); resetUpload(); loadAnalysis(); }
+      }
     }
-    function resetUpload() { uploadData=[]; document.getElementById('upload-area').classList.remove('hidden'); document.getElementById('upload-preview').classList.add('hidden'); document.getElementById('file-input').value=''; }
+    
+    function resetUpload() { uploadData=[]; uploadMode='simple'; document.getElementById('upload-area').classList.remove('hidden'); document.getElementById('upload-preview').classList.add('hidden'); document.getElementById('file-input').value=''; }
     function downloadTemplate() {
       const t = [
         {호기코드:'PM2',자재코드:'RM-001',년도:2026,월:6,사용량:3200,단가:880000,생산량:12500,비고:''},

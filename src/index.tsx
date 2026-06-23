@@ -373,6 +373,162 @@ app.get('/api/simulations/:id', async (c) => {
   return c.json({ ...result, sim_data: JSON.parse(result.sim_data as string), result_data: result.result_data ? JSON.parse(result.result_data as string) : null })
 })
 
+// ============ SAP 엑셀 스마트 업로드 API ============
+
+// SAP 형식 엑셀 파싱 결과를 DB에 일괄 등록
+app.post('/api/upload/smart', async (c) => {
+  const db = c.env.DB
+  const { rows } = await c.req.json()
+  // rows: SAP 엑셀에서 파싱된 데이터 배열
+  // 각 row: { period, machine, mat_group_code, mat_group_desc, product_type, mat_code, mat_name, unit, 
+  //           total_production, production_qty, actual_unit_consumption, actual_unit_price, 
+  //           issue_qty, issue_amount, plan_vs_usage_diff, plan_vs_price_diff, product_level1, ... }
+
+  if (!rows || !rows.length) return c.json({ error: 'no data' }, 400)
+
+  // 1. 기존 호기 매핑 로드
+  const unitsResult = await db.prepare('SELECT * FROM units').all()
+  const existingUnits = unitsResult.results as any[]
+  const unitMap = new Map<string, number>()
+  existingUnits.forEach(u => { unitMap.set(u.unit_code, u.id); unitMap.set(u.unit_name, u.id) })
+
+  // 2. 기존 자재 매핑 로드
+  const matsResult = await db.prepare('SELECT * FROM materials').all()
+  const existingMats = matsResult.results as any[]
+  const matMap = new Map<string, number>()
+  existingMats.forEach(m => { matMap.set(m.material_code, m.id); matMap.set(m.material_name, m.id) })
+
+  // 3. 새로운 자재 자동 등록
+  const newMaterials: { code: string; name: string; category: string; unit: string }[] = []
+  for (const row of rows) {
+    const matCode = row.mat_code
+    if (!matCode || matMap.has(matCode)) continue
+    const category = (row.mat_group_desc || '').includes('펄프') ? 'RAW' : 'RAW'  // 펄프/고지 모두 RAW
+    newMaterials.push({ code: matCode, name: row.mat_name || matCode, category, unit: (row.unit || 'KG').toUpperCase() })
+    matMap.set(matCode, -1) // placeholder
+  }
+
+  // Deduplicate new materials
+  const uniqueNewMats = [...new Map(newMaterials.map(m => [m.code, m])).values()]
+  
+  // Insert new materials
+  let newMatCount = 0
+  for (const m of uniqueNewMats) {
+    try {
+      const r = await db.prepare(
+        'INSERT OR IGNORE INTO materials (material_code, material_name, category, unit_of_measure, description) VALUES (?, ?, ?, ?, ?)'
+      ).bind(m.code, m.name, m.category, m.unit.toLowerCase(), `자동등록 (SAP)`).run()
+      if (r.meta.changes > 0) newMatCount++
+    } catch(e) { /* ignore duplicates */ }
+  }
+
+  // Reload materials after inserts
+  const refreshedMats = await db.prepare('SELECT * FROM materials').all()
+  const finalMatMap = new Map<string, number>()
+  ;(refreshedMats.results as any[]).forEach(m => { finalMatMap.set(m.material_code, m.id) })
+
+  // 4. 데이터를 monthly_records에 변환 및 삽입
+  // period "2026.05" → year=2026, month=5
+  const records: any[] = []
+  const skipped: any[] = []
+
+  for (const row of rows) {
+    // Period parsing
+    const periodStr = row.period || ''
+    let year: number, month: number
+    if (periodStr.includes('.')) {
+      const parts = periodStr.split('.')
+      year = parseInt(parts[0])
+      month = parseInt(parts[1])
+    } else if (periodStr.includes('-')) {
+      const parts = periodStr.split('-')
+      year = parseInt(parts[0])
+      month = parseInt(parts[1])
+    } else { skipped.push({ row, reason: 'invalid period' }); continue }
+
+    // Unit mapping (생산호기)
+    const machineCode = (row.machine || '').toUpperCase()
+    const unitId = unitMap.get(machineCode)
+    if (!unitId) { skipped.push({ row, reason: `unknown unit: ${machineCode}` }); continue }
+
+    // Material mapping
+    const matCode = row.mat_code
+    const materialId = finalMatMap.get(matCode)
+    if (!materialId) { skipped.push({ row, reason: `unknown material: ${matCode}` }); continue }
+
+    // Numeric values
+    const usageQty = parseFloat(row.issue_qty) || 0
+    const unitPrice = parseFloat(row.actual_unit_price) || 0
+    const totalCost = parseFloat(row.issue_amount) || 0
+    const productionQty = parseFloat(row.production_qty) || parseFloat(row.total_production) || 0
+
+    // Skip zero-data rows
+    if (usageQty === 0 && totalCost === 0) continue
+
+    records.push({
+      unit_id: unitId,
+      material_id: materialId,
+      year, month,
+      usage_qty: usageQty,
+      unit_price: unitPrice,
+      total_cost: totalCost,
+      production_qty: productionQty,
+      notes: `${row.product_type || ''} | ${row.mat_group_desc || ''}`
+    })
+  }
+
+  // 5. Aggregate: 같은 (unit_id, material_id, year, month) → 합산
+  const aggregated = new Map<string, any>()
+  for (const r of records) {
+    const key = `${r.unit_id}-${r.material_id}-${r.year}-${r.month}`
+    if (aggregated.has(key)) {
+      const existing = aggregated.get(key)
+      existing.usage_qty += r.usage_qty
+      existing.total_cost += r.total_cost
+      existing.production_qty = Math.max(existing.production_qty, r.production_qty)
+    } else {
+      aggregated.set(key, { ...r })
+    }
+  }
+
+  // Recalculate unit_price from aggregated total_cost / usage_qty
+  const finalRecords = [...aggregated.values()].map(r => ({
+    ...r,
+    unit_price: r.usage_qty > 0 ? Math.round(r.total_cost / r.usage_qty) : r.unit_price
+  }))
+
+  // 6. Batch insert
+  const stmt = db.prepare(`
+    INSERT INTO monthly_records (unit_id, material_id, year, month, usage_qty, unit_price, production_qty, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(unit_id, material_id, year, month) 
+    DO UPDATE SET usage_qty = ?, unit_price = ?, production_qty = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+  `)
+  
+  const batchSize = 50
+  let inserted = 0
+  for (let i = 0; i < finalRecords.length; i += batchSize) {
+    const chunk = finalRecords.slice(i, i + batchSize)
+    const batch = chunk.map(r => 
+      stmt.bind(r.unit_id, r.material_id, r.year, r.month, r.usage_qty, r.unit_price, r.production_qty, r.notes || '',
+                r.usage_qty, r.unit_price, r.production_qty, r.notes || '')
+    )
+    await db.batch(batch)
+    inserted += chunk.length
+  }
+
+  return c.json({
+    success: true,
+    summary: {
+      total_rows: rows.length,
+      records_inserted: inserted,
+      new_materials: newMatCount,
+      skipped: skipped.length,
+      aggregated_from: records.length
+    }
+  })
+})
+
 // ============ 메인 페이지 ============
 app.get('/', (c) => {
   return c.html(mainPage())
