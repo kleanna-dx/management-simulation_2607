@@ -99,6 +99,12 @@ export function mainPage(): string {
           <button onclick="switchTab('input')" id="tab-input" class="pill-tab pill-tab-inactive">
             <i class="fas fa-keyboard mr-1.5"></i>수동 입력
           </button>
+          <button onclick="switchTab('simulation')" id="tab-simulation" class="pill-tab pill-tab-inactive">
+            <i class="fas fa-flask mr-1.5"></i>시뮬레이션
+          </button>
+          <button onclick="switchTab('bom')" id="tab-bom" class="pill-tab pill-tab-inactive">
+            <i class="fas fa-project-diagram mr-1.5"></i>제품-자재 매핑
+          </button>
           <button onclick="switchTab('master')" id="tab-master" class="pill-tab pill-tab-inactive">
             <i class="fas fa-cog mr-1.5"></i>기준정보
           </button>
@@ -502,10 +508,146 @@ export function mainPage(): string {
         </div>
       </div>
     </div>
+
+    <!-- Simulation Tab -->
+    <div id="content-simulation" class="hidden fade-in space-y-5">
+      <div class="card p-6">
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700">생산량 기반 원가 시뮬레이션</h3>
+            <p class="text-xs text-gray-400 mt-1">제품별 생산량을 입력하면 BOM 기반으로 원부자재 소요량과 예상 원가를 자동 산출합니다.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-400">단가 기준월:</span>
+            <select id="sim-base-year" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs">
+              <option value="2026">2026</option>
+            </select>
+            <select id="sim-base-month" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs">
+              <option value="6">6월</option>
+              <option value="5">5월</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Product Plans Input -->
+        <div class="bg-slate-50 rounded-xl p-5 mb-5">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-xs font-semibold text-gray-600 uppercase tracking-wide">제품별 계획 생산량 (ton)</h4>
+            <button onclick="addSimProduct()" class="text-xs text-primary-600 hover:text-primary-700 font-medium"><i class="fas fa-plus mr-1"></i>제품 추가</button>
+          </div>
+          <div id="sim-plans" class="space-y-2"></div>
+          <div class="mt-4 flex gap-2">
+            <button onclick="runSimulation()" class="btn-primary"><i class="fas fa-play mr-1.5"></i>시뮬레이션 실행</button>
+            <button onclick="saveSimulation()" id="btn-save-sim" class="hidden px-4 py-2 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50"><i class="fas fa-save mr-1"></i>결과 저장</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simulation Results -->
+      <div id="sim-results" class="hidden space-y-5">
+        <!-- Summary -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div class="summary-card" style="border-color:#c7d2fe; background:linear-gradient(135deg,#eef2ff,#e0e7ff)">
+            <p class="text-[10px] font-medium text-primary-500 uppercase">예상 총원가</p>
+            <p id="sim-total-cost" class="text-lg font-bold text-gray-900 mt-2 stat-value">-</p>
+          </div>
+          <div class="summary-card" style="border-color:#e2e8f0">
+            <p class="text-[10px] font-medium text-gray-400 uppercase">전월 대비</p>
+            <p id="sim-cost-diff" class="text-lg font-bold mt-2 stat-value">-</p>
+          </div>
+          <div class="summary-card" style="border-color:#bfdbfe; background:linear-gradient(135deg,#eff6ff,#dbeafe)">
+            <p class="text-[10px] font-medium text-blue-500 uppercase">수량효과</p>
+            <p id="sim-qty-effect" class="text-lg font-bold mt-2 stat-value">-</p>
+          </div>
+          <div class="summary-card" style="border-color:#fde68a; background:linear-gradient(135deg,#fffbeb,#fef3c7)">
+            <p class="text-[10px] font-medium text-amber-600 uppercase">단가효과</p>
+            <p id="sim-price-effect" class="text-lg font-bold mt-2 stat-value">-</p>
+          </div>
+        </div>
+
+        <!-- Product-level results -->
+        <div class="card overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-100">
+            <h3 class="text-sm font-semibold text-gray-700">제품별 시뮬레이션 결과</h3>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead><tr>
+                <th>호기</th><th>제품</th><th class="text-right">계획생산량</th>
+                <th class="text-right">예상원가</th><th class="text-right">전월원가</th>
+                <th class="text-right">차이</th><th class="text-right">증감률</th>
+              </tr></thead>
+              <tbody id="sim-product-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Material-level detail -->
+        <div class="card overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-100">
+            <h3 class="text-sm font-semibold text-gray-700">자재별 상세 (시뮬레이션 vs 전월)</h3>
+          </div>
+          <div class="overflow-x-auto max-h-[400px]">
+            <table class="data-table">
+              <thead><tr>
+                <th>제품</th><th>구분</th><th>자재명</th><th class="text-right">원단위</th>
+                <th class="text-right">예상소요량</th><th class="text-right">적용단가</th><th class="text-right">예상원가</th>
+                <th class="text-right">전월소요량</th><th class="text-right">전월원가</th>
+                <th class="text-right">수량효과</th><th class="text-right">단가효과</th><th class="text-right">차이</th>
+              </tr></thead>
+              <tbody id="sim-detail-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simulation History -->
+      <div class="card overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <h3 class="text-sm font-semibold text-gray-700">시뮬레이션 이력</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead><tr><th>이름</th><th>기준월</th><th>생성자</th><th>생성일시</th><th class="text-center">작업</th></tr></thead>
+            <tbody id="sim-history-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOM Tab (제품-자재 매핑) -->
+    <div id="content-bom" class="hidden fade-in space-y-5">
+      <div class="card p-6">
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700">제품-자재 매핑 (BOM)</h3>
+            <p class="text-xs text-gray-400 mt-1">제품 1ton 생산에 필요한 원부자재 원단위를 관리합니다.</p>
+          </div>
+          <button onclick="document.getElementById('product-form').classList.toggle('hidden')" class="btn-primary text-xs !py-1.5 !px-3">
+            <i class="fas fa-plus mr-1"></i>제품 등록
+          </button>
+        </div>
+
+        <!-- Product Registration -->
+        <form id="product-form" class="hidden mb-5 p-4 bg-slate-50 rounded-xl">
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+            <input type="text" id="new-prd-code" placeholder="제품코드" class="border border-gray-200 rounded-lg px-3 py-2 text-sm" required>
+            <input type="text" id="new-prd-name" placeholder="제품명" class="border border-gray-200 rounded-lg px-3 py-2 text-sm" required>
+            <select id="new-prd-unit" class="border border-gray-200 rounded-lg px-3 py-2 text-sm"></select>
+            <input type="text" id="new-prd-uom" placeholder="단위" value="ton" class="border border-gray-200 rounded-lg px-3 py-2 text-sm">
+            <button type="submit" class="btn-primary">등록</button>
+          </div>
+        </form>
+
+        <!-- Product List with BOM -->
+        <div id="products-bom-container" class="space-y-4"></div>
+      </div>
+    </div>
   </main>
 
   <script>
     let analysisData = null, unitSummaryData = null, unitsCache = [], materialsCache = [];
+    let productsCache = [], simResultData = null;
     let unitChartInstance = null, effectChartInstance = null, currentUnitFilter = '', uploadData = [];
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -514,7 +656,7 @@ export function mainPage(): string {
     });
 
     function switchTab(tab) {
-      ['dashboard','detail','upload','input','master'].forEach(t => {
+      ['dashboard','detail','upload','input','master','simulation','bom'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.add('pill-tab-inactive'); }
@@ -524,6 +666,8 @@ export function mainPage(): string {
       if (a) { a.classList.add('pill-tab-active'); a.classList.remove('pill-tab-inactive'); }
       if (tab === 'input') loadRecentRecords();
       if (tab === 'master') { loadUnitsList(); loadMaterialsList(); loadProductionList(); }
+      if (tab === 'simulation') { loadSimProducts(); loadSimHistory(); }
+      if (tab === 'bom') { loadProductsBom(); }
     }
 
     function setUnitFilter(id) {
@@ -535,11 +679,12 @@ export function mainPage(): string {
     }
 
     async function loadMasterData() {
-      const [u, m] = await Promise.all([fetch('/api/units').then(r=>r.json()), fetch('/api/materials').then(r=>r.json())]);
-      unitsCache = u; materialsCache = m;
+      const [u, m, p] = await Promise.all([fetch('/api/units').then(r=>r.json()), fetch('/api/materials').then(r=>r.json()), fetch('/api/products').then(r=>r.json())]);
+      unitsCache = u; materialsCache = m; productsCache = p;
       document.getElementById('input-unit').innerHTML = u.map(x=>'<option value="'+x.id+'">'+x.unit_name+' ('+x.unit_code+')</option>').join('');
       document.getElementById('input-material').innerHTML = m.map(x=>'<option value="'+x.id+'">'+(x.category==='RAW'?'[원]':'[부]')+' '+x.material_name+'</option>').join('');
       document.getElementById('prod-unit').innerHTML = u.map(x=>'<option value="'+x.id+'">'+x.unit_name+'</option>').join('');
+      document.getElementById('new-prd-unit').innerHTML = u.map(x=>'<option value="'+x.id+'">'+x.unit_name+'</option>').join('');
     }
 
     async function loadAnalysis() {
@@ -837,6 +982,215 @@ export function mainPage(): string {
       if(abs>=100000000) return s+(n/100000000).toFixed(1)+'억';
       if(abs>=10000) return s+Math.round(n/10000).toLocaleString('ko-KR')+'만원';
       return s+Math.round(n).toLocaleString('ko-KR')+'원';
+    }
+
+    // ============ SIMULATION ============
+    let simPlanIndex = 0;
+
+    function loadSimProducts() {
+      if (!productsCache.length) return;
+      const container = document.getElementById('sim-plans');
+      if (container.children.length === 0) addSimProduct();
+      loadSimHistory();
+    }
+
+    function addSimProduct() {
+      const container = document.getElementById('sim-plans');
+      const idx = simPlanIndex++;
+      const opts = productsCache.map(p=>'<option value="'+p.id+'">'+p.unit_name+' / '+p.product_name+'</option>').join('');
+      const div = document.createElement('div');
+      div.className = 'flex items-center gap-3';
+      div.id = 'sim-plan-'+idx;
+      div.innerHTML = '<select class="sim-product flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">'+opts+'</select>'
+        + '<input type="number" class="sim-qty w-32 border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="생산량(ton)" step="0.1">'
+        + '<button onclick="document.getElementById(\\'sim-plan-'+idx+'\\').remove()" class="text-gray-400 hover:text-red-500 text-sm"><i class="fas fa-times"></i></button>';
+      container.appendChild(div);
+    }
+
+    async function runSimulation() {
+      const rows = document.querySelectorAll('#sim-plans > div');
+      const plans = [];
+      rows.forEach(row => {
+        const productId = row.querySelector('.sim-product')?.value;
+        const qty = parseFloat(row.querySelector('.sim-qty')?.value || '0');
+        if (productId && qty > 0) plans.push({ product_id: parseInt(productId), planned_qty: qty });
+      });
+      if (!plans.length) { alert('제품과 생산량을 입력하세요.'); return; }
+
+      const baseYear = parseInt(document.getElementById('sim-base-year').value);
+      const baseMonth = parseInt(document.getElementById('sim-base-month').value);
+
+      const res = await fetch('/api/simulation/run', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ plans, base_year: baseYear, base_month: baseMonth })
+      });
+      if (!res.ok) { alert('시뮬레이션 실패'); return; }
+      simResultData = await res.json();
+      renderSimResults();
+    }
+
+    function renderSimResults() {
+      if (!simResultData) return;
+      document.getElementById('sim-results').classList.remove('hidden');
+      document.getElementById('btn-save-sim').classList.remove('hidden');
+      const s = simResultData.summary;
+
+      document.getElementById('sim-total-cost').textContent = formatWon(s.total_sim_cost);
+      const diffEl = document.getElementById('sim-cost-diff');
+      diffEl.textContent = formatSignedWon(s.total_cost_diff);
+      diffEl.className = 'text-lg font-bold mt-2 stat-value ' + (s.total_cost_diff>0?'positive':'negative');
+      const qEl = document.getElementById('sim-qty-effect');
+      qEl.textContent = formatSignedWon(s.total_qty_effect);
+      qEl.className = 'text-lg font-bold mt-2 stat-value ' + (s.total_qty_effect>0?'positive':'negative');
+      const pEl = document.getElementById('sim-price-effect');
+      pEl.textContent = formatSignedWon(s.total_price_effect);
+      pEl.className = 'text-lg font-bold mt-2 stat-value ' + (s.total_price_effect>0?'positive':'negative');
+
+      // Product table
+      document.getElementById('sim-product-body').innerHTML = simResultData.products.map(p => {
+        const pct = p.total_prev_cost>0 ? ((p.cost_diff/p.total_prev_cost)*100).toFixed(1) : '-';
+        return \`<tr>
+          <td><span class="unit-chip \${getCC(p.unit_code)}">\${p.unit_name}</span></td>
+          <td class="font-medium">\${p.product_name}</td>
+          <td class="text-right">\${fmt(p.planned_qty)} ton</td>
+          <td class="text-right font-medium">\${formatWon(p.total_sim_cost)}</td>
+          <td class="text-right text-gray-500">\${formatWon(p.total_prev_cost)}</td>
+          <td class="text-right font-semibold \${p.cost_diff>0?'positive':'negative'}">\${formatSignedWon(p.cost_diff)}</td>
+          <td class="text-right"><span class="text-xs px-2 py-0.5 rounded-full \${p.cost_diff>0?'bg-red-50 text-red-600':'bg-blue-50 text-blue-600'}">\${pct!=='-'?(p.cost_diff>0?'+':'')+pct+'%':'-'}</span></td>
+        </tr>\`;
+      }).join('');
+
+      // Detail table
+      document.getElementById('sim-detail-body').innerHTML = simResultData.details.map(d => \`<tr>
+        <td class="text-xs text-gray-500">\${d.product_name}</td>
+        <td><span class="text-[10px] px-1.5 py-0.5 rounded \${d.category==='RAW'?'bg-blue-50 text-blue-600':'bg-emerald-50 text-emerald-600'}">\${d.category==='RAW'?'원':'부'}</span></td>
+        <td class="font-medium text-xs">\${d.material_name}</td>
+        <td class="text-right text-gray-500 text-xs">\${d.unit_consumption}</td>
+        <td class="text-right">\${fmt(d.sim_usage_qty)}</td>
+        <td class="text-right">\${fmt(d.unit_price)}</td>
+        <td class="text-right font-medium">\${formatWon(d.sim_cost)}</td>
+        <td class="text-right text-gray-400">\${fmt(d.prev_usage_qty)}</td>
+        <td class="text-right text-gray-400">\${formatWon(d.prev_cost)}</td>
+        <td class="text-right \${d.qty_effect>0?'positive':'negative'}">\${formatSignedWon(d.qty_effect)}</td>
+        <td class="text-right \${d.price_effect>0?'positive':'negative'}">\${formatSignedWon(d.price_effect)}</td>
+        <td class="text-right font-semibold \${d.cost_diff>0?'positive':'negative'}">\${formatSignedWon(d.cost_diff)}</td>
+      </tr>\`).join('');
+    }
+
+    async function saveSimulation() {
+      if (!simResultData) return;
+      const name = prompt('시뮬레이션 이름을 입력하세요:', '시뮬레이션 ' + new Date().toLocaleDateString('ko-KR'));
+      if (!name) return;
+      const rows = document.querySelectorAll('#sim-plans > div');
+      const plans = [];
+      rows.forEach(row => {
+        const pid = row.querySelector('.sim-product')?.value;
+        const qty = parseFloat(row.querySelector('.sim-qty')?.value||'0');
+        if (pid && qty>0) plans.push({product_id:+pid, planned_qty:qty});
+      });
+      await fetch('/api/simulation/save', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ sim_name:name, base_year:+document.getElementById('sim-base-year').value, base_month:+document.getElementById('sim-base-month').value, sim_data:plans, result_data:simResultData })
+      });
+      alert('저장되었습니다!');
+      loadSimHistory();
+    }
+
+    async function loadSimHistory() {
+      const data = await fetch('/api/simulations').then(r=>r.json());
+      document.getElementById('sim-history-body').innerHTML = data.length ? data.map(s=>\`<tr>
+        <td class="font-medium">\${s.sim_name}</td>
+        <td class="text-gray-500">\${s.base_year}-\${String(s.base_month).padStart(2,'0')}</td>
+        <td class="text-gray-500">\${s.created_by}</td>
+        <td class="text-gray-400 text-xs">\${s.created_at}</td>
+        <td class="text-center"><button onclick="loadSavedSim(\${s.id})" class="text-xs text-primary-600 hover:underline">불러오기</button></td>
+      </tr>\`).join('') : '<tr><td colspan="5" class="text-center py-6 text-gray-400">저장된 시뮬레이션이 없습니다</td></tr>';
+    }
+
+    async function loadSavedSim(id) {
+      const data = await fetch('/api/simulations/'+id).then(r=>r.json());
+      if (data.result_data) { simResultData = data.result_data; renderSimResults(); }
+    }
+
+    // ============ BOM (제품-자재 매핑) ============
+    document.getElementById('product-form').addEventListener('submit', async(e)=>{
+      e.preventDefault();
+      await fetch('/api/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        product_code:document.getElementById('new-prd-code').value,
+        product_name:document.getElementById('new-prd-name').value,
+        unit_id:+document.getElementById('new-prd-unit').value,
+        unit_of_measure:document.getElementById('new-prd-uom').value||'ton'
+      })});
+      alert('등록되었습니다!');
+      await loadMasterData();
+      loadProductsBom();
+    });
+
+    async function loadProductsBom() {
+      const [products, bom] = await Promise.all([fetch('/api/products').then(r=>r.json()), fetch('/api/bom').then(r=>r.json())]);
+      productsCache = products;
+      const container = document.getElementById('products-bom-container');
+
+      if (!products.length) {
+        container.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-box-open text-3xl mb-3"></i><p>등록된 제품이 없습니다.</p></div>';
+        return;
+      }
+
+      container.innerHTML = products.map(p => {
+        const pBom = bom.filter(b=>b.product_id===p.id);
+        return \`
+        <div class="border border-gray-200 rounded-xl overflow-hidden">
+          <div class="px-5 py-3 bg-slate-50 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="unit-chip \${getCC(p.unit_code)}">\${p.unit_name}</span>
+              <span class="font-semibold text-gray-700 text-sm">\${p.product_name}</span>
+              <span class="text-xs text-gray-400 font-mono">\${p.product_code}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-400">\${pBom.length}개 자재</span>
+              <button onclick="toggleBomAdd(\${p.id})" class="text-xs text-primary-600 hover:text-primary-700 font-medium"><i class="fas fa-plus mr-1"></i>자재추가</button>
+            </div>
+          </div>
+          <div id="bom-add-\${p.id}" class="hidden px-5 py-3 bg-primary-50/50 border-b border-gray-200">
+            <div class="flex gap-2 items-center">
+              <select id="bom-mat-\${p.id}" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                \${materialsCache.map(m=>'<option value="'+m.id+'">'+(m.category==='RAW'?'[원]':'[부]')+' '+m.material_name+' ('+m.unit_of_measure+')</option>').join('')}
+              </select>
+              <input type="number" id="bom-uc-\${p.id}" step="0.001" placeholder="원단위" class="w-28 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+              <input type="text" id="bom-note-\${p.id}" placeholder="비고" class="w-32 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+              <button onclick="addBomItem(\${p.id})" class="btn-primary text-xs !py-2">등록</button>
+            </div>
+          </div>
+          \${pBom.length ? '<table class="data-table"><thead><tr><th>구분</th><th>자재코드</th><th>자재명</th><th class="text-right">원단위</th><th>단위</th><th>비고</th><th class="text-center w-16">삭제</th></tr></thead><tbody>' + pBom.map(b=>\`<tr>
+            <td><span class="text-[10px] px-1.5 py-0.5 rounded \${b.category==='RAW'?'bg-blue-50 text-blue-600':'bg-emerald-50 text-emerald-600'}">\${b.category==='RAW'?'원자재':'부자재'}</span></td>
+            <td class="font-mono text-xs text-gray-400">\${b.material_code}</td>
+            <td class="font-medium">\${b.material_name}</td>
+            <td class="text-right font-semibold text-primary-600">\${b.unit_consumption}</td>
+            <td class="text-gray-400 text-xs">\${b.unit_of_measure}/ton</td>
+            <td class="text-gray-400 text-xs">\${b.notes||''}</td>
+            <td class="text-center"><button onclick="deleteBom(\${b.id})" class="btn-delete text-[10px]">삭제</button></td>
+          </tr>\`).join('') + '</tbody></table>' : '<div class="p-6 text-center text-gray-400 text-sm">BOM이 등록되지 않았습니다.</div>'}
+        </div>\`;
+      }).join('');
+    }
+
+    function toggleBomAdd(productId) {
+      document.getElementById('bom-add-'+productId)?.classList.toggle('hidden');
+    }
+
+    async function addBomItem(productId) {
+      const matId = document.getElementById('bom-mat-'+productId).value;
+      const uc = parseFloat(document.getElementById('bom-uc-'+productId).value);
+      const note = document.getElementById('bom-note-'+productId).value;
+      if (!uc) { alert('원단위를 입력하세요.'); return; }
+      await fetch('/api/bom',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:productId,material_id:+matId,unit_consumption:uc,notes:note})});
+      loadProductsBom();
+    }
+
+    async function deleteBom(id) {
+      if (!confirm('삭제하시겠습니까?')) return;
+      await fetch('/api/bom/'+id,{method:'DELETE'});
+      loadProductsBom();
     }
   </script>
 </body>
