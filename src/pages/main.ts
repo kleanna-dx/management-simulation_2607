@@ -2779,7 +2779,7 @@ export function mainPage(): string {
     }
     
     async function submitUpload() {
-      if (!uploadData.length) return;
+      if (!uploadData.length && !(uploadRawData && uploadRawData.length)) return;
       
       if (uploadMode === 'sap') {
         // SAP 형식: 스마트 업로드 API 호출 (집계 + 원본 전체)
