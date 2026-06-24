@@ -259,29 +259,45 @@ export function mainPage(): string {
         </div>
       </div>
 
-      <!-- 0) 원재료 손익 카드 + 재료비 총괄 Overview -->
-      <div class="card overflow-hidden mb-4">
-        <div class="px-5 py-4 flex items-center justify-between">
+      <!-- 재료비 총괄 (호기별 지종별) + 원재료 손익 통합 카드 -->
+      <div class="card overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-bar text-blue-600 mr-1.5"></i>재료비 총괄 (호기별 지종별)</h3>
+          <div class="flex items-center gap-2">
+            <button onclick="setOverviewFilter('ALL')" id="ov-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
+            <button onclick="setOverviewFilter('RAW')" id="ov-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
+            <button onclick="setOverviewFilter('SUB')" id="ov-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
+          </div>
+        </div>
+
+        <!-- 원재료 손익 요약 -->
+        <div class="px-5 py-3 bg-gradient-to-r from-indigo-50/50 to-transparent border-b border-slate-100 flex items-center justify-between">
           <div class="flex items-center gap-4">
-            <div>
-              <div class="text-xs text-gray-500 mb-1">원재료 손익 <span class="text-gray-400">(전월원단위 - 당월원단위) × 생산량(당월) ÷ 1,000</span></div>
-              <div class="flex items-center gap-2">
-                <span id="overview-profit-value" class="text-2xl font-bold text-gray-800">-</span>
-                <span class="text-sm text-gray-500">천원</span>
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                <i class="fas fa-coins text-indigo-600 text-xs"></i>
+              </div>
+              <div>
+                <div class="text-[10px] text-gray-500 leading-tight">원재료 손익 <span class="text-gray-400">(전월원단위-당월원단위)×생산량÷1,000</span></div>
+                <div class="flex items-center gap-1.5">
+                  <span id="overview-profit-value" class="text-lg font-bold text-gray-800">-</span>
+                  <span class="text-[10px] text-gray-500">천원</span>
+                </div>
               </div>
             </div>
           </div>
-          <button onclick="toggleProfitDetail()" class="px-3 py-1.5 text-xs bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition font-medium">
+          <button onclick="toggleProfitDetail()" class="px-3 py-1.5 text-xs bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition font-medium border border-indigo-200">
             <i class="fas fa-search-plus mr-1"></i>상세보기
           </button>
         </div>
+
         <!-- 원재료 손익 상세 테이블 (숨김 상태) -->
-        <div id="profit-detail-section" class="hidden border-t border-slate-100">
-          <div class="px-5 py-3 bg-slate-50 flex items-center justify-between">
+        <div id="profit-detail-section" class="hidden border-b border-slate-100">
+          <div class="px-5 py-2.5 bg-slate-50 flex items-center justify-between">
             <h4 class="text-xs font-semibold text-gray-600"><i class="fas fa-list-alt text-indigo-400 mr-1"></i>호기별 지종별 원재료 손익 상세</h4>
             <span class="text-xs text-gray-400">단위: 천원</span>
           </div>
-          <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+          <div class="overflow-x-auto max-h-[360px] overflow-y-auto">
             <table class="data-table text-xs">
               <thead class="sticky top-0 bg-white z-10">
                 <tr>
@@ -299,18 +315,8 @@ export function mainPage(): string {
             </table>
           </div>
         </div>
-      </div>
 
-      <!-- 재료비 총괄 테이블 -->
-      <div class="card overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-bar text-blue-600 mr-1.5"></i>재료비 총괄 (호기별 지종별)</h3>
-          <div class="flex items-center gap-2">
-            <button onclick="setOverviewFilter('ALL')" id="ov-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
-            <button onclick="setOverviewFilter('RAW')" id="ov-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
-            <button onclick="setOverviewFilter('SUB')" id="ov-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
-          </div>
-        </div>
+        <!-- 재료비 총괄 테이블 -->
         <div class="overflow-x-auto">
           <table class="data-table text-xs" id="overview-table">
             <thead class="sticky top-0 bg-white z-10">
