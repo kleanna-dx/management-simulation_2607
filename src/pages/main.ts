@@ -2411,7 +2411,10 @@ export function mainPage(): string {
     
     // SAP 형식 자동 감지
     function detectSAPFormat(headers) {
-      const sapIndicators = ['달력연도/월', '생산호기', '자재 그룹', '출고수량', '출고금액', '실제단가', '실제 원단위', '자재그룹(대분류)', '생산호기명'];
+      // SAP 형식은 반드시 달력연도/월 컬럼이 있어야 함
+      var hasPeriod = headers.some(function(h) { return h && (h.includes('달력연도/월') || h.includes('달력연도')); });
+      if (!hasPeriod) return false;
+      const sapIndicators = ['생산호기', '자재 그룹', '출고수량', '출고금액', '실제단가', '실제 원단위', '자재그룹(대분류)', '생산호기명'];
       const matchCount = sapIndicators.filter(ind => headers.some(h => (h||'').includes(ind))).length;
       return matchCount >= 3;
     }
