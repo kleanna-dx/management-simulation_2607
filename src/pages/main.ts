@@ -2416,6 +2416,152 @@ export function mainPage(): string {
       return matchCount >= 3;
     }
 
+    function detectRawMaterialFormat(headers) {
+      // 원재료 기본형식: 생산호기 있음 + 달력연도/월 없음 + 총생산량(당월) 있음 + 총생산량(전월) 있음
+      var hasMachine = headers.some(function(h) { return (h||'').includes('생산호기'); });
+      var hasNoPeriod = !headers.some(function(h) { return (h||'').includes('달력연도'); });
+      var hasCurProd = headers.some(function(h) { return (h||'').includes('총생산량') && (h||'').includes('당월'); });
+      var hasPrevProd = headers.some(function(h) { return (h||'').includes('총생산량') && (h||'').includes('전월'); });
+      return hasMachine && hasNoPeriod && hasCurProd && hasPrevProd;
+    }
+
+    function parseRawMaterialData(json, headers, assignedYm) {
+      // 기준월 assignedYm = '202604' → 당월=202604, 전월=202603
+      var curYm = assignedYm;
+      var y = parseInt(assignedYm.substring(0, 4));
+      var m = parseInt(assignedYm.substring(4, 6)) - 1;
+      if (m < 1) { m = 12; y -= 1; }
+      var prevYm = String(y) + String(m).padStart(2, '0');
+
+      var findCol = function(keywords) { return headers.findIndex(function(h) { return h && keywords.some(function(k) { return h.includes(k); }); }); };
+      // 당월 / 전월 컬럼 구분: (당월)이 포함된 것 vs (전월)이 포함된 것
+      var findCurCol = function(keyword) { return headers.findIndex(function(h) { return h && h.includes(keyword) && h.includes('당월'); }); };
+      var findPrevCol = function(keyword) { return headers.findIndex(function(h) { return h && h.includes(keyword) && h.includes('전월'); }); };
+
+      var colMachine = findCol(['생산호기']);
+      var colLevel1 = findCol(['제품계층 구조레벨 1', '제품계층']);
+      var colLevel2 = findCol(['제품 계층구조레벨 2']);
+      var colLevel3 = findCol(['제품 계층구조레벨 3']);
+      var colLevel4 = findCol(['제품 계층구조레벨 4']);
+      // col5 (level4명) - 제품계층4 바로 다음 None 헤더 or check
+      var colLevel4Name = colLevel4 >= 0 ? colLevel4 + 1 : -1;
+      var colMatGroupMajorName = findCol(['자재그룹(대분류)']);
+      // '자재' 컬럼: '자재그룹'이 아닌 정확히 '자재'만 매칭 (exact match or ends with '자재')
+      var colMatCode = headers.findIndex(function(h) { return h && h.trim() === '자재'; });
+      if (colMatCode < 0) { colMatCode = headers.findIndex(function(h) { return h && h.includes('자재') && !h.includes('자재그룹') && !h.includes('자재명'); }); }
+      // 자재명은 자재 다음 컬럼 (None 헤더 = __EMPTY_1)
+      var colMatName = colMatCode >= 0 ? colMatCode + 1 : -1;
+
+      // 당월 계획/실적
+      var colPlanUnit = findCurCol('계획 원단위(KG/Ton)');
+      var colCompQty = findCurCol('구성부품수량');
+      var colBaseQty = findCurCol('기준수량');
+      var colPlanUnitWaste = findCurCol('계획 원단위(폐품포함)');
+      var colPlanPrice = findCurCol('계획 단가');
+      var colPlanAlloc = findCurCol('계획 배부수량');
+      var colCurTotalProd = findCurCol('총생산량');
+      var colCurProdQty = findCurCol('생산수량');
+      var colCurWaste = findCurCol('폐품수량');
+      var colCurActualUnit = findCurCol('실제 원단위');
+      var colCurActualAlloc = findCurCol('실제 배부수량');
+      var colCurActualPrice = findCurCol('실제단가');
+      var colCurIssueQty = findCurCol('출고수량');
+      var colCurIssueAmt = findCurCol('출고금액');
+      var colCurUsageDiff = findCol(['계획대비']);
+      var colCurPriceDiff = colCurUsageDiff >= 0 ? colCurUsageDiff + 1 : -1;
+
+      // 전월 실적
+      var colPrevTotalProd = findPrevCol('총생산량');
+      var colPrevProdQty = findPrevCol('생산수량');
+      var colPrevWaste = findPrevCol('폐품수량');
+      var colPrevActualUnit = findPrevCol('실제 원단위');
+      var colPrevActualAlloc = findPrevCol('실제 배부수량');
+      var colPrevActualPrice = findPrevCol('실제단가');
+      var colPrevIssueQty = findPrevCol('출고수량');
+      var colPrevIssueAmt = findPrevCol('출고금액');
+      var colPrevUsageDiff = findCol(['전월대비']);
+      var colPrevPriceDiff = colPrevUsageDiff >= 0 ? colPrevUsageDiff + 1 : -1;
+
+      var rawRows = [];
+      var matGroupMajorCodeMap = { '펄프': '1100', '고지': '1200' };
+
+      json.forEach(function(row) {
+        var get = function(colIdx) { return colIdx >= 0 ? String(row[headers[colIdx]] || '') : ''; };
+        var getNum = function(colIdx) { return colIdx >= 0 ? (parseFloat(row[headers[colIdx]]) || 0) : 0; };
+
+        var machine = get(colMachine);
+        var matCode = get(colMatCode);
+        if (!machine || !matCode || matCode === '0') return;
+
+        var matGroupName = get(colMatGroupMajorName);
+        var matGroupCode = matGroupMajorCodeMap[matGroupName] || matCode.substring(0, 4);
+
+        // 당월 raw_record
+        rawRows.push({
+          calendar_ym: curYm,
+          process_code: '', process_name: '',
+          machine_code: machine, machine_name: machine,
+          product_level1: '', product_level1_name: get(colLevel1),
+          product_level2: '', product_level2_name: get(colLevel2),
+          product_level3: '', product_level3_name: get(colLevel3),
+          product_level4: get(colLevel4), product_level4_name: get(colLevel4Name),
+          material_code: matCode, material_name: get(colMatName),
+          material_group: '', material_group_name: '',
+          material_group_major: matGroupCode, material_group_major_name: matGroupName,
+          product_type_code: '', product_type_name: '',
+          plan_unit_consumption: getNum(colPlanUnit),
+          component_qty: getNum(colCompQty),
+          base_qty: getNum(colBaseQty),
+          plan_unit_consumption_waste: getNum(colPlanUnitWaste),
+          plan_unit_price: getNum(colPlanPrice),
+          plan_alloc_qty: getNum(colPlanAlloc),
+          total_production: getNum(colCurTotalProd),
+          production_qty: getNum(colCurProdQty),
+          waste_qty: getNum(colCurWaste),
+          actual_unit_consumption: getNum(colCurActualUnit),
+          actual_alloc_qty: getNum(colCurActualAlloc),
+          actual_unit_price: getNum(colCurActualPrice),
+          issue_qty: getNum(colCurIssueQty),
+          issue_amount: getNum(colCurIssueAmt),
+          plan_vs_usage_diff: getNum(colCurUsageDiff),
+          plan_vs_price_diff: getNum(colCurPriceDiff)
+        });
+
+        // 전월 raw_record (전월 실적 데이터가 있는 경우만)
+        var prevProd = getNum(colPrevTotalProd);
+        var prevAlloc = getNum(colPrevActualAlloc);
+        if (prevProd !== 0 || prevAlloc !== 0) {
+          rawRows.push({
+            calendar_ym: prevYm,
+            process_code: '', process_name: '',
+            machine_code: machine, machine_name: machine,
+            product_level1: '', product_level1_name: get(colLevel1),
+            product_level2: '', product_level2_name: get(colLevel2),
+            product_level3: '', product_level3_name: get(colLevel3),
+            product_level4: get(colLevel4), product_level4_name: get(colLevel4Name),
+            material_code: matCode, material_name: get(colMatName),
+            material_group: '', material_group_name: '',
+            material_group_major: matGroupCode, material_group_major_name: matGroupName,
+            product_type_code: '', product_type_name: '',
+            plan_unit_consumption: 0, component_qty: 0, base_qty: 0,
+            plan_unit_consumption_waste: 0, plan_unit_price: 0, plan_alloc_qty: 0,
+            total_production: prevProd,
+            production_qty: getNum(colPrevProdQty),
+            waste_qty: getNum(colPrevWaste),
+            actual_unit_consumption: getNum(colPrevActualUnit),
+            actual_alloc_qty: prevAlloc,
+            actual_unit_price: getNum(colPrevActualPrice),
+            issue_qty: getNum(colPrevIssueQty),
+            issue_amount: getNum(colPrevIssueAmt),
+            plan_vs_usage_diff: getNum(colPrevUsageDiff),
+            plan_vs_price_diff: getNum(colPrevPriceDiff)
+          });
+        }
+      });
+
+      return { rawRows: rawRows, curYm: curYm, prevYm: prevYm };
+    }
+
     // SAP 형식 데이터를 내부 구조로 변환
     function parseSAPData(json, headers) {
       // 두 번째 행이 기술코드(BIC_xxx, CALMONTH 등)인지 확인 → 스킵
@@ -2566,8 +2712,36 @@ export function mainPage(): string {
         
         const headers = Object.keys(json[0]);
         const isSAP = detectSAPFormat(headers);
+        const isRawMaterial = !isSAP && detectRawMaterialFormat(headers);
         
-        if (isSAP) {
+        if (isRawMaterial) {
+          uploadMode = 'sap';  // 같은 업로드 로직 사용 (rawRows 기반)
+          // 기준월 가져오기
+          var ymYear = document.getElementById('analysisYear').value;
+          var ymMonth = document.getElementById('analysisMonth').value.padStart(2, '0');
+          var assignedYm = ymYear + ymMonth;
+          // 사용자에게 확인
+          var userYm = prompt('기준월을 입력하세요 (YYYYMM 형식):', assignedYm);
+          if (!userYm || userYm.length !== 6) { alert('유효한 기준월을 입력하세요 (예: 202604)'); return; }
+          
+          var parsed = parseRawMaterialData(json, headers, userYm);
+          uploadData = [];  // monthly_records용은 없음
+          uploadRawData = parsed.rawRows;
+          
+          document.getElementById('upload-area').classList.add('hidden');
+          document.getElementById('upload-preview').classList.remove('hidden');
+          document.getElementById('upload-filename').textContent = file.name;
+          document.getElementById('upload-info').innerHTML = '<span class="inline-flex items-center px-2 py-0.5 rounded bg-sage-100 text-sage-700 text-xs font-medium mr-2">\uc6d0\uc7ac\ub8cc \uae30\ubcf8\ud615\uc2dd \uac10\uc9c0</span>' +
+            '\ub2f9\uc6d4(' + parsed.curYm + ') + \uc804\uc6d4(' + parsed.prevYm + ') | \ucd1d ' + parsed.rawRows.length + '\ud589 \uc800\uc7a5 \uc608\uc815';
+          document.getElementById('upload-count').textContent = String(parsed.rawRows.length);
+          
+          // Preview
+          var previewHeaders2 = ['\uae30\uac04','\ud638\uae30','\uc790\uc7ac\ucf54\ub4dc','\uc790\uc7ac\uba85','\uc790\uc7ac\uadf8\ub8f9','\uc81c\ud488\uad6c\ubd84','\ucd1d\uc0dd\uc0b0\ub7c9','\uc2e4\uc81c\ubc30\ubd80\uc218\ub7c9','\uc2e4\uc81c\ub2e8\uac00'];
+          document.getElementById('preview-head').innerHTML = '<tr>'+previewHeaders2.map(function(x){return '<th class="text-xs">'+x+'</th>';}).join('')+'</tr>';
+          document.getElementById('preview-body').innerHTML = parsed.rawRows.slice(0,20).map(function(r) {
+            return '<tr><td>'+r.calendar_ym+'</td><td><span class="unit-chip '+(r.machine_code==='PM2'?'unit-chip-pm2':'unit-chip-pm3')+'">'+r.machine_code+'</span></td><td class="font-mono text-xs">'+r.material_code+'</td><td>'+r.material_name+'</td><td>'+r.material_group_major_name+'</td><td class="text-xs">'+r.product_level2_name+'</td><td class="text-right">'+Math.round(r.total_production).toLocaleString()+'</td><td class="text-right">'+Math.round(r.actual_alloc_qty).toLocaleString()+'</td><td class="text-right">'+Math.round(r.actual_unit_price).toLocaleString()+'</td></tr>';
+          }).join('');
+        } else if (isSAP) {
           uploadMode = 'sap';
           const parsed = parseSAPData(json, headers);
           uploadData = parsed.rows;
