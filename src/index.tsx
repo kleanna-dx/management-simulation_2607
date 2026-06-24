@@ -555,6 +555,139 @@ app.post('/api/upload/smart', async (c) => {
 
 // ============ 대시보드 요약 API ============
 
+// 0) 재료비 총괄 Overview: 호기별 > 지종별 재료비/생산량/호기비중/원단위/억원/전체비중 (당월+전월+예상)
+app.get('/api/dashboard/material-overview', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym') || ''
+  const category = c.req.query('category') || '' // ALL, RAW, SUB
+
+  // 전월 계산
+  let prevYm = ''
+  if (ym && ym.length === 6) {
+    let y = parseInt(ym.substring(0, 4))
+    let m = parseInt(ym.substring(4, 6))
+    m -= 1
+    if (m < 1) { m = 12; y -= 1 }
+    prevYm = `${y}${String(m).padStart(2, '0')}`
+  }
+
+  let catFilter = ''
+  if (category === 'RAW') {
+    catFilter = " AND (material_group_major = '1100' OR material_group_major = '1200')"
+  } else if (category === 'SUB') {
+    catFilter = " AND material_group_major != '1100' AND material_group_major != '1200'"
+  }
+
+  // 재료비 SQL: machine_code + product_level2_name(SC split) 별 합산
+  const costSql = `
+    SELECT 
+      machine_code,
+      CASE 
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+        ELSE product_level2_name
+      END as product_level2_name,
+      SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as material_cost
+    FROM raw_records
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+      AND CAST(actual_alloc_qty AS REAL) != 0
+      ${catFilter}
+    GROUP BY machine_code, 
+      CASE 
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+        ELSE product_level2_name
+      END
+    ORDER BY machine_code, material_cost DESC
+  `
+
+  // 생산량 SQL: machine_code + product_level2_name별 (product_level4 중복제거)
+  const prodSql = `
+    SELECT 
+      machine_code,
+      product_level2_name,
+      SUM(total_prod) as production
+    FROM (
+      SELECT 
+        machine_code,
+        CASE 
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+          ELSE product_level2_name
+        END as product_level2_name,
+        product_level4,
+        MAX(CAST(total_production AS REAL)) as total_prod
+      FROM raw_records
+      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+        AND CAST(total_production AS REAL) > 0
+      GROUP BY machine_code, 
+        CASE 
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+          ELSE product_level2_name
+        END,
+        product_level4
+    )
+    GROUP BY machine_code, product_level2_name
+    ORDER BY machine_code, production DESC
+  `
+
+  // 당월 재료비 + 생산량
+  const curCostResult = await db.prepare(costSql).bind(ym).all()
+  const curCostData = curCostResult.results as any[]
+  const curProdResult = await db.prepare(prodSql).bind(ym).all()
+  const curProdMap = new Map<string, number>()
+  for (const p of curProdResult.results as any[]) {
+    curProdMap.set(`${p.machine_code}|${p.product_level2_name}`, Number(p.production) || 0)
+  }
+
+  // 전월 재료비 + 생산량
+  let prevCostMap = new Map<string, number>()
+  let prevProdMap = new Map<string, number>()
+  if (prevYm) {
+    const prevCostResult = await db.prepare(costSql).bind(prevYm).all()
+    for (const row of prevCostResult.results as any[]) {
+      prevCostMap.set(`${row.machine_code}|${row.product_level2_name}`, Number(row.material_cost) || 0)
+    }
+    const prevProdResult = await db.prepare(prodSql).bind(prevYm).all()
+    for (const p of prevProdResult.results as any[]) {
+      prevProdMap.set(`${p.machine_code}|${p.product_level2_name}`, Number(p.production) || 0)
+    }
+  }
+
+  // 모든 키를 모아서 머지 (당월에 있는 것 + 전월에만 있는 것)
+  const allKeys = new Set<string>()
+  curCostData.forEach(d => allKeys.add(`${d.machine_code}|${d.product_level2_name}`))
+  prevCostMap.forEach((_, k) => allKeys.add(k))
+
+  // 정렬: machine_code → 재료비(당월) DESC
+  const rows = Array.from(allKeys).map(key => {
+    const [machine_code, product_level2_name] = key.split('|')
+    const curCost = curCostData.find(d => `${d.machine_code}|${d.product_level2_name}` === key)
+    const cur_material_cost = curCost ? Number(curCost.material_cost) || 0 : 0
+    const cur_production = curProdMap.get(key) || 0
+    const prev_material_cost = prevCostMap.get(key) || 0
+    const prev_production = prevProdMap.get(key) || 0
+    return {
+      machine_code,
+      product_level2_name,
+      cur_material_cost,
+      cur_production,
+      prev_material_cost,
+      prev_production,
+      // 예상 필드 (공란 - 추후 산식 추가)
+      est_material_cost: null,
+      est_production: null,
+    }
+  }).sort((a, b) => {
+    if (a.machine_code < b.machine_code) return -1
+    if (a.machine_code > b.machine_code) return 1
+    return b.cur_material_cost - a.cur_material_cost
+  })
+
+  return c.json(rows)
+})
+
 // 1) 호기별 > 제품레벨2명 > 자재그룹명별 재료비 요약 (당월 + 전월 + 차이)
 // 재료비 = 실적배부수량(actual_alloc_qty) * 실적단가(actual_unit_price)
 app.get('/api/dashboard/material-cost-summary', async (c) => {

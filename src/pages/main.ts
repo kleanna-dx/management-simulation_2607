@@ -259,6 +259,53 @@ export function mainPage(): string {
         </div>
       </div>
 
+      <!-- 0) 재료비 총괄 Overview: 호기별 지종별 (당월/전월/예상) -->
+      <div class="card overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-bar text-blue-600 mr-1.5"></i>재료비 총괄 (호기별 지종별)</h3>
+          <div class="flex items-center gap-2">
+            <button onclick="setOverviewFilter('ALL')" id="ov-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
+            <button onclick="setOverviewFilter('RAW')" id="ov-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
+            <button onclick="setOverviewFilter('SUB')" id="ov-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="data-table text-xs" id="overview-table">
+            <thead class="sticky top-0 bg-white z-10">
+              <tr>
+                <th rowspan="2" class="!py-2 text-center border-r border-slate-200">호기</th>
+                <th rowspan="2" class="!py-2 text-center border-r border-slate-200">지종</th>
+                <th colspan="6" class="!py-1 text-center bg-blue-50 border-b border-slate-200">당월</th>
+                <th colspan="6" class="!py-1 text-center bg-amber-50 border-b border-slate-200">전월</th>
+                <th colspan="6" class="!py-1 text-center bg-green-50 border-b border-slate-200">예상</th>
+              </tr>
+              <tr>
+                <th class="!py-1.5 text-right bg-blue-50">재료비(원)</th>
+                <th class="!py-1.5 text-right bg-blue-50">생산량(톤)</th>
+                <th class="!py-1.5 text-right bg-blue-50">호기비중(%)</th>
+                <th class="!py-1.5 text-right bg-blue-50">원단위</th>
+                <th class="!py-1.5 text-right bg-blue-50">재료비(억원)</th>
+                <th class="!py-1.5 text-right bg-blue-50 border-r border-slate-200">전체비중(%)</th>
+                <th class="!py-1.5 text-right bg-amber-50">재료비(원)</th>
+                <th class="!py-1.5 text-right bg-amber-50">생산량(톤)</th>
+                <th class="!py-1.5 text-right bg-amber-50">호기비중(%)</th>
+                <th class="!py-1.5 text-right bg-amber-50">원단위</th>
+                <th class="!py-1.5 text-right bg-amber-50">재료비(억원)</th>
+                <th class="!py-1.5 text-right bg-amber-50 border-r border-slate-200">전체비중(%)</th>
+                <th class="!py-1.5 text-right bg-green-50">재료비(원)</th>
+                <th class="!py-1.5 text-right bg-green-50">생산량(톤)</th>
+                <th class="!py-1.5 text-right bg-green-50">호기비중(%)</th>
+                <th class="!py-1.5 text-right bg-green-50">원단위</th>
+                <th class="!py-1.5 text-right bg-green-50">재료비(억원)</th>
+                <th class="!py-1.5 text-right bg-green-50">전체비중(%)</th>
+              </tr>
+            </thead>
+            <tbody id="dash-overview-body"></tbody>
+            <tfoot class="bg-slate-50 font-semibold sticky bottom-0" id="dash-overview-foot"></tfoot>
+          </table>
+        </div>
+      </div>
+
       <!-- 1) 호기별 > 제품레벨2 > 자재그룹명별 재료비 요약 -->
       <div class="card overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -984,16 +1031,184 @@ export function mainPage(): string {
 
     let matCostCategoryFilter = 'ALL';
     let matGroupCategoryFilter = 'ALL';
+    let overviewCategoryFilter = 'ALL';
 
     async function loadDashboardSummary(ym) {
-      const [matCost, prodSummary, matGroup] = await Promise.all([
+      const [matCost, prodSummary, matGroup, overview] = await Promise.all([
         fetch('/api/dashboard/material-cost-summary?ym=' + ym + (matCostCategoryFilter !== 'ALL' ? '&category=' + matCostCategoryFilter : '')).then(r => r.json()),
         fetch('/api/dashboard/production-summary?ym=' + ym).then(r => r.json()),
-        fetch('/api/dashboard/material-by-group?ym=' + ym + (matGroupCategoryFilter !== 'ALL' ? '&category=' + matGroupCategoryFilter : '')).then(r => r.json())
+        fetch('/api/dashboard/material-by-group?ym=' + ym + (matGroupCategoryFilter !== 'ALL' ? '&category=' + matGroupCategoryFilter : '')).then(r => r.json()),
+        fetch('/api/dashboard/material-overview?ym=' + ym + (overviewCategoryFilter !== 'ALL' ? '&category=' + overviewCategoryFilter : '')).then(r => r.json())
       ]);
+      renderOverview(overview);
       renderMatCostSummary(matCost);
       renderProductionSummary(prodSummary);
       renderMatGroupSummary(matGroup);
+    }
+
+    function setOverviewFilter(filter) {
+      overviewCategoryFilter = filter;
+      ['all','raw','sub'].forEach(f => {
+        const btn = document.getElementById('ov-filter-' + f);
+        if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(f === filter.toLowerCase() ? 'pill-tab-active' : 'pill-tab-inactive'); }
+      });
+      const year = document.getElementById('analysisYear').value;
+      const month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      const ym = year + month;
+      fetch('/api/dashboard/material-overview?ym=' + ym + (filter !== 'ALL' ? '&category=' + filter : ''))
+        .then(r => r.json())
+        .then(data => renderOverview(data));
+    }
+
+    function renderOverview(data) {
+      const tbody = document.getElementById('dash-overview-body');
+      const tfoot = document.getElementById('dash-overview-foot');
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="20" class="text-center text-gray-400 py-8">\ub370\uc774\ud130\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.</td></tr>';
+        tfoot.innerHTML = '';
+        return;
+      }
+      const fmt = (v) => v != null ? Math.round(Number(v)).toLocaleString() : '-';
+      const pct = (v) => v != null ? Number(v).toFixed(1) : '-';
+      const eok = (v) => v != null ? (Number(v) / 100000000).toFixed(1) : '-';
+
+      // 전체 합산 (전체비중 계산용)
+      let grandCurCost = 0, grandPrevCost = 0, grandEstCost = 0;
+      data.forEach(d => {
+        grandCurCost += Number(d.cur_material_cost) || 0;
+        grandPrevCost += Number(d.prev_material_cost) || 0;
+        grandEstCost += Number(d.est_material_cost) || 0;
+      });
+
+      // 호기별 생산량 합산 (호기비중 계산용)
+      const machineProd = {};
+      const machinePrevProd = {};
+      const machineEstProd = {};
+      data.forEach(d => {
+        const mc = d.machine_code;
+        machineProd[mc] = (machineProd[mc] || 0) + (Number(d.cur_production) || 0);
+        machinePrevProd[mc] = (machinePrevProd[mc] || 0) + (Number(d.prev_production) || 0);
+        machineEstProd[mc] = (machineEstProd[mc] || 0) + (Number(d.est_production) || 0);
+      });
+
+      let prevMachine = '';
+      let mCurCost=0, mCurProd=0, mPrevCost=0, mPrevProd=0, mEstCost=0, mEstProd=0;
+      const rows = [];
+
+      const subtotalRow = (mc) => {
+        const chipClass = mc === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        const mCurUnit = mCurProd > 0 ? Math.round(mCurCost / mCurProd) : 0;
+        const mPrevUnit = mPrevProd > 0 ? Math.round(mPrevCost / mPrevProd) : 0;
+        const mEstUnit = mEstProd > 0 ? Math.round(mEstCost / mEstProd) : 0;
+        return '<tr class="bg-slate-100 font-semibold border-b-2 border-slate-300">' +
+          '<td class="!py-1.5 border-r border-slate-200"><span class="unit-chip '+chipClass+'">'+mc+'</span></td>' +
+          '<td class="!py-1.5 border-r border-slate-200">\uc694\uc57d</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+fmt(mCurCost)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+fmt(mCurProd)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">100.0</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+fmt(mCurUnit)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+eok(mCurCost)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono border-r border-slate-200">'+(grandCurCost>0?pct(mCurCost/grandCurCost*100):'-')+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+fmt(mPrevCost)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+fmt(mPrevProd)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">100.0</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+fmt(mPrevUnit)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+eok(mPrevCost)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono border-r border-slate-200">'+(grandPrevCost>0?pct(mPrevCost/grandPrevCost*100):'-')+'</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
+          '</tr>';
+      };
+
+      let grandCurProd=0, grandPrevProd=0, grandEstProd=0;
+      data.forEach(d => {
+        const curCost = Number(d.cur_material_cost) || 0;
+        const curProd = Number(d.cur_production) || 0;
+        const prevCost = Number(d.prev_material_cost) || 0;
+        const prevProd = Number(d.prev_production) || 0;
+        const estCost = Number(d.est_material_cost) || 0;
+        const estProd = Number(d.est_production) || 0;
+
+        if (prevMachine && d.machine_code !== prevMachine) {
+          rows.push(subtotalRow(prevMachine));
+          mCurCost=0; mCurProd=0; mPrevCost=0; mPrevProd=0; mEstCost=0; mEstProd=0;
+        }
+        mCurCost+=curCost; mCurProd+=curProd; mPrevCost+=prevCost; mPrevProd+=prevProd; mEstCost+=estCost; mEstProd+=estProd;
+        grandCurProd+=curProd; grandPrevProd+=prevProd; grandEstProd+=estProd;
+
+        const machineChanged = d.machine_code !== prevMachine;
+        prevMachine = d.machine_code;
+        const chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        const mc = d.machine_code;
+
+        // 호기비중: 해당 지종 생산량 / 호기 총생산량 * 100
+        const curMachWeight = machineProd[mc] > 0 ? (curProd / machineProd[mc] * 100) : 0;
+        const prevMachWeight = machinePrevProd[mc] > 0 ? (prevProd / machinePrevProd[mc] * 100) : 0;
+        // 원단위: 재료비 / 생산량
+        const curUnit = curProd > 0 ? Math.round(curCost / curProd) : 0;
+        const prevUnit = prevProd > 0 ? Math.round(prevCost / prevProd) : 0;
+        // 전체비중: 해당 지종 재료비 / 전체 재료비 * 100
+        const curTotalWeight = grandCurCost > 0 ? (curCost / grandCurCost * 100) : 0;
+        const prevTotalWeight = grandPrevCost > 0 ? (prevCost / grandPrevCost * 100) : 0;
+
+        rows.push('<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-blue-50/30">' +
+          '<td class="!py-1.5 border-r border-slate-200"><span class="unit-chip '+chipClass+'">'+(d.machine_code||'')+'</span></td>' +
+          '<td class="!py-1.5 border-r border-slate-200">'+(d.product_level2_name||'-')+'</td>' +
+          // 당월
+          '<td class="!py-1.5 text-right font-mono">'+fmt(curCost)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+fmt(curProd)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+pct(curMachWeight)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+fmt(curUnit)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+eok(curCost)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono border-r border-slate-200">'+pct(curTotalWeight)+'</td>' +
+          // 전월
+          '<td class="!py-1.5 text-right font-mono">'+(prevCost?fmt(prevCost):'-')+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+(prevProd?fmt(prevProd):'-')+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+(prevMachWeight?pct(prevMachWeight):'-')+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+(prevUnit?fmt(prevUnit):'-')+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+(prevCost?eok(prevCost):'-')+'</td>' +
+          '<td class="!py-1.5 text-right font-mono border-r border-slate-200">'+(prevTotalWeight?pct(prevTotalWeight):'-')+'</td>' +
+          // 예상 (공란)
+          '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
+          '</tr>');
+      });
+      // 마지막 호기 소계
+      if (prevMachine) rows.push(subtotalRow(prevMachine));
+      tbody.innerHTML = rows.join('');
+
+      // 총합계
+      const grandCurUnit = grandCurProd > 0 ? Math.round(grandCurCost / grandCurProd) : 0;
+      const grandPrevUnit = grandPrevProd > 0 ? Math.round(grandPrevCost / grandPrevProd) : 0;
+      tfoot.innerHTML = '<tr>' +
+        '<td colspan="2" class="!py-2 text-center border-r border-slate-200 font-bold">\ucd1d\ud569\uacc4</td>' +
+        '<td class="!py-2 text-right font-mono">'+fmt(grandCurCost)+'</td>' +
+        '<td class="!py-2 text-right font-mono">'+fmt(grandCurProd)+'</td>' +
+        '<td class="!py-2 text-right font-mono">100.0</td>' +
+        '<td class="!py-2 text-right font-mono">'+fmt(grandCurUnit)+'</td>' +
+        '<td class="!py-2 text-right font-mono">'+eok(grandCurCost)+'</td>' +
+        '<td class="!py-2 text-right font-mono border-r border-slate-200">100.0</td>' +
+        '<td class="!py-2 text-right font-mono">'+fmt(grandPrevCost)+'</td>' +
+        '<td class="!py-2 text-right font-mono">'+fmt(grandPrevProd)+'</td>' +
+        '<td class="!py-2 text-right font-mono">100.0</td>' +
+        '<td class="!py-2 text-right font-mono">'+fmt(grandPrevUnit)+'</td>' +
+        '<td class="!py-2 text-right font-mono">'+eok(grandPrevCost)+'</td>' +
+        '<td class="!py-2 text-right font-mono border-r border-slate-200">100.0</td>' +
+        '<td class="!py-2 text-right font-mono text-gray-300">-</td>' +
+        '<td class="!py-2 text-right font-mono text-gray-300">-</td>' +
+        '<td class="!py-2 text-right font-mono text-gray-300">-</td>' +
+        '<td class="!py-2 text-right font-mono text-gray-300">-</td>' +
+        '<td class="!py-2 text-right font-mono text-gray-300">-</td>' +
+        '<td class="!py-2 text-right font-mono text-gray-300">-</td>' +
+        '</tr>';
     }
 
     function setMatCostFilter(filter) {
