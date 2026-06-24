@@ -1040,6 +1040,225 @@ app.get('/api/dashboard/production-analysis', async (c) => {
   return c.json({ rows, subtotals, grandTotal, ym, prevYm })
 })
 
+// 4) 믹스 효과 분석 (호기 믹스 + 지종 믹스)
+app.get('/api/dashboard/mix-effect', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym') || ''
+
+  // 전월 계산
+  let prevYm = ''
+  if (ym && ym.length === 6) {
+    let y = parseInt(ym.substring(0, 4))
+    let m = parseInt(ym.substring(4, 6))
+    m -= 1
+    if (m < 1) { m = 12; y -= 1 }
+    prevYm = `${y}${String(m).padStart(2, '0')}`
+  }
+
+  // 재료비 SQL (원재료만: 1100+1200)
+  const costSql = `
+    SELECT 
+      machine_code,
+      CASE 
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+        ELSE product_level2_name
+      END as product_type,
+      SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as material_cost
+    FROM raw_records
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+      AND CAST(actual_alloc_qty AS REAL) != 0
+      AND (material_group_major = '1100' OR material_group_major = '1200')
+    GROUP BY machine_code, 
+      CASE 
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+        ELSE product_level2_name
+      END
+  `
+
+  // 생산량 SQL (product_level4 중복제거)
+  const prodSql = `
+    SELECT 
+      machine_code, product_type, SUM(total_prod) as production
+    FROM (
+      SELECT 
+        machine_code,
+        CASE 
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+          ELSE product_level2_name
+        END as product_type,
+        product_level4,
+        MAX(CAST(total_production AS REAL)) as total_prod
+      FROM raw_records
+      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+        AND CAST(total_production AS REAL) > 0
+      GROUP BY machine_code, 
+        CASE 
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+          ELSE product_level2_name
+        END,
+        product_level4
+    )
+    GROUP BY machine_code, product_type
+  `
+
+  // 당월/전월 데이터 조회
+  const [curCost, curProd, prevCost, prevProd] = await Promise.all([
+    db.prepare(costSql).bind(ym).all(),
+    db.prepare(prodSql).bind(ym).all(),
+    prevYm ? db.prepare(costSql).bind(prevYm).all() : Promise.resolve({ results: [] }),
+    prevYm ? db.prepare(prodSql).bind(prevYm).all() : Promise.resolve({ results: [] })
+  ])
+
+  // 데이터 맵 구성: { "PM2|ACB": { cost, production, unitCost } }
+  type MixRow = { cost: number; production: number; unitCost: number }
+  const buildMap = (costData: any[], prodData: any[]): Record<string, MixRow> => {
+    const map: Record<string, MixRow> = {}
+    const prodMap: Record<string, number> = {}
+    for (const p of prodData) {
+      prodMap[`${p.machine_code}|${p.product_type}`] = p.production || 0
+    }
+    for (const c of costData) {
+      const key = `${c.machine_code}|${c.product_type}`
+      const prod = prodMap[key] || 0
+      map[key] = { cost: c.material_cost || 0, production: prod, unitCost: prod > 0 ? c.material_cost / prod : 0 }
+    }
+    // 생산량은 있지만 원가 없는 경우 추가
+    for (const [key, prod] of Object.entries(prodMap)) {
+      if (!map[key]) { map[key] = { cost: 0, production: prod, unitCost: 0 } }
+    }
+    return map
+  }
+
+  const curMap = buildMap(curCost.results as any[] || [], curProd.results as any[] || [])
+  const prevMap = buildMap(prevCost.results as any[] || [], prevProd.results as any[] || [])
+
+  // 호기별/전체 소계 계산
+  const calcSubtotals = (map: Record<string, MixRow>) => {
+    const machines: Record<string, { cost: number; production: number }> = {}
+    let totalCost = 0, totalProd = 0
+    for (const [key, val] of Object.entries(map)) {
+      const mc = key.split('|')[0]
+      if (!machines[mc]) machines[mc] = { cost: 0, production: 0 }
+      machines[mc].cost += val.cost
+      machines[mc].production += val.production
+      totalCost += val.cost
+      totalProd += val.production
+    }
+    const result: Record<string, { cost: number; production: number; unitCost: number }> = {}
+    for (const [mc, v] of Object.entries(machines)) {
+      result[mc] = { ...v, unitCost: v.production > 0 ? v.cost / v.production : 0 }
+    }
+    result['TOTAL'] = { cost: totalCost, production: totalProd, unitCost: totalProd > 0 ? totalCost / totalProd : 0 }
+    return result
+  }
+
+  const curSub = calcSubtotals(curMap)
+  const prevSub = calcSubtotals(prevMap)
+
+  // 지종 목록 (PM2, PM3 별도)
+  const pm2Types: string[] = []
+  const pm3Types: string[] = []
+  const allKeys = new Set([...Object.keys(curMap), ...Object.keys(prevMap)])
+  for (const key of allKeys) {
+    const [mc, pt] = key.split('|')
+    if (mc === 'PM2' && !pm2Types.includes(pt)) pm2Types.push(pt)
+    if (mc === 'PM3' && !pm3Types.includes(pt)) pm3Types.push(pt)
+  }
+  pm2Types.sort()
+  pm3Types.sort()
+
+  // ======== 믹스 효과 계산 ========
+
+  // --- 시나리오 1: 당월(전월 2호기 미생산버전) ---
+  // 전월 = PM3만 있다고 가정 → 전월 전체 = PM3 소계
+  const scenario1_machineMix = (() => {
+    // 전월 전체 원단위 = PM3 소계 원단위 (PM2 미생산이므로)
+    const prevTotalUnitCost = prevSub['PM3'] ? prevSub['PM3'].unitCost : 0
+    const curPM2UnitCost = curSub['PM2'] ? curSub['PM2'].unitCost : 0
+    const curTotalProd = curSub['TOTAL'] ? curSub['TOTAL'].production : 0
+    const prevTotalProd = prevSub['PM3'] ? prevSub['PM3'].production : 0 // 전월 전체=PM3
+    const curPM2Prod = curSub['PM2'] ? curSub['PM2'].production : 0
+
+    const col1 = prevTotalUnitCost - curPM2UnitCost  // U16 - O8
+    const col2 = curPM2Prod - curTotalProd * (0 / (prevTotalProd || 1))  // PM2 전월 미생산이므로 S8=0
+    const col3 = col1 * col2 / 1000
+    return [{ machine: 'PM2', col1, col2, col3 }]
+  })()
+
+  // --- 시나리오 2: 당월 (정상) ---
+  const scenario2_machineMix = (() => {
+    const prevTotalUnitCost = prevSub['TOTAL'] ? prevSub['TOTAL'].unitCost : 0
+    const curTotalProd = curSub['TOTAL'] ? curSub['TOTAL'].production : 0
+    const prevTotalProd = prevSub['TOTAL'] ? prevSub['TOTAL'].production : 0
+
+    return ['PM2', 'PM3'].map(mc => {
+      const curMcUnitCost = curSub[mc] ? curSub[mc].unitCost : 0
+      const curMcProd = curSub[mc] ? curSub[mc].production : 0
+      const prevMcProd = prevSub[mc] ? prevSub[mc].production : 0
+
+      const col1 = prevTotalUnitCost - curMcUnitCost
+      const col2 = curMcProd - curTotalProd * (prevMcProd / (prevTotalProd || 1))
+      const col3 = col1 * col2 / 1000
+      return { machine: mc, col1, col2, col3 }
+    })
+  })()
+
+  // --- 지종 믹스 계산 함수 ---
+  const calcGradeMix = (mc: string, types: string[], prevRefUnitCost: number, curMcProd: number, prevMcProd: number, useRatio: boolean) => {
+    return types.map(pt => {
+      const key = `${mc}|${pt}`
+      const curPt = curMap[key] || { cost: 0, production: 0, unitCost: 0 }
+      const prevPt = prevMap[key] || { cost: 0, production: 0, unitCost: 0 }
+      const prevPtUnitCost = prevPt.unitCost
+
+      const col1 = prevRefUnitCost - prevPtUnitCost  // (전월 호기소계 원단위) - (전월 해당지종 원단위)
+      // col2 = (당월 해당지종 생산량) - (당월 호기생산량) × (전월 해당지종 비중)
+      const prevRatio = prevMcProd > 0 ? prevPt.production / prevMcProd : 0
+      const col2 = curPt.production - curMcProd * prevRatio
+      const col3 = col1 * col2 / 1000
+      return { product_type: pt, col1, col2, col3 }
+    })
+  }
+
+  // 시나리오1 지종 믹스: 전월 전체 = PM3만, PM2 지종은 모두 전월 데이터 없음
+  const s1_prevPM3UnitCost = prevSub['PM3'] ? prevSub['PM3'].unitCost : 0
+  const s1_pm2GradeMix = calcGradeMix('PM2', pm2Types, s1_prevPM3UnitCost, curSub['PM2']?.production || 0, 0, false)
+  const s1_pm3GradeMix = calcGradeMix('PM3', pm3Types, s1_prevPM3UnitCost, curSub['PM3']?.production || 0, prevSub['PM3']?.production || 0, false)
+
+  // 시나리오2 지종 믹스: 각 호기별 전월 소계 기준
+  const s2_prevPM2UnitCost = prevSub['PM2'] ? prevSub['PM2'].unitCost : 0
+  const s2_prevPM3UnitCost = prevSub['PM3'] ? prevSub['PM3'].unitCost : 0
+  const s2_pm2GradeMix = calcGradeMix('PM2', pm2Types, s2_prevPM2UnitCost, curSub['PM2']?.production || 0, prevSub['PM2']?.production || 0, false)
+  const s2_pm3GradeMix = calcGradeMix('PM3', pm3Types, s2_prevPM3UnitCost, curSub['PM3']?.production || 0, prevSub['PM3']?.production || 0, false)
+
+  return c.json({
+    ym, prevYm,
+    pm2Types, pm3Types,
+    curSubtotals: curSub,
+    prevSubtotals: prevSub,
+    scenario1: {
+      label: '당월(전월 2호기 미생산)',
+      machineMix: scenario1_machineMix,
+      gradeMix: { PM2: s1_pm2GradeMix, PM3: s1_pm3GradeMix }
+    },
+    scenario2: {
+      label: '당월',
+      machineMix: scenario2_machineMix,
+      gradeMix: { PM2: s2_pm2GradeMix, PM3: s2_pm3GradeMix }
+    },
+    scenario3: {
+      label: '예상',
+      machineMix: [],
+      gradeMix: { PM2: [], PM3: [] },
+      note: '예상 데이터 미구현 (추후 입력 예정)'
+    }
+  })
+})
+
 // ============ Raw Records (원본 데이터) 조회 API ============
 
 // 원본 데이터 조회 (필터링, 페이징)

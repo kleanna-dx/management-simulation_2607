@@ -496,6 +496,38 @@ export function mainPage(): string {
           </table>
         </div>
       </div>
+
+      <!-- 5) 믹스 효과 분석 대시보드 -->
+      <div class="card overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-random text-purple-500 mr-1.5"></i>믹스 효과 분석 (호기 믹스 + 지종 믹스)</h3>
+          <span class="text-xs text-gray-400">단위: 원단위차이(원/톤), 수량차이(톤), 금액효과(천원)</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="data-table text-xs" id="mix-effect-table">
+            <thead class="sticky top-0 bg-white z-10">
+              <tr>
+                <th rowspan="2" class="!py-2 text-center border-r border-slate-200 w-24">구분</th>
+                <th colspan="3" class="!py-1 text-center bg-indigo-50 border-b border-slate-200">당월(전월 2호기 미생산)</th>
+                <th colspan="3" class="!py-1 text-center bg-blue-50 border-b border-slate-200">당월</th>
+                <th colspan="3" class="!py-1 text-center bg-green-50 border-b border-slate-200">예상</th>
+              </tr>
+              <tr>
+                <th class="!py-1.5 text-right bg-indigo-50 w-20">원단위차이</th>
+                <th class="!py-1.5 text-right bg-indigo-50 w-20">수량차이</th>
+                <th class="!py-1.5 text-right bg-indigo-50 w-20 border-r border-slate-200">금액효과</th>
+                <th class="!py-1.5 text-right bg-blue-50 w-20">원단위차이</th>
+                <th class="!py-1.5 text-right bg-blue-50 w-20">수량차이</th>
+                <th class="!py-1.5 text-right bg-blue-50 w-20 border-r border-slate-200">금액효과</th>
+                <th class="!py-1.5 text-right bg-green-50 w-20">원단위차이</th>
+                <th class="!py-1.5 text-right bg-green-50 w-20">수량차이</th>
+                <th class="!py-1.5 text-right bg-green-50 w-20">금액효과</th>
+              </tr>
+            </thead>
+            <tbody id="mix-effect-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- Detail Tab -->
@@ -1485,12 +1517,13 @@ export function mainPage(): string {
     let overviewCategoryFilter = 'ALL';
 
     async function loadDashboardSummary(ym) {
-      const [matCost, prodSummary, matGroup, overview, prodAnalysis] = await Promise.all([
+      const [matCost, prodSummary, matGroup, overview, prodAnalysis, mixEffect] = await Promise.all([
         fetch('/api/dashboard/material-cost-summary?ym=' + ym + (matCostCategoryFilter !== 'ALL' ? '&category=' + matCostCategoryFilter : '')).then(r => r.json()),
         fetch('/api/dashboard/production-summary?ym=' + ym).then(r => r.json()),
         fetch('/api/dashboard/material-by-group?ym=' + ym + (matGroupCategoryFilter !== 'ALL' ? '&category=' + matGroupCategoryFilter : '')).then(r => r.json()),
         fetch('/api/dashboard/material-overview?ym=' + ym + (overviewCategoryFilter !== 'ALL' ? '&category=' + overviewCategoryFilter : '')).then(r => r.json()),
-        fetch('/api/dashboard/production-analysis?ym=' + ym).then(r => r.json())
+        fetch('/api/dashboard/production-analysis?ym=' + ym).then(r => r.json()),
+        fetch('/api/dashboard/mix-effect?ym=' + ym).then(r => r.json())
       ]);
       renderOverview(overview);
       renderProfitSummary(overview);
@@ -1498,6 +1531,7 @@ export function mainPage(): string {
       renderProductionSummary(prodSummary);
       renderMatGroupSummary(matGroup);
       renderProductionAnalysis(prodAnalysis);
+      renderMixEffect(mixEffect);
     }
 
     function setOverviewFilter(filter) {
@@ -1975,6 +2009,134 @@ export function mainPage(): string {
         '<td class="!py-2 text-right font-mono">' + fmtDiff((gt.cur_production_qty||0) - (gt.prev_production_qty||0)) + '</td>' +
         '<td class="!py-2 text-right font-mono">' + fmtDiff((gt.cur_waste_qty||0) - (gt.prev_waste_qty||0)) + '</td>' +
         '</tr>';
+    }
+
+    function renderMixEffect(data) {
+      var tbody = document.getElementById('mix-effect-body');
+      if (!data || !data.scenario1) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-gray-400 py-8">\ub370\uc774\ud130\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.</td></tr>';
+        return;
+      }
+      var delta = String.fromCharCode(9651);
+      var fmtV = function(v) {
+        var n = Number(v) || 0;
+        if (Math.abs(n) < 0.05) return '<span class="text-gray-400"> - </span>';
+        if (n < 0) return '<span class="text-red-600">' + delta + Math.abs(n).toFixed(1) + '</span>';
+        return '<span class="text-blue-700">' + n.toFixed(1) + '</span>';
+      };
+
+      var s1 = data.scenario1;
+      var s2 = data.scenario2;
+      var s3 = data.scenario3;
+      var html = '';
+
+      // 호기 믹스 헤더행
+      html += '<tr class="bg-purple-50/50 border-t-2 border-purple-200">' +
+        '<td class="!py-2 font-bold text-purple-800"><i class="fas fa-exchange-alt mr-1 text-purple-500"></i>\ud638\uae30 \ubbf9\uc2a4</td>' +
+        '<td class="!py-2 text-right font-mono">' + fmtV(s1.machineMix[0]?.col1) + '</td>' +
+        '<td class="!py-2 text-right font-mono">' + fmtV(s1.machineMix[0]?.col2) + '</td>' +
+        '<td class="!py-2 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(s1.machineMix[0]?.col3) + '</td>' +
+        '<td class="!py-2 text-right font-mono">' + fmtV(s2.machineMix[0]?.col1) + '</td>' +
+        '<td class="!py-2 text-right font-mono">' + fmtV(s2.machineMix[0]?.col2) + '</td>' +
+        '<td class="!py-2 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(s2.machineMix[0]?.col3) + '</td>' +
+        '<td class="!py-2 text-right font-mono text-gray-400"> - </td>' +
+        '<td class="!py-2 text-right font-mono text-gray-400"> - </td>' +
+        '<td class="!py-2 text-right font-mono text-gray-400"> - </td>' +
+        '</tr>';
+
+      // 호기 믹스 PM3행 (시나리오2에만)
+      if (s2.machineMix.length > 1) {
+        html += '<tr class="bg-purple-50/30">' +
+          '<td class="!py-1.5 pl-6 text-gray-500 text-[11px]"></td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+          '<td class="!py-1.5 text-right font-mono border-r border-slate-200 text-gray-400"> - </td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmtV(s2.machineMix[1]?.col1) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmtV(s2.machineMix[1]?.col2) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(s2.machineMix[1]?.col3) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+          '</tr>';
+      }
+
+      // 지종 믹스 헤더행
+      html += '<tr class="bg-teal-50/50 border-t-2 border-teal-200">' +
+        '<td class="!py-2 font-bold text-teal-800"><i class="fas fa-sitemap mr-1 text-teal-500"></i>\uc9c0\uc885 \ubbf9\uc2a4</td>' +
+        '<td colspan="3" class="!py-2 border-r border-slate-200"></td>' +
+        '<td colspan="3" class="!py-2 border-r border-slate-200"></td>' +
+        '<td colspan="3" class="!py-2"></td>' +
+        '</tr>';
+
+      // PM2 지종 믹스
+      var s1pm2 = s1.gradeMix.PM2 || [];
+      var s2pm2 = s2.gradeMix.PM2 || [];
+      var pm2Types = data.pm2Types || [];
+      pm2Types.forEach(function(pt, i) {
+        var r1 = s1pm2[i] || { col1:0, col2:0, col3:0 };
+        var r2 = s2pm2[i] || { col1:0, col2:0, col3:0 };
+        html += '<tr class="hover:bg-blue-50/30">' +
+          '<td class="!py-1.5 pl-4 text-[11px]"><span class="text-gray-400 mr-1">PM2</span>' + pt + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmtV(r1.col1) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmtV(r1.col2) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(r1.col3) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmtV(r2.col1) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmtV(r2.col2) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(r2.col3) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+          '</tr>';
+      });
+
+      // PM2 소계
+      var s1pm2Sum = s1pm2.reduce(function(a,b){ return a + (b.col3||0); }, 0);
+      var s2pm2Sum = s2pm2.reduce(function(a,b){ return a + (b.col3||0); }, 0);
+      html += '<tr class="bg-slate-50 font-semibold border-t border-slate-200">' +
+        '<td class="!py-1.5 pl-4 text-[11px] text-gray-600">PM2 \uc18c\uacc4</td>' +
+        '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
+        '<td class="!py-1.5 text-right font-mono border-r border-slate-200">' + fmtV(s1pm2Sum) + '</td>' +
+        '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
+        '<td class="!py-1.5 text-right font-mono border-r border-slate-200">' + fmtV(s2pm2Sum) + '</td>' +
+        '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
+        '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+        '</tr>';
+
+      // PM3 지종 믹스
+      var s1pm3 = s1.gradeMix.PM3 || [];
+      var s2pm3 = s2.gradeMix.PM3 || [];
+      var pm3Types = data.pm3Types || [];
+      pm3Types.forEach(function(pt, i) {
+        var r1 = s1pm3[i] || { col1:0, col2:0, col3:0 };
+        var r2 = s2pm3[i] || { col1:0, col2:0, col3:0 };
+        html += '<tr class="hover:bg-blue-50/30">' +
+          '<td class="!py-1.5 pl-4 text-[11px]"><span class="text-gray-400 mr-1">PM3</span>' + pt + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmtV(r1.col1) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmtV(r1.col2) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(r1.col3) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmtV(r2.col1) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmtV(r2.col2) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(r2.col3) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+          '</tr>';
+      });
+
+      // PM3 소계
+      var s1pm3Sum = s1pm3.reduce(function(a,b){ return a + (b.col3||0); }, 0);
+      var s2pm3Sum = s2pm3.reduce(function(a,b){ return a + (b.col3||0); }, 0);
+      html += '<tr class="bg-slate-50 font-semibold border-t border-slate-200">' +
+        '<td class="!py-1.5 pl-4 text-[11px] text-gray-600">PM3 \uc18c\uacc4</td>' +
+        '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
+        '<td class="!py-1.5 text-right font-mono border-r border-slate-200">' + fmtV(s1pm3Sum) + '</td>' +
+        '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
+        '<td class="!py-1.5 text-right font-mono border-r border-slate-200">' + fmtV(s2pm3Sum) + '</td>' +
+        '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
+        '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+        '</tr>';
+
+      tbody.innerHTML = html;
     }
 
     function setMatGroupFilter(filter) {
