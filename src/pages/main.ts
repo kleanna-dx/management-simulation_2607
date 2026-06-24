@@ -284,7 +284,7 @@ export function mainPage(): string {
                 <i class="fas fa-coins text-indigo-600 text-xs"></i>
               </div>
               <div>
-                <div class="text-[10px] text-gray-500 leading-tight">원재료 손익 <span class="text-gray-400">(전월원단위-당월원단위)×생산량÷1,000</span></div>
+                <div class="text-[10px] text-gray-500 leading-tight"><span id="profit-label">원/부자재 손익</span> <span class="text-gray-400">(전월원단위-당월원단위)×생산량÷1,000</span></div>
                 <div class="flex items-center gap-1.5">
                   <span id="overview-profit-value" class="text-lg font-bold text-gray-800">-</span>
                   <span class="text-[10px] text-gray-500">천원</span>
@@ -297,10 +297,10 @@ export function mainPage(): string {
           </button>
         </div>
 
-        <!-- 원재료 손익 상세 테이블 (숨김 상태) -->
+        <!-- 손익 상세 테이블 (숨김 상태) -->
         <div id="profit-detail-section" class="hidden border-b border-slate-100">
           <div class="px-5 py-2.5 bg-slate-50 flex items-center justify-between">
-            <h4 class="text-xs font-semibold text-gray-600"><i class="fas fa-list-alt text-indigo-400 mr-1"></i>호기별 지종별 원재료 손익 상세</h4>
+            <h4 class="text-xs font-semibold text-gray-600" id="profit-detail-title"><i class="fas fa-list-alt text-indigo-400 mr-1"></i>호기별 지종별 원/부자재 손익 상세</h4>
             <span class="text-xs text-gray-400">단위: 천원</span>
           </div>
           <div class="overflow-x-auto max-h-[360px] overflow-y-auto">
@@ -313,7 +313,7 @@ export function mainPage(): string {
                   <th class="!py-2 text-right">당월 원단위</th>
                   <th class="!py-2 text-right">원단위 차이</th>
                   <th class="!py-2 text-right">생산량(당월)</th>
-                  <th class="!py-2 text-right">원재료 손익(천원)</th>
+                  <th class="!py-2 text-right" id="profit-detail-col-header">원/부자재 손익(천원)</th>
                 </tr>
               </thead>
               <tbody id="profit-detail-body"></tbody>
@@ -1743,8 +1743,20 @@ export function mainPage(): string {
     }
 
     function renderProfitSummary(data) {
-      // 원재료 손익 = (전월원단위 - 당월원단위) * 생산량(당월) / 1000
+      // 손익 = (전월원단위 - 당월원단위) * 생산량(당월) / 1000
       // 원단위 = 재료비 / 생산량
+      var profitLabel = '';
+      if (overviewCategoryFilter === 'RAW') profitLabel = '\uc6d0\uc7ac\ub8cc \uc190\uc775';
+      else if (overviewCategoryFilter === 'SUB') profitLabel = '\ubd80\uc7ac\ub8cc \uc190\uc775';
+      else profitLabel = '\uc6d0/\ubd80\uc790\uc7ac \uc190\uc775';
+
+      var labelEl = document.getElementById('profit-label');
+      if (labelEl) labelEl.textContent = profitLabel;
+      var titleEl = document.getElementById('profit-detail-title');
+      if (titleEl) titleEl.innerHTML = '<i class="fas fa-list-alt text-indigo-400 mr-1"></i>\ud638\uae30\ubcc4 \uc9c0\uc885\ubcc4 ' + profitLabel + ' \uc0c1\uc138';
+      var colHeader = document.getElementById('profit-detail-col-header');
+      if (colHeader) colHeader.textContent = profitLabel + '(\ucc9c\uc6d0)';
+
       const profitEl = document.getElementById('overview-profit-value');
       const tbody = document.getElementById('profit-detail-body');
       const tfoot = document.getElementById('profit-detail-foot');
