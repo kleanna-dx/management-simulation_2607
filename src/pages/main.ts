@@ -277,9 +277,11 @@ export function mainPage(): string {
                 <th class="!py-2">호기</th>
                 <th class="!py-2">제품구분(레벨2)</th>
                 <th class="!py-2">자재그룹명</th>
-                <th class="!py-2 text-right">실적배부수량</th>
-                <th class="!py-2 text-right">평균단가</th>
-                <th class="!py-2 text-right">재료비(원)</th>
+                <th class="!py-2 text-right">재료비(당월)</th>
+                <th class="!py-2 text-right">재료비(전월)</th>
+                <th class="!py-2 text-right">전월대비 차이</th>
+                <th class="!py-2 text-right">사용량차이</th>
+                <th class="!py-2 text-right">단가차이</th>
                 <th class="!py-2 text-right">건수</th>
               </tr>
             </thead>
@@ -287,9 +289,11 @@ export function mainPage(): string {
             <tfoot class="bg-slate-50 font-semibold sticky bottom-0">
               <tr>
                 <td colspan="3" class="!py-2 text-center">합계</td>
-                <td class="!py-2 text-right" id="dash-matcost-total-qty">-</td>
-                <td class="!py-2 text-right">-</td>
-                <td class="!py-2 text-right" id="dash-matcost-total-cost">-</td>
+                <td class="!py-2 text-right" id="dash-matcost-total-cur">-</td>
+                <td class="!py-2 text-right" id="dash-matcost-total-prev">-</td>
+                <td class="!py-2 text-right" id="dash-matcost-total-diff">-</td>
+                <td class="!py-2 text-right" id="dash-matcost-total-usage">-</td>
+                <td class="!py-2 text-right" id="dash-matcost-total-price">-</td>
                 <td class="!py-2 text-right" id="dash-matcost-total-rows">-</td>
               </tr>
             </tfoot>
@@ -966,16 +970,29 @@ export function mainPage(): string {
     function renderMatCostSummary(data) {
       const tbody = document.getElementById('dash-matcost-body');
       if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 py-8">데이터가 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-gray-400 py-8">데이터가 없습니다.</td></tr>';
         return;
       }
       const fmt = (v) => v != null ? Math.round(Number(v)).toLocaleString() : '-';
-      const fmtDec = (v) => v != null ? Number(v).toLocaleString(undefined, {maximumFractionDigits:1}) : '-';
-      let totalQty = 0, totalCost = 0, totalRows = 0;
+      const diffCell = (v) => {
+        const n = Number(v) || 0;
+        if (n === 0) return '<td class="!py-1.5 text-right font-mono text-gray-400">-</td>';
+        const cls = n > 0 ? 'text-red-600' : 'text-blue-600';
+        const sign = n > 0 ? '+' : '';
+        return '<td class="!py-1.5 text-right font-mono ' + cls + '">' + sign + Math.round(n).toLocaleString() + '</td>';
+      };
+      let totalCur = 0, totalPrev = 0, totalUsage = 0, totalPrice = 0, totalRows = 0;
       let prevMachine = '';
       tbody.innerHTML = data.map(d => {
-        totalQty += Number(d.total_alloc_qty) || 0;
-        totalCost += Number(d.material_cost) || 0;
+        const curCost = Number(d.material_cost) || 0;
+        const prevCost = Number(d.prev_material_cost) || 0;
+        const diff = curCost - prevCost;
+        const usageDiff = Number(d.usage_diff) || 0;
+        const priceDiff = Number(d.price_diff) || 0;
+        totalCur += curCost;
+        totalPrev += prevCost;
+        totalUsage += usageDiff;
+        totalPrice += priceDiff;
         totalRows += Number(d.row_count) || 0;
         const machineChanged = d.machine_code !== prevMachine;
         prevMachine = d.machine_code;
@@ -984,14 +1001,26 @@ export function mainPage(): string {
           '<td class="!py-1.5"><span class="unit-chip ' + chipClass + '">' + (d.machine_code||'') + '</span></td>' +
           '<td class="!py-1.5">' + (d.product_level2_name||'-') + '</td>' +
           '<td class="!py-1.5">' + (d.material_group_name||'-') + '</td>' +
-          '<td class="!py-1.5 text-right font-mono">' + fmt(d.total_alloc_qty) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono">' + fmtDec(d.avg_unit_price) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono font-semibold">' + fmt(d.material_cost) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono font-semibold">' + fmt(curCost) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-500">' + (prevCost ? fmt(prevCost) : '-') + '</td>' +
+          diffCell(diff) +
+          diffCell(usageDiff) +
+          diffCell(priceDiff) +
           '<td class="!py-1.5 text-right text-gray-400">' + (d.row_count||'') + '</td>' +
           '</tr>';
       }).join('');
-      document.getElementById('dash-matcost-total-qty').textContent = fmt(totalQty);
-      document.getElementById('dash-matcost-total-cost').textContent = fmt(totalCost);
+      document.getElementById('dash-matcost-total-cur').textContent = fmt(totalCur);
+      document.getElementById('dash-matcost-total-prev').textContent = fmt(totalPrev);
+      const totalDiff = totalCur - totalPrev;
+      const diffEl = document.getElementById('dash-matcost-total-diff');
+      diffEl.textContent = (totalDiff > 0 ? '+' : '') + fmt(totalDiff);
+      diffEl.className = '!py-2 text-right ' + (totalDiff > 0 ? 'text-red-600' : totalDiff < 0 ? 'text-blue-600' : '');
+      const usageEl = document.getElementById('dash-matcost-total-usage');
+      usageEl.textContent = (totalUsage > 0 ? '+' : '') + fmt(totalUsage);
+      usageEl.className = '!py-2 text-right ' + (totalUsage > 0 ? 'text-red-600' : totalUsage < 0 ? 'text-blue-600' : '');
+      const priceEl = document.getElementById('dash-matcost-total-price');
+      priceEl.textContent = (totalPrice > 0 ? '+' : '') + fmt(totalPrice);
+      priceEl.className = '!py-2 text-right ' + (totalPrice > 0 ? 'text-red-600' : totalPrice < 0 ? 'text-blue-600' : '');
       document.getElementById('dash-matcost-total-rows').textContent = fmt(totalRows);
     }
 

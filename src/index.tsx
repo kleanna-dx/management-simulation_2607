@@ -555,23 +555,31 @@ app.post('/api/upload/smart', async (c) => {
 
 // ============ 대시보드 요약 API ============
 
-// 1) 호기별 > 제품레벨2명 > 자재그룹명별 재료비 요약
+// 1) 호기별 > 제품레벨2명 > 자재그룹명별 재료비 요약 (당월 + 전월 + 차이)
 // 재료비 = 실적배부수량(actual_alloc_qty) * 실적단가(actual_unit_price)
 app.get('/api/dashboard/material-cost-summary', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
   const category = c.req.query('category') || '' // RAW, SUB
   
-  let where = '1=1'
-  const params: any[] = []
-  if (ym) { where += ' AND calendar_ym = ?'; params.push(ym) }
-  if (category === 'RAW') {
-    where += " AND (material_group_major = '1100' OR material_group_major = '1200')"
-  } else if (category === 'SUB') {
-    where += " AND material_group_major != '1100' AND material_group_major != '1200'"
+  // 전월 계산
+  let prevYm = ''
+  if (ym && ym.length === 6) {
+    let y = parseInt(ym.substring(0, 4))
+    let m = parseInt(ym.substring(4, 6))
+    m -= 1
+    if (m < 1) { m = 12; y -= 1 }
+    prevYm = `${y}${String(m).padStart(2, '0')}`
   }
   
-  const sql = `
+  let catFilter = ''
+  if (category === 'RAW') {
+    catFilter = " AND (material_group_major = '1100' OR material_group_major = '1200')"
+  } else if (category === 'SUB') {
+    catFilter = " AND material_group_major != '1100' AND material_group_major != '1200'"
+  }
+  
+  const baseSql = `
     SELECT 
       machine_code,
       machine_name,
@@ -580,17 +588,46 @@ app.get('/api/dashboard/material-cost-summary', async (c) => {
       SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as material_cost,
       SUM(CAST(actual_alloc_qty AS REAL)) as total_alloc_qty,
       AVG(CAST(actual_unit_price AS REAL)) as avg_unit_price,
+      SUM(CAST(plan_vs_usage_diff AS REAL)) as usage_diff,
+      SUM(CAST(plan_vs_price_diff AS REAL)) as price_diff,
       COUNT(*) as row_count
     FROM raw_records
-    WHERE ${where}
-      AND calendar_ym != 'CALMONTH'
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
       AND CAST(actual_alloc_qty AS REAL) != 0
+      ${catFilter}
     GROUP BY machine_code, product_level2_name, material_group_name
     ORDER BY machine_code, product_level2_name, material_cost DESC
   `
   
-  const result = await db.prepare(sql).bind(...params).all()
-  return c.json(result.results)
+  // 당월 조회
+  const curResult = await db.prepare(baseSql).bind(ym).all()
+  const curData = curResult.results as any[]
+  
+  // 전월 조회
+  let prevMap = new Map<string, any>()
+  if (prevYm) {
+    const prevResult = await db.prepare(baseSql).bind(prevYm).all()
+    for (const row of prevResult.results as any[]) {
+      const key = `${row.machine_code}|${row.product_level2_name}|${row.material_group_name}`
+      prevMap.set(key, row)
+    }
+  }
+  
+  // 당월 데이터에 전월 데이터 합치기
+  const merged = curData.map(cur => {
+    const key = `${cur.machine_code}|${cur.product_level2_name}|${cur.material_group_name}`
+    const prev = prevMap.get(key)
+    return {
+      ...cur,
+      prev_material_cost: prev?.material_cost || 0,
+      prev_alloc_qty: prev?.total_alloc_qty || 0,
+      prev_avg_unit_price: prev?.avg_unit_price || 0,
+      usage_diff: cur.usage_diff || 0,
+      price_diff: cur.price_diff || 0,
+    }
+  })
+  
+  return c.json(merged)
 })
 
 // 2) 호기별 > 제품레벨2명별 총생산량 합계
