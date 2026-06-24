@@ -1201,6 +1201,105 @@ app.delete('/api/master/tissue-raw', async (c) => {
   return c.json({ success: true })
 })
 
+// ============ 자재구분 매핑 (Material Classification Mapping) ============
+
+// 자재구분 매핑 조회: raw_records의 자재를 master 테이블과 매핑하여 자재구분을 보여줌
+app.get('/api/master/material-mapping', async (c) => {
+  const db = c.env.DB
+  const filter = c.req.query('filter') || 'all' // all, mapped, unmapped
+
+  // raw_records에서 고유 자재 목록 추출
+  const rawMaterials = await db.prepare(`
+    SELECT DISTINCT 
+      material_code,
+      material_name,
+      material_group_major,
+      material_group_major_name
+    FROM raw_records
+    ORDER BY material_group_major, material_name
+  `).all()
+
+  // master 원재료 테이블 조회 (code → material_group 매핑)
+  const paperRaw = await db.prepare('SELECT material_code, material_name, material_group FROM master_paper_raw_materials').all()
+  const paperSub = await db.prepare('SELECT material_code, material_name, material_group FROM master_paper_sub_materials').all()
+  const tissueRaw = await db.prepare('SELECT material_code, material_name, category FROM master_tissue_raw_materials').all()
+
+  // 매핑 인덱스 구축 (material_code → material_group)
+  const codeToGroup: Record<string, { material_group: string; source: string }> = {}
+  for (const r of (paperRaw.results || []) as any[]) {
+    codeToGroup[r.material_code] = { material_group: r.material_group, source: '제지 원재료' }
+  }
+  for (const r of (paperSub.results || []) as any[]) {
+    codeToGroup[r.material_code] = { material_group: r.material_group, source: '제지 부재료' }
+  }
+  for (const r of (tissueRaw.results || []) as any[]) {
+    codeToGroup[r.material_code] = { material_group: r.category, source: '화장지 원재료' }
+  }
+
+  // raw materials와 매핑
+  const results = ((rawMaterials.results || []) as any[]).map((rm: any) => {
+    // raw_records의 material_code에서 leading zeros 제거하여 매핑
+    const shortCode = rm.material_code ? rm.material_code.replace(/^0+/, '') : ''
+    const mapping = codeToGroup[shortCode] || null
+
+    return {
+      material_code: rm.material_code,
+      material_code_short: shortCode,
+      material_name: rm.material_name,
+      material_group_major: rm.material_group_major,
+      material_group_major_name: rm.material_group_major_name,
+      category: rm.material_group_major === '1100' || rm.material_group_major === '1200' ? 'RAW' : 'SUB',
+      mapped_group: mapping ? mapping.material_group : null,
+      mapping_source: mapping ? mapping.source : null
+    }
+  })
+
+  // 필터 적용
+  let filtered = results
+  if (filter === 'mapped') {
+    filtered = results.filter((r: any) => r.mapped_group !== null)
+  } else if (filter === 'unmapped') {
+    filtered = results.filter((r: any) => r.mapped_group === null)
+  }
+
+  return c.json({
+    total: results.length,
+    mapped_count: results.filter((r: any) => r.mapped_group !== null).length,
+    unmapped_count: results.filter((r: any) => r.mapped_group === null).length,
+    data: filtered
+  })
+})
+
+// 자재구분 수동 매핑 저장 (미매핑 자재를 master 테이블에 추가)
+app.post('/api/master/material-mapping', async (c) => {
+  const db = c.env.DB
+  const { material_code, material_name, material_group, target_table } = await c.req.json()
+
+  if (!material_code || !material_name || !material_group || !target_table) {
+    return c.json({ error: 'Missing required fields' }, 400)
+  }
+
+  const shortCode = material_code.replace(/^0+/, '')
+
+  if (target_table === 'paper-raw') {
+    await db.prepare(
+      'INSERT INTO master_paper_raw_materials (category1, material_class, material_subclass, material_code, material_name, material_group) VALUES (?, ?, ?, ?, ?, ?)'
+    ).bind('', '', '', shortCode, material_name, material_group).run()
+  } else if (target_table === 'paper-sub') {
+    await db.prepare(
+      'INSERT INTO master_paper_sub_materials (material_code, material_name, material_group) VALUES (?, ?, ?)'
+    ).bind(shortCode, material_name, material_group).run()
+  } else if (target_table === 'tissue-raw') {
+    await db.prepare(
+      'INSERT INTO master_tissue_raw_materials (category, material_code, material_name) VALUES (?, ?, ?)'
+    ).bind(material_group, shortCode, material_name).run()
+  } else {
+    return c.json({ error: 'Invalid target_table' }, 400)
+  }
+
+  return c.json({ success: true })
+})
+
 // ============ 메인 페이지 ============
 app.get('/', (c) => {
   return c.html(mainPage())

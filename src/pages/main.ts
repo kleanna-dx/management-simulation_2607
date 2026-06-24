@@ -881,15 +881,52 @@ export function mainPage(): string {
         </div>
         <!-- Sub tabs for master index -->
         <div class="flex flex-wrap gap-1 mb-4 border-b border-slate-200 pb-3">
-          <button onclick="switchMasterIdx('paper-products')" id="midx-tab-paper-products" class="pill-tab pill-tab-active text-xs !px-3 !py-1.5">제지 제품분류</button>
+          <button onclick="switchMasterIdx('material-mapping')" id="midx-tab-material-mapping" class="pill-tab pill-tab-active text-xs !px-3 !py-1.5"><i class="fas fa-link mr-1"></i>자재구분 매핑</button>
+          <button onclick="switchMasterIdx('paper-products')" id="midx-tab-paper-products" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1.5">제지 제품분류</button>
           <button onclick="switchMasterIdx('paper-raw')" id="midx-tab-paper-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1.5">제지 원재료</button>
           <button onclick="switchMasterIdx('paper-sub')" id="midx-tab-paper-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1.5">제지 부재료</button>
           <button onclick="switchMasterIdx('tissue-products')" id="midx-tab-tissue-products" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1.5">화장지 제품</button>
           <button onclick="switchMasterIdx('tissue-raw')" id="midx-tab-tissue-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1.5">화장지 원재료</button>
         </div>
 
+        <!-- 자재구분 매핑 -->
+        <div id="midx-material-mapping" class="midx-section">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <span class="text-xs text-gray-500">원부자재 데이터의 자재명 → 매핑 INDEX 기준의 자재구분 분류</span>
+              <div class="flex items-center gap-1.5 ml-4">
+                <span id="mapping-stat-total" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">전체: -</span>
+                <span id="mapping-stat-mapped" class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">매핑완료: -</span>
+                <span id="mapping-stat-unmapped" class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">미매핑: -</span>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="loadMaterialMapping('all')" id="mm-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
+              <button onclick="loadMaterialMapping('mapped')" id="mm-filter-mapped" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">매핑완료</button>
+              <button onclick="loadMaterialMapping('unmapped')" id="mm-filter-unmapped" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">미매핑</button>
+            </div>
+          </div>
+          <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
+            <table class="data-table text-xs">
+              <thead class="sticky top-0 bg-white z-10">
+                <tr>
+                  <th class="!py-2 w-8">#</th>
+                  <th class="!py-2">자재코드</th>
+                  <th class="!py-2">자재명</th>
+                  <th class="!py-2">대분류</th>
+                  <th class="!py-2">구분(원/부)</th>
+                  <th class="!py-2">자재구분(매핑)</th>
+                  <th class="!py-2">매핑출처</th>
+                  <th class="!py-2 w-16">상태</th>
+                </tr>
+              </thead>
+              <tbody id="midx-material-mapping-body"></tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- 제지 제품분류 -->
-        <div id="midx-paper-products" class="midx-section">
+        <div id="midx-paper-products" class="midx-section hidden">
           <div class="flex items-center justify-between mb-3">
             <span class="text-xs text-gray-500">제품 계층구조레벨3 / 지종코드 / 지종 / 지종(세부)</span>
             <div class="flex gap-2">
@@ -1196,20 +1233,92 @@ export function mainPage(): string {
     }
 
     // ============ 매핑 INDEX 기준정보 ============
-    let currentMidxTab = 'paper-products';
+    let currentMidxTab = 'material-mapping';
 
     function switchMasterIdx(tab) {
       currentMidxTab = tab;
       document.querySelectorAll('.midx-section').forEach(el => el.classList.add('hidden'));
       document.getElementById('midx-' + tab).classList.remove('hidden');
-      ['paper-products','paper-raw','paper-sub','tissue-products','tissue-raw'].forEach(t => {
+      ['material-mapping','paper-products','paper-raw','paper-sub','tissue-products','tissue-raw'].forEach(t => {
         const btn = document.getElementById('midx-tab-' + t);
         if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(t === tab ? 'pill-tab-active' : 'pill-tab-inactive'); }
       });
-      loadMasterIdx(tab);
+      if (tab === 'material-mapping') {
+        loadMaterialMapping('all');
+      } else {
+        loadMasterIdx(tab);
+      }
+    }
+
+    // ---- 자재구분 매핑 ----
+    let currentMappingFilter = 'all';
+
+    async function loadMaterialMapping(filter) {
+      currentMappingFilter = filter;
+      ['all','mapped','unmapped'].forEach(f => {
+        const btn = document.getElementById('mm-filter-' + f);
+        if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(f === filter ? 'pill-tab-active' : 'pill-tab-inactive'); }
+      });
+      const res = await fetch('/api/master/material-mapping?filter=' + filter).then(r => r.json());
+      document.getElementById('mapping-stat-total').textContent = '\uc804\uccb4: ' + res.total;
+      document.getElementById('mapping-stat-mapped').textContent = '\ub9e4\ud551\uc644\ub8cc: ' + res.mapped_count;
+      document.getElementById('mapping-stat-unmapped').textContent = '\ubbf8\ub9e4\ud551: ' + res.unmapped_count;
+      _mappingData = res.data;
+      renderMaterialMapping(res.data);
+    }
+
+    function renderMaterialMapping(data) {
+      const tbody = document.getElementById('midx-material-mapping-body');
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-6">\ub370\uc774\ud130\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.map(function(d, i) {
+        var statusBadge = d.mapped_group
+          ? '<span class="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-medium">\uc644\ub8cc</span>'
+          : '<span class="px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-[10px] font-medium">\ubbf8\ub9e4\ud551</span>';
+        var categoryBadge = d.category === 'RAW'
+          ? '<span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px]">\uc6d0\uc7ac\ub8cc</span>'
+          : '<span class="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px]">\ubd80\uc7ac\ub8cc</span>';
+        var groupCell = d.mapped_group
+          ? '<span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-[10px] font-medium">' + d.mapped_group + '</span>'
+          : '<button onclick="assignMaterialGroup(' + i + ')" class="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-[10px] hover:bg-indigo-50 hover:text-indigo-600 transition"><i class="fas fa-plus mr-0.5"></i>\ud560\ub2f9</button>';
+        var sourceCell = d.mapping_source || '<span class="text-gray-300">-</span>';
+        return '<tr class="hover:bg-blue-50/30' + (d.mapped_group ? '' : ' bg-red-50/20') + '">' +
+          '<td class="!py-1.5 text-gray-400">' + (i+1) + '</td>' +
+          '<td class="!py-1.5 font-mono text-[11px]">' + d.material_code_short + '</td>' +
+          '<td class="!py-1.5">' + d.material_name + '</td>' +
+          '<td class="!py-1.5"><span class="text-[10px] text-gray-500">' + (d.material_group_major_name || d.material_group_major) + '</span></td>' +
+          '<td class="!py-1.5">' + categoryBadge + '</td>' +
+          '<td class="!py-1.5">' + groupCell + '</td>' +
+          '<td class="!py-1.5 text-[10px] text-gray-500">' + sourceCell + '</td>' +
+          '<td class="!py-1.5 text-center">' + statusBadge + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    var _mappingData = [];
+    async function assignMaterialGroup(idx) {
+      var item = _mappingData[idx];
+      if (!item) return;
+      var group = prompt('\uc790\uc7ac\uad6c\ubd84\uba85\uc744 \uc785\ub825\ud558\uc138\uc694 (예: \uc811\uc9c0\ub958, LATEX\ub958, L-BKP \ub4f1):');
+      if (!group) return;
+      var targetTable = item.category === 'RAW' ? 'paper-raw' : 'paper-sub';
+      await fetch('/api/master/material-mapping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          material_code: item.material_code,
+          material_name: item.material_name,
+          material_group: group,
+          target_table: targetTable
+        })
+      });
+      loadMaterialMapping(currentMappingFilter);
     }
 
     async function loadMasterIdx(tab) {
+      if (tab === 'material-mapping') { loadMaterialMapping(currentMappingFilter); return; }
       const res = await fetch('/api/master/' + tab).then(r => r.json());
       renderMasterIdx(tab, res);
     }
