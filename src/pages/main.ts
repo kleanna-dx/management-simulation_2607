@@ -390,33 +390,7 @@ export function mainPage(): string {
         </div>
       </div>
 
-      <!-- 2) 호기별 제품레벨2별 총생산량 합계 -->
-      <div class="card overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-industry text-emerald-500 mr-1.5"></i>호기별 제품구분별 총생산량 합계</h3>
-          <span class="text-xs text-gray-400">제품 레벨4 기준 중복제거 합산</span>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>호기</th>
-                <th>호기명</th>
-                <th>제품구분(레벨2)</th>
-                <th class="text-right">총생산량</th>
-              </tr>
-            </thead>
-            <tbody id="dash-production-body"></tbody>
-            <tfoot class="bg-slate-50 font-semibold">
-              <tr>
-                <td colspan="3" class="text-center">합계</td>
-                <td class="text-right" id="dash-production-total">-</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
-      <!-- 3) 호기별 > 자재그룹(대분류)명 > 제품구분별 재료비 요약 -->
+      <!-- 2) 호기별 > 자재그룹(대분류)명 > 제품구분별 재료비 요약 -->
       <div class="card overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-cubes text-violet-500 mr-1.5"></i>호기별 자재그룹(대분류)별 제품구분 재료비</h3>
@@ -451,6 +425,33 @@ export function mainPage(): string {
                 <td class="!py-2 text-right" id="mg-total-price">-</td>
                 <td class="!py-2 text-right" id="mg-total-qty-cur">-</td>
                 <td class="!py-2 text-right" id="mg-total-qty-prev">-</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3) 호기별 제품레벨2별 총생산량 합계 -->
+      <div class="card overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-industry text-emerald-500 mr-1.5"></i>호기별 제품구분별 총생산량 합계</h3>
+          <span class="text-xs text-gray-400">제품 레벨4 기준 중복제거 합산</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>호기</th>
+                <th>호기명</th>
+                <th>제품구분(레벨2)</th>
+                <th class="text-right">총생산량</th>
+              </tr>
+            </thead>
+            <tbody id="dash-production-body"></tbody>
+            <tfoot class="bg-slate-50 font-semibold">
+              <tr>
+                <td colspan="3" class="text-center">합계</td>
+                <td class="text-right" id="dash-production-total">-</td>
               </tr>
             </tfoot>
           </table>
