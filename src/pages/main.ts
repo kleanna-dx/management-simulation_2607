@@ -2823,7 +2823,18 @@ export function mainPage(): string {
             '스킵: ' + (mainResult?.summary?.skipped || 0) + '건\\n' +
             '(동일 호기/자재/월 데이터는 합산됨)');
           resetUpload();
+          // 업로드한 데이터 기준월로 드롭다운 자동 변경
+          if (rawData.length > 0 && rawData[0].calendar_ym) {
+            var uploadedYm = rawData[0].calendar_ym;
+            var uploadedYear = uploadedYm.substring(0, 4);
+            var uploadedMonth = String(parseInt(uploadedYm.substring(4, 6)));
+            var yearSel = document.getElementById('analysisYear');
+            var monthSel = document.getElementById('analysisMonth');
+            if (yearSel) yearSel.value = uploadedYear;
+            if (monthSel) monthSel.value = uploadedMonth;
+          }
           loadAnalysis();
+          switchTab('dashboard');
           unitsCache = await fetch('/api/units').then(r=>r.json());
           materialsCache = await fetch('/api/materials').then(r=>r.json());
         } catch(err) {
