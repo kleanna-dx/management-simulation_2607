@@ -1616,8 +1616,8 @@ export function mainPage(): string {
         d.unit_code, d.category === 'RAW' ? '원재료' : '부재료', d.material_code, d.material_name,
         d.year, d.month, d.usage_qty, d.unit_price, d.total_cost, Math.round(d.production_qty||0), d.notes || ''
       ]);
-      const bom = '\uFEFF' + [headers, ...rows].map(r => r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
-      const blob = new Blob([bom], {type: 'text/csv;charset=utf-8;'});
+      const csvContent = String.fromCharCode(0xFEFF) + [headers, ...rows].map(r => r.map(v => String.fromCharCode(34) + String(v).replace(/"/g, String.fromCharCode(34)+String.fromCharCode(34)) + String.fromCharCode(34)).join(',')).join(String.fromCharCode(10));
+      const blob = new Blob([csvContent], {type: 'text/csv;charset=utf-8;'});
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = 'material_data_' + document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0') + '.csv';
