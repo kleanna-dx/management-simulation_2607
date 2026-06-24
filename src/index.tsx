@@ -640,6 +640,82 @@ app.get('/api/dashboard/material-cost-summary', async (c) => {
   return c.json(merged)
 })
 
+// 3) 호기별 > 자재그룹(대분류)명 > 제품레벨2명별 재료비 요약
+app.get('/api/dashboard/material-by-group', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym') || ''
+  const category = c.req.query('category') || ''
+  
+  // 전월 계산
+  let prevYm = ''
+  if (ym && ym.length === 6) {
+    let y = parseInt(ym.substring(0, 4))
+    let m = parseInt(ym.substring(4, 6))
+    m -= 1
+    if (m < 1) { m = 12; y -= 1 }
+    prevYm = `${y}${String(m).padStart(2, '0')}`
+  }
+
+  let catFilter = ''
+  if (category === 'RAW') {
+    catFilter = " AND (material_group_major = '1100' OR material_group_major = '1200')"
+  } else if (category === 'SUB') {
+    catFilter = " AND material_group_major != '1100' AND material_group_major != '1200'"
+  }
+
+  const baseSql = `
+    SELECT 
+      machine_code,
+      machine_name,
+      material_group_major_name,
+      CASE 
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+        ELSE product_level2_name
+      END as product_level2_name,
+      SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as material_cost,
+      SUM(CAST(actual_alloc_qty AS REAL)) as total_alloc_qty,
+      SUM(CAST(plan_vs_usage_diff AS REAL)) as usage_diff,
+      SUM(CAST(plan_vs_price_diff AS REAL)) as price_diff,
+      COUNT(*) as row_count
+    FROM raw_records
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+      AND CAST(actual_alloc_qty AS REAL) != 0
+      ${catFilter}
+    GROUP BY machine_code, material_group_major_name,
+      CASE 
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+        ELSE product_level2_name
+      END
+    ORDER BY machine_code, material_group_major_name, material_cost DESC
+  `
+
+  const curResult = await db.prepare(baseSql).bind(ym).all()
+  const curData = curResult.results as any[]
+
+  let prevMap = new Map<string, any>()
+  if (prevYm) {
+    const prevResult = await db.prepare(baseSql).bind(prevYm).all()
+    for (const row of prevResult.results as any[]) {
+      const key = `${row.machine_code}|${row.material_group_major_name}|${row.product_level2_name}`
+      prevMap.set(key, row)
+    }
+  }
+
+  const merged = curData.map(cur => {
+    const key = `${cur.machine_code}|${cur.material_group_major_name}|${cur.product_level2_name}`
+    const prev = prevMap.get(key)
+    return {
+      ...cur,
+      prev_material_cost: prev?.material_cost || 0,
+      prev_alloc_qty: prev?.total_alloc_qty || 0,
+    }
+  })
+
+  return c.json(merged)
+})
+
 // 2) 호기별 > 제품레벨2명별 총생산량 합계
 app.get('/api/dashboard/production-summary', async (c) => {
   const db = c.env.DB

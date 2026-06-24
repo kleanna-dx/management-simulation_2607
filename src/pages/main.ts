@@ -327,6 +327,46 @@ export function mainPage(): string {
           </table>
         </div>
       </div>
+      <!-- 3) 호기별 > 자재그룹(대분류)명 > 제품구분별 재료비 요약 -->
+      <div class="card overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-cubes text-violet-500 mr-1.5"></i>호기별 자재그룹(대분류)별 제품구분 재료비</h3>
+          <div class="flex items-center gap-2">
+            <button onclick="setMatGroupFilter('ALL')" id="mg-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
+            <button onclick="setMatGroupFilter('RAW')" id="mg-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
+            <button onclick="setMatGroupFilter('SUB')" id="mg-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
+          <table class="data-table text-xs">
+            <thead class="sticky top-0 bg-white z-10">
+              <tr>
+                <th class="!py-2">호기</th>
+                <th class="!py-2">자재그룹(대분류)명</th>
+                <th class="!py-2">제품구분(레벨2)</th>
+                <th class="!py-2 text-right">재료비(당월)</th>
+                <th class="!py-2 text-right">재료비(전월)</th>
+                <th class="!py-2 text-right">사용량차이</th>
+                <th class="!py-2 text-right">단가차이</th>
+                <th class="!py-2 text-right">배부수량(당월)</th>
+                <th class="!py-2 text-right">배부수량(전월)</th>
+              </tr>
+            </thead>
+            <tbody id="dash-matgroup-body"></tbody>
+            <tfoot class="bg-slate-50 font-semibold sticky bottom-0">
+              <tr>
+                <td colspan="3" class="!py-2 text-center">합계</td>
+                <td class="!py-2 text-right" id="mg-total-cur">-</td>
+                <td class="!py-2 text-right" id="mg-total-prev">-</td>
+                <td class="!py-2 text-right" id="mg-total-usage">-</td>
+                <td class="!py-2 text-right" id="mg-total-price">-</td>
+                <td class="!py-2 text-right" id="mg-total-qty-cur">-</td>
+                <td class="!py-2 text-right" id="mg-total-qty-prev">-</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- Detail Tab -->
@@ -943,14 +983,17 @@ export function mainPage(): string {
     }
 
     let matCostCategoryFilter = 'ALL';
+    let matGroupCategoryFilter = 'ALL';
 
     async function loadDashboardSummary(ym) {
-      const [matCost, prodSummary] = await Promise.all([
+      const [matCost, prodSummary, matGroup] = await Promise.all([
         fetch('/api/dashboard/material-cost-summary?ym=' + ym + (matCostCategoryFilter !== 'ALL' ? '&category=' + matCostCategoryFilter : '')).then(r => r.json()),
-        fetch('/api/dashboard/production-summary?ym=' + ym).then(r => r.json())
+        fetch('/api/dashboard/production-summary?ym=' + ym).then(r => r.json()),
+        fetch('/api/dashboard/material-by-group?ym=' + ym + (matGroupCategoryFilter !== 'ALL' ? '&category=' + matGroupCategoryFilter : '')).then(r => r.json())
       ]);
       renderMatCostSummary(matCost);
       renderProductionSummary(prodSummary);
+      renderMatGroupSummary(matGroup);
     }
 
     function setMatCostFilter(filter) {
@@ -1052,6 +1095,73 @@ export function mainPage(): string {
           '</tr>';
       }).join('');
       document.getElementById('dash-production-total').textContent = fmt(grandTotal);
+    }
+
+    function setMatGroupFilter(filter) {
+      matGroupCategoryFilter = filter;
+      ['all','raw','sub'].forEach(f => {
+        const btn = document.getElementById('mg-filter-' + f);
+        if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(f === filter.toLowerCase() ? 'pill-tab-active' : 'pill-tab-inactive'); }
+      });
+      const year = document.getElementById('analysisYear').value;
+      const month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      const ym = year + month;
+      fetch('/api/dashboard/material-by-group?ym=' + ym + (filter !== 'ALL' ? '&category=' + filter : ''))
+        .then(r => r.json())
+        .then(data => renderMatGroupSummary(data));
+    }
+
+    function renderMatGroupSummary(data) {
+      const tbody = document.getElementById('dash-matgroup-body');
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-gray-400 py-8">데이터가 없습니다.</td></tr>';
+        return;
+      }
+      const fmt = (v) => v != null ? Math.round(Number(v)).toLocaleString() : '-';
+      const diffFmt2 = (v) => {
+        const n = Math.round(Number(v) || 0);
+        if (n === 0) return '-';
+        if (n < 0) return String.fromCharCode(9651) + Math.abs(n).toLocaleString();
+        return n.toLocaleString();
+      };
+      const diffCell2 = (v) => {
+        const n = Math.round(Number(v) || 0);
+        if (n === 0) return '<td class="!py-1.5 text-right font-mono text-gray-400">-</td>';
+        if (n < 0) return '<td class="!py-1.5 text-right font-mono text-red-600">' + String.fromCharCode(9651) + Math.abs(n).toLocaleString() + '</td>';
+        return '<td class="!py-1.5 text-right font-mono">' + n.toLocaleString() + '</td>';
+      };
+      let tCur=0, tPrev=0, tUsage=0, tPrice=0, tQtyCur=0, tQtyPrev=0;
+      let prevGroup = '';
+      tbody.innerHTML = data.map(d => {
+        const curCost = Number(d.material_cost) || 0;
+        const prevCost = Number(d.prev_material_cost) || 0;
+        const usageDiff = Number(d.usage_diff) || 0;
+        const priceDiff = Number(d.price_diff) || 0;
+        const qtyCur = Number(d.total_alloc_qty) || 0;
+        const qtyPrev = Number(d.prev_alloc_qty) || 0;
+        tCur += curCost; tPrev += prevCost; tUsage += usageDiff; tPrice += priceDiff; tQtyCur += qtyCur; tQtyPrev += qtyPrev;
+        const groupKey = d.machine_code + '|' + d.material_group_major_name;
+        const groupChanged = groupKey !== prevGroup;
+        prevGroup = groupKey;
+        const chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        return '<tr class="' + (groupChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-blue-50/30">' +
+          '<td class="!py-1.5"><span class="unit-chip ' + chipClass + '">' + (d.machine_code||'') + '</span></td>' +
+          '<td class="!py-1.5">' + (d.material_group_major_name||'-') + '</td>' +
+          '<td class="!py-1.5">' + (d.product_level2_name||'-') + '</td>' +
+          '<td class="!py-1.5 text-right font-mono font-semibold">' + fmt(curCost) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-500">' + (prevCost ? fmt(prevCost) : '-') + '</td>' +
+          diffCell2(usageDiff) +
+          diffCell2(priceDiff) +
+          '<td class="!py-1.5 text-right font-mono">' + fmt(qtyCur) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-500">' + (qtyPrev ? fmt(qtyPrev) : '-') + '</td>' +
+          '</tr>';
+      }).join('');
+      document.getElementById('mg-total-cur').textContent = fmt(tCur);
+      document.getElementById('mg-total-prev').textContent = fmt(tPrev);
+      const usEl = document.getElementById('mg-total-usage'); usEl.textContent = diffFmt2(tUsage); usEl.className = '!py-2 text-right font-mono ' + (tUsage < 0 ? 'text-red-600' : '');
+      const prEl = document.getElementById('mg-total-price'); prEl.textContent = diffFmt2(tPrice); prEl.className = '!py-2 text-right font-mono ' + (tPrice < 0 ? 'text-red-600' : '');
+      document.getElementById('mg-total-qty-cur').textContent = fmt(tQtyCur);
+      document.getElementById('mg-total-qty-prev').textContent = fmt(tQtyPrev);
     }
 
     function setVC(id, v) {
