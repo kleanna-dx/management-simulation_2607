@@ -1032,21 +1032,37 @@ export function mainPage(): string {
       };
       let totalCur = 0, totalPrev = 0, totalUsage = 0, totalPrice = 0, totalRows = 0;
       let prevMachine = '';
-      tbody.innerHTML = data.map(d => {
+      let mCur = 0, mPrev = 0, mUsage = 0, mPrice = 0, mRows = 0;
+      const rows = [];
+      const subtotalRow = (mc) => {
+        const chipClass = mc === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        const dEl = (v) => { const n=Math.round(v); if(n===0) return '<td class="!py-1.5 text-right font-mono text-gray-400">-</td>'; if(n<0) return '<td class="!py-1.5 text-right font-mono text-red-600">'+String.fromCharCode(9651)+Math.abs(n).toLocaleString()+'</td>'; return '<td class="!py-1.5 text-right font-mono">'+n.toLocaleString()+'</td>'; };
+        return '<tr class="bg-slate-100 font-semibold">' +
+          '<td class="!py-1.5"><span class="unit-chip '+chipClass+'">'+mc+'</span></td>' +
+          '<td class="!py-1.5" colspan="2">소계</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmt(mCur) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + (mPrev ? fmt(mPrev) : '-') + '</td>' +
+          dEl(mCur - mPrev) +
+          dEl(mUsage) +
+          dEl(mPrice) +
+          '<td class="!py-1.5 text-right">' + fmt(mRows) + '</td></tr>';
+      };
+      data.forEach(d => {
         const curCost = Number(d.material_cost) || 0;
         const prevCost = Number(d.prev_material_cost) || 0;
         const diff = curCost - prevCost;
         const usageDiff = Number(d.usage_diff) || 0;
         const priceDiff = Number(d.price_diff) || 0;
-        totalCur += curCost;
-        totalPrev += prevCost;
-        totalUsage += usageDiff;
-        totalPrice += priceDiff;
-        totalRows += Number(d.row_count) || 0;
+        totalCur += curCost; totalPrev += prevCost; totalUsage += usageDiff; totalPrice += priceDiff; totalRows += Number(d.row_count) || 0;
+        if (prevMachine && d.machine_code !== prevMachine) {
+          rows.push(subtotalRow(prevMachine));
+          mCur=0; mPrev=0; mUsage=0; mPrice=0; mRows=0;
+        }
+        mCur += curCost; mPrev += prevCost; mUsage += usageDiff; mPrice += priceDiff; mRows += Number(d.row_count) || 0;
         const machineChanged = d.machine_code !== prevMachine;
         prevMachine = d.machine_code;
         const chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
-        return '<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-blue-50/30">' +
+        rows.push('<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-blue-50/30">' +
           '<td class="!py-1.5"><span class="unit-chip ' + chipClass + '">' + (d.machine_code||'') + '</span></td>' +
           '<td class="!py-1.5">' + (d.product_level2_name||'-') + '</td>' +
           '<td class="!py-1.5">' + (d.material_group_name||'-') + '</td>' +
@@ -1056,8 +1072,10 @@ export function mainPage(): string {
           diffCell(usageDiff) +
           diffCell(priceDiff) +
           '<td class="!py-1.5 text-right text-gray-400">' + (d.row_count||'') + '</td>' +
-          '</tr>';
-      }).join('');
+          '</tr>');
+      });
+      if (prevMachine) rows.push(subtotalRow(prevMachine));
+      tbody.innerHTML = rows.join('');
       document.getElementById('dash-matcost-total-cur').textContent = fmt(totalCur);
       document.getElementById('dash-matcost-total-prev').textContent = fmt(totalPrev);
       const totalDiff = totalCur - totalPrev;
