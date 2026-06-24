@@ -121,7 +121,7 @@ export function mainPage(): string {
             </select>
             <select id="analysisMonth" class="bg-transparent border-none text-sm font-semibold text-gray-700 focus:ring-0 pr-6 cursor-pointer" onchange="loadAnalysis()">
               <option value="6">6월</option>
-              <option value="5">5월</option>
+              <option value="5" selected>5월</option>
               <option value="4">4월</option>
               <option value="3">3월</option>
               <option value="2">2월</option>
@@ -402,7 +402,25 @@ export function mainPage(): string {
             <h3 class="text-sm font-semibold text-gray-700">업로드 데이터 조회 (원본 전체 컬럼)</h3>
             <p class="text-xs text-gray-400 mt-1">SAP BW에서 업로드된 원본 데이터를 37개 컬럼 전체로 조회합니다.</p>
           </div>
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3 flex-wrap">
+            <select id="dv-year" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs" onchange="loadDataView()">
+              <option value="2026">2026년</option>
+              <option value="2025">2025년</option>
+            </select>
+            <select id="dv-month" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs" onchange="loadDataView()">
+              <option value="05">5월</option>
+              <option value="06">6월</option>
+              <option value="04">4월</option>
+              <option value="03">3월</option>
+              <option value="02">2월</option>
+              <option value="01">1월</option>
+              <option value="07">7월</option>
+              <option value="08">8월</option>
+              <option value="09">9월</option>
+              <option value="10">10월</option>
+              <option value="11">11월</option>
+              <option value="12">12월</option>
+            </select>
             <select id="dv-unit" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs" onchange="loadDataView()">
               <option value="">전체 호기</option>
               <option value="PM2">PM2</option>
@@ -1579,8 +1597,8 @@ export function mainPage(): string {
       const category = document.getElementById('dv-category').value;
       const search = document.getElementById('dv-search').value;
       const limit = parseInt(document.getElementById('dv-page-size').value);
-      const year = document.getElementById('analysisYear').value;
-      const month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      const year = document.getElementById('dv-year').value;
+      const month = document.getElementById('dv-month').value;
       const ym = year + month;
 
       let url = '/api/raw-records?ym=' + ym + '&page=' + dvCurrentPage + '&limit=' + limit;
@@ -1696,7 +1714,7 @@ export function mainPage(): string {
       const blob = new Blob([csvStr], {type: 'text/csv;charset=utf-8;'});
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      const ym = document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0');
+      const ym = document.getElementById('dv-year').value + document.getElementById('dv-month').value;
       link.download = 'raw_data_' + ym + '.csv';
       link.click();
     }
