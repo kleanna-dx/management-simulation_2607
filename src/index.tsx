@@ -375,16 +375,54 @@ app.get('/api/simulations/:id', async (c) => {
 
 // ============ SAP 엑셀 스마트 업로드 API ============
 
-// SAP 형식 엑셀 파싱 결과를 DB에 일괄 등록
+// SAP 형식 엑셀 파싱 결과를 DB에 일괄 등록 (집계용 monthly_records + 원본 raw_records)
 app.post('/api/upload/smart', async (c) => {
+  try {
   const db = c.env.DB
-  const { rows } = await c.req.json()
-  // rows: SAP 엑셀에서 파싱된 데이터 배열
-  // 각 row: { period, machine, mat_group_code, mat_group_desc, product_type, mat_code, mat_name, unit, 
-  //           total_production, production_qty, actual_unit_consumption, actual_unit_price, 
-  //           issue_qty, issue_amount, plan_vs_usage_diff, plan_vs_price_diff, product_level1, ... }
+  const { rows, rawRows, fileName } = await c.req.json()
+  // rows: 집계용 파싱 데이터 (기존 호환)
+  // rawRows: SAP 엑셀 원본 37컬럼 전체 (신규)
 
-  if (!rows || !rows.length) return c.json({ error: 'no data' }, 400)
+  // === Part A: raw_records에 원본 데이터 전체 저장 ===
+  if (rawRows && rawRows.length > 0) {
+    const rawStmt = db.prepare(`
+      INSERT INTO raw_records (
+        calendar_ym, process_code, process_name, machine_code, machine_name,
+        product_level1, product_level1_name, product_level2, product_level2_name,
+        product_level3, product_level3_name, product_level4, product_level4_name,
+        material_code, material_name, material_group, material_group_name,
+        material_group_major, material_group_major_name, product_type_code, product_type_name,
+        plan_unit_consumption, component_qty, base_qty, plan_unit_consumption_waste,
+        plan_unit_price, plan_alloc_qty, total_production, production_qty, waste_qty,
+        actual_unit_consumption, actual_alloc_qty, actual_unit_price,
+        issue_qty, issue_amount, plan_vs_usage_diff, plan_vs_price_diff,
+        data_source, file_name
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `)
+
+    const batchSize = 50
+    for (let i = 0; i < rawRows.length; i += batchSize) {
+      const chunk = rawRows.slice(i, i + batchSize)
+      const batch = chunk.map((r: any) => rawStmt.bind(
+        r.calendar_ym, r.process_code, r.process_name, r.machine_code, r.machine_name,
+        r.product_level1, r.product_level1_name, r.product_level2, r.product_level2_name,
+        r.product_level3, r.product_level3_name, r.product_level4, r.product_level4_name,
+        r.material_code, r.material_name, r.material_group, r.material_group_name,
+        r.material_group_major, r.material_group_major_name, r.product_type_code, r.product_type_name,
+        r.plan_unit_consumption, r.component_qty, r.base_qty, r.plan_unit_consumption_waste,
+        r.plan_unit_price, r.plan_alloc_qty, r.total_production, r.production_qty, r.waste_qty,
+        r.actual_unit_consumption, r.actual_alloc_qty, r.actual_unit_price,
+        r.issue_qty, r.issue_amount, r.plan_vs_usage_diff, r.plan_vs_price_diff,
+        'SAP_BW', fileName || ''
+      ))
+      await db.batch(batch)
+    }
+  }
+
+  // === Part B: 기존 monthly_records 집계 로직 (호환 유지) ===
+  if (!rows || !rows.length) {
+    return c.json({ success: true, summary: { raw_records_inserted: rawRows?.length || 0, records_inserted: 0, new_materials: 0, skipped: 0 } })
+  }
 
   // 1. 기존 호기 매핑 로드
   const unitsResult = await db.prepare('SELECT * FROM units').all()
@@ -528,11 +566,82 @@ app.post('/api/upload/smart', async (c) => {
     summary: {
       total_rows: rows.length,
       records_inserted: inserted,
+      raw_records_inserted: rawRows?.length || 0,
       new_materials: newMatCount,
       skipped: skipped.length,
       aggregated_from: records.length
     }
   })
+  } catch (err: any) {
+    return c.json({ error: err.message || 'Unknown error', stack: err.stack }, 500)
+  }
+})
+
+// ============ Raw Records (원본 데이터) 조회 API ============
+
+// 원본 데이터 조회 (필터링, 페이징)
+app.get('/api/raw-records', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym') // 예: 202605
+  const machine = c.req.query('machine') // PM2, PM3
+  const category = c.req.query('category') // RAW, SUB (material_group_major_name 기반)
+  const search = c.req.query('search')
+  const page = parseInt(c.req.query('page') || '0')
+  const limit = parseInt(c.req.query('limit') || '100')
+
+  let where = '1=1'
+  const params: any[] = []
+
+  if (ym) { where += ' AND calendar_ym = ?'; params.push(ym) }
+  if (machine) { where += ' AND machine_code = ?'; params.push(machine) }
+  if (category === 'RAW') { 
+    where += " AND (material_group_name LIKE '%펄프%' OR material_group_name LIKE '%고지%')"
+  } else if (category === 'SUB') {
+    where += " AND material_group_name NOT LIKE '%펄프%' AND material_group_name NOT LIKE '%고지%'"
+  }
+  if (search) { where += ' AND (material_name LIKE ? OR material_group_name LIKE ?)'; params.push(`%${search}%`, `%${search}%`) }
+
+  // Count
+  const countResult = await db.prepare(`SELECT COUNT(*) as cnt FROM raw_records WHERE ${where}`).bind(...params).first() as any
+  const total = countResult?.cnt || 0
+
+  // Data
+  params.push(limit, page * limit)
+  const dataResult = await db.prepare(`SELECT * FROM raw_records WHERE ${where} ORDER BY machine_code, material_group_name, material_name LIMIT ? OFFSET ?`).bind(...params).all()
+
+  return c.json({ total, page, limit, data: dataResult.results })
+})
+
+// 원본 데이터 전체 삭제
+app.delete('/api/raw-records', async (c) => {
+  const db = c.env.DB
+  await db.prepare('DELETE FROM raw_records').run()
+  return c.json({ success: true })
+})
+
+// 원본 데이터 요약 (호기별, 자재그룹별 통계)
+app.get('/api/raw-records/summary', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym')
+  
+  let ymFilter = ''
+  const params: any[] = []
+  if (ym) { ymFilter = ' WHERE calendar_ym = ?'; params.push(ym) }
+
+  const result = await db.prepare(`
+    SELECT 
+      machine_code,
+      COUNT(*) as record_count,
+      COUNT(DISTINCT material_code) as material_count,
+      SUM(issue_qty) as total_issue_qty,
+      SUM(issue_amount) as total_issue_amount,
+      SUM(production_qty) as total_production
+    FROM raw_records ${ymFilter}
+    GROUP BY machine_code
+    ORDER BY machine_code
+  `).bind(...params).all()
+
+  return c.json(result.results)
 })
 
 // ============ 메인 페이지 ============

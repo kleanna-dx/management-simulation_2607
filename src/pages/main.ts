@@ -399,70 +399,91 @@ export function mainPage(): string {
       <div class="card p-6">
         <div class="flex items-center justify-between mb-5">
           <div>
-            <h3 class="text-sm font-semibold text-gray-700">업로드 데이터 조회</h3>
-            <p class="text-xs text-gray-400 mt-1">데이터베이스에 저장된 원부자재 실적 데이터를 조회합니다.</p>
+            <h3 class="text-sm font-semibold text-gray-700">업로드 데이터 조회 (원본 전체 컬럼)</h3>
+            <p class="text-xs text-gray-400 mt-1">SAP BW에서 업로드된 원본 데이터를 37개 컬럼 전체로 조회합니다.</p>
           </div>
           <div class="flex items-center gap-3">
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-gray-500">호기:</label>
-              <select id="dv-unit" class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm" onchange="loadDataView()">
-                <option value="">전체</option>
-              </select>
-            </div>
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-gray-500">분류:</label>
-              <select id="dv-category" class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm" onchange="loadDataView()">
-                <option value="">전체</option>
-                <option value="RAW">원재료</option>
-                <option value="SUB">부재료</option>
-              </select>
-            </div>
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-gray-500">검색:</label>
-              <input type="text" id="dv-search" placeholder="자재명 검색..." class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-40" oninput="filterDataView()">
-            </div>
+            <select id="dv-unit" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs" onchange="loadDataView()">
+              <option value="">전체 호기</option>
+              <option value="PM2">PM2</option>
+              <option value="PM3">PM3</option>
+            </select>
+            <select id="dv-category" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs" onchange="loadDataView()">
+              <option value="">전체 분류</option>
+              <option value="RAW">원재료</option>
+              <option value="SUB">부재료</option>
+            </select>
+            <input type="text" id="dv-search" placeholder="자재명 검색..." class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs w-32" onkeyup="if(event.key==='Enter')loadDataView()">
+            <button onclick="loadDataView()" class="btn-primary text-xs !py-1.5 !px-3"><i class="fas fa-search mr-1"></i>조회</button>
             <button onclick="exportDataViewCSV()" class="bg-green-50 text-green-700 border border-green-200 rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-green-100 transition">
-              <i class="fas fa-download mr-1"></i>CSV 내보내기
+              <i class="fas fa-download mr-1"></i>CSV
             </button>
           </div>
         </div>
 
         <!-- Summary -->
-        <div id="dv-summary" class="grid grid-cols-4 gap-4 mb-5">
-          <div class="bg-slate-50 rounded-xl p-4 text-center">
-            <p class="text-xs text-gray-400 mb-1">총 레코드</p>
-            <p class="text-xl font-bold text-gray-800 stat-value" id="dv-total-count">-</p>
+        <div class="grid grid-cols-4 gap-4 mb-5">
+          <div class="bg-slate-50 rounded-xl p-3 text-center">
+            <p class="text-[10px] text-gray-400 mb-0.5">총 레코드</p>
+            <p class="text-lg font-bold text-gray-800 stat-value" id="dv-total-count">-</p>
           </div>
-          <div class="bg-blue-50 rounded-xl p-4 text-center">
-            <p class="text-xs text-gray-400 mb-1">원재료 (RAW)</p>
-            <p class="text-xl font-bold text-blue-700 stat-value" id="dv-raw-count">-</p>
+          <div class="bg-blue-50 rounded-xl p-3 text-center">
+            <p class="text-[10px] text-gray-400 mb-0.5">총 출고수량</p>
+            <p class="text-lg font-bold text-blue-700 stat-value" id="dv-total-qty">-</p>
           </div>
-          <div class="bg-purple-50 rounded-xl p-4 text-center">
-            <p class="text-xs text-gray-400 mb-1">부재료 (SUB)</p>
-            <p class="text-xl font-bold text-purple-700 stat-value" id="dv-sub-count">-</p>
+          <div class="bg-purple-50 rounded-xl p-3 text-center">
+            <p class="text-[10px] text-gray-400 mb-0.5">총 출고금액</p>
+            <p class="text-lg font-bold text-purple-700 stat-value" id="dv-total-cost">-</p>
           </div>
-          <div class="bg-emerald-50 rounded-xl p-4 text-center">
-            <p class="text-xs text-gray-400 mb-1">총 출고금액</p>
-            <p class="text-xl font-bold text-emerald-700 stat-value" id="dv-total-cost">-</p>
+          <div class="bg-emerald-50 rounded-xl p-3 text-center">
+            <p class="text-[10px] text-gray-400 mb-0.5">자재 종류</p>
+            <p class="text-lg font-bold text-emerald-700 stat-value" id="dv-mat-count">-</p>
           </div>
         </div>
 
-        <!-- Data Table -->
-        <div class="overflow-x-auto max-h-[600px] overflow-y-auto border border-gray-100 rounded-xl">
-          <table class="data-table" id="dv-table">
-            <thead class="sticky top-0 z-10">
+        <!-- Data Table - Full 37 columns with horizontal scroll -->
+        <div class="overflow-x-auto overflow-y-auto max-h-[550px] border border-gray-100 rounded-xl">
+          <table class="data-table text-[11px] whitespace-nowrap" id="dv-table">
+            <thead class="sticky top-0 z-10 bg-slate-50">
               <tr>
-                <th class="cursor-pointer hover:text-primary-600" onclick="sortDataView('unit')">호기 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="cursor-pointer hover:text-primary-600" onclick="sortDataView('category')">분류 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="cursor-pointer hover:text-primary-600" onclick="sortDataView('code')">자재코드 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="cursor-pointer hover:text-primary-600" onclick="sortDataView('name')">자재명 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="cursor-pointer hover:text-primary-600" onclick="sortDataView('year')">연도 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="cursor-pointer hover:text-primary-600" onclick="sortDataView('month')">월 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="text-right cursor-pointer hover:text-primary-600" onclick="sortDataView('usage_qty')">출고수량 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="text-right cursor-pointer hover:text-primary-600" onclick="sortDataView('unit_price')">단가 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="text-right cursor-pointer hover:text-primary-600" onclick="sortDataView('total_cost')">출고금액 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
-                <th class="text-right cursor-pointer hover:text-primary-600" onclick="sortDataView('production_qty')">생산량 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
-                <th>비고</th>
+                <th class="!px-2">#</th>
+                <th class="!px-2">달력연도/월</th>
+                <th class="!px-2">공정</th>
+                <th class="!px-2">공정명</th>
+                <th class="!px-2">생산호기</th>
+                <th class="!px-2">생산호기명</th>
+                <th class="!px-2">제품레벨1</th>
+                <th class="!px-2">제품레벨1명</th>
+                <th class="!px-2">제품레벨2</th>
+                <th class="!px-2">제품레벨2명</th>
+                <th class="!px-2">제품레벨3</th>
+                <th class="!px-2">제품레벨3명</th>
+                <th class="!px-2">제품레벨4</th>
+                <th class="!px-2">제품레벨4명</th>
+                <th class="!px-2">자재코드</th>
+                <th class="!px-2">자재명</th>
+                <th class="!px-2">자재그룹</th>
+                <th class="!px-2">자재그룹명</th>
+                <th class="!px-2">대분류</th>
+                <th class="!px-2">대분류명</th>
+                <th class="!px-2">지종구분</th>
+                <th class="!px-2">지종구분명</th>
+                <th class="!px-2 text-right">계획원단위</th>
+                <th class="!px-2 text-right">구성부품수량</th>
+                <th class="!px-2 text-right">기준수량</th>
+                <th class="!px-2 text-right">계획원단위(폐품)</th>
+                <th class="!px-2 text-right">계획단가</th>
+                <th class="!px-2 text-right">계획배부수량</th>
+                <th class="!px-2 text-right">총생산량</th>
+                <th class="!px-2 text-right">생산수량</th>
+                <th class="!px-2 text-right">폐품수량</th>
+                <th class="!px-2 text-right">실제원단위</th>
+                <th class="!px-2 text-right">실제배부수량</th>
+                <th class="!px-2 text-right">실제단가</th>
+                <th class="!px-2 text-right">출고수량</th>
+                <th class="!px-2 text-right">출고금액</th>
+                <th class="!px-2 text-right">사용량차이</th>
+                <th class="!px-2 text-right">단가차이</th>
               </tr>
             </thead>
             <tbody id="dv-tbody"></tbody>
@@ -473,9 +494,16 @@ export function mainPage(): string {
         <div class="flex items-center justify-between mt-4">
           <p class="text-xs text-gray-400" id="dv-page-info">-</p>
           <div class="flex items-center gap-2">
+            <select id="dv-page-size" class="border border-gray-200 rounded-lg px-2 py-1 text-xs" onchange="loadDataView()">
+              <option value="50">50건</option>
+              <option value="100" selected>100건</option>
+              <option value="200">200건</option>
+              <option value="500">500건</option>
+            </select>
             <button onclick="dvChangePage(-1)" class="px-3 py-1.5 text-xs bg-gray-100 rounded-lg hover:bg-gray-200 transition" id="dv-prev-btn" disabled>
               <i class="fas fa-chevron-left mr-1"></i>이전
             </button>
+            <span class="text-xs text-gray-500" id="dv-page-num">-</span>
             <button onclick="dvChangePage(1)" class="px-3 py-1.5 text-xs bg-gray-100 rounded-lg hover:bg-gray-200 transition" id="dv-next-btn" disabled>
               다음<i class="fas fa-chevron-right ml-1"></i>
             </button>
@@ -1455,172 +1483,139 @@ export function mainPage(): string {
       loadProductsBom();
     }
 
-    // ===== Data View (데이터 조회) =====
-    let dvAllData = [];
-    let dvFilteredData = [];
+    // ===== Data View (데이터 조회) - Raw Records 전체 컬럼 =====
     let dvCurrentPage = 0;
-    const dvPageSize = 50;
-    let dvSortKey = 'unit';
-    let dvSortAsc = true;
+    let dvTotal = 0;
+    let dvPageData = [];
 
     async function initDataView() {
-      // Populate unit filter
-      const unitSel = document.getElementById('dv-unit');
-      if (unitSel.options.length <= 1 && unitsCache.length) {
-        unitsCache.forEach(u => {
-          const opt = document.createElement('option');
-          opt.value = u.id;
-          opt.textContent = u.unit_name + ' (' + u.unit_code + ')';
-          unitSel.appendChild(opt);
-        });
-      }
       await loadDataView();
     }
 
     async function loadDataView() {
-      const year = document.getElementById('analysisYear').value;
-      const month = document.getElementById('analysisMonth').value;
-      const unitId = document.getElementById('dv-unit').value;
+      const machine = document.getElementById('dv-unit').value;
       const category = document.getElementById('dv-category').value;
+      const search = document.getElementById('dv-search').value;
+      const limit = parseInt(document.getElementById('dv-page-size').value);
+      const year = document.getElementById('analysisYear').value;
+      const month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      const ym = year + month;
 
-      let url = '/api/records?year=' + year + '&month=' + month;
-      if (unitId) url += '&unit_id=' + unitId;
+      let url = '/api/raw-records?ym=' + ym + '&page=' + dvCurrentPage + '&limit=' + limit;
+      if (machine) url += '&machine=' + machine;
+      if (category) url += '&category=' + category;
+      if (search) url += '&search=' + encodeURIComponent(search);
 
-      const records = await fetch(url).then(r => r.json());
-      
-      // Enrich with material info
-      const matById = {};
-      materialsCache.forEach(m => { matById[m.id] = m; });
-      const unitById = {};
-      unitsCache.forEach(u => { unitById[u.id] = u; });
+      const resp = await fetch(url).then(r => r.json());
+      dvTotal = resp.total;
+      dvPageData = resp.data || [];
 
-      dvAllData = records.map(r => {
-        const mat = matById[r.material_id] || {};
-        const unit = unitById[r.unit_id] || {};
-        return {
-          ...r,
-          unit_code: unit.unit_code || '',
-          unit_name: unit.unit_name || '',
-          material_code: mat.material_code || '',
-          material_name: mat.material_name || '',
-          category: mat.category || '',
-          total_cost: r.usage_qty * r.unit_price
-        };
-      });
-
-      // Apply category filter
-      if (category) {
-        dvAllData = dvAllData.filter(d => d.category === category);
-      }
-
-      dvCurrentPage = 0;
-      filterDataView();
+      renderDataViewTable();
     }
 
-    function filterDataView() {
-      const search = (document.getElementById('dv-search').value || '').toLowerCase();
-      dvFilteredData = dvAllData.filter(d => {
-        if (!search) return true;
-        return d.material_name.toLowerCase().includes(search) || 
-               d.material_code.includes(search) ||
-               d.unit_code.toLowerCase().includes(search) ||
-               (d.notes || '').toLowerCase().includes(search);
-      });
-      applySortAndRender();
-    }
+    function renderDataViewTable() {
+      const limit = parseInt(document.getElementById('dv-page-size').value);
+      const start = dvCurrentPage * limit;
 
-    function sortDataView(key) {
-      if (dvSortKey === key) {
-        dvSortAsc = !dvSortAsc;
-      } else {
-        dvSortKey = key;
-        dvSortAsc = true;
-      }
-      applySortAndRender();
-    }
-
-    function applySortAndRender() {
-      const keyMap = {
-        'unit': 'unit_code', 'category': 'category', 'code': 'material_code',
-        'name': 'material_name', 'year': 'year', 'month': 'month',
-        'usage_qty': 'usage_qty', 'unit_price': 'unit_price', 
-        'total_cost': 'total_cost', 'production_qty': 'production_qty'
-      };
-      const field = keyMap[dvSortKey] || 'unit_code';
-      dvFilteredData.sort((a, b) => {
-        let va = a[field], vb = b[field];
-        if (typeof va === 'string') { va = va.toLowerCase(); vb = (vb||'').toLowerCase(); }
-        if (va < vb) return dvSortAsc ? -1 : 1;
-        if (va > vb) return dvSortAsc ? 1 : -1;
-        return 0;
-      });
-      renderDataView();
-    }
-
-    function renderDataView() {
       // Summary
-      const rawData = dvFilteredData.filter(d => d.category === 'RAW');
-      const subData = dvFilteredData.filter(d => d.category === 'SUB');
-      const totalCost = dvFilteredData.reduce((s, d) => s + d.total_cost, 0);
-      
-      document.getElementById('dv-total-count').textContent = dvFilteredData.length.toLocaleString() + '건';
-      document.getElementById('dv-raw-count').textContent = rawData.length.toLocaleString() + '건';
-      document.getElementById('dv-sub-count').textContent = subData.length.toLocaleString() + '건';
-      document.getElementById('dv-total-cost').textContent = (totalCost / 100000000).toFixed(0) + '억원';
+      document.getElementById('dv-total-count').textContent = dvTotal.toLocaleString() + '건';
+      const totalQty = dvPageData.reduce((s, d) => s + (d.issue_qty || 0), 0);
+      const totalAmt = dvPageData.reduce((s, d) => s + (d.issue_amount || 0), 0);
+      const matSet = new Set(dvPageData.map(d => d.material_code));
+      document.getElementById('dv-total-qty').textContent = Math.round(totalQty).toLocaleString();
+      document.getElementById('dv-total-cost').textContent = (totalAmt / 100000000).toFixed(1) + '억';
+      document.getElementById('dv-mat-count').textContent = matSet.size + '종';
 
-      // Table
-      const start = dvCurrentPage * dvPageSize;
-      const pageData = dvFilteredData.slice(start, start + dvPageSize);
+      // Table body
       const tbody = document.getElementById('dv-tbody');
-      
-      if (pageData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-gray-400 py-12"><i class="fas fa-inbox text-3xl mb-3 block text-gray-200"></i>데이터가 없습니다.</td></tr>';
+      if (dvPageData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="38" class="text-center text-gray-400 py-12"><i class="fas fa-inbox text-3xl mb-3 block text-gray-200"></i>데이터가 없습니다. SAP 파일을 업로드해주세요.</td></tr>';
       } else {
-        tbody.innerHTML = pageData.map(d => {
-          const chipClass = d.unit_code === 'PM2' ? 'unit-chip-pm2' : d.unit_code === 'PM3' ? 'unit-chip-pm3' : d.unit_code === 'CHEM' ? 'unit-chip-chem' : 'unit-chip-tissue';
-          const catLabel = d.category === 'RAW' ? '<span class="text-xs px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded font-medium">원재료</span>' : '<span class="text-xs px-1.5 py-0.5 bg-teal-50 text-teal-700 rounded font-medium">부재료</span>';
-          return '<tr>' +
-            '<td><span class="unit-chip ' + chipClass + '">' + d.unit_code + '</span></td>' +
-            '<td>' + catLabel + '</td>' +
-            '<td class="text-xs text-gray-500 font-mono">' + d.material_code + '</td>' +
-            '<td class="font-medium">' + d.material_name + '</td>' +
-            '<td class="text-center">' + d.year + '</td>' +
-            '<td class="text-center">' + d.month + '</td>' +
-            '<td class="text-right font-mono">' + (d.usage_qty || 0).toLocaleString() + '</td>' +
-            '<td class="text-right font-mono">' + (d.unit_price || 0).toLocaleString() + '원</td>' +
-            '<td class="text-right font-mono font-semibold">' + Math.round(d.total_cost / 10000).toLocaleString() + '만원</td>' +
-            '<td class="text-right font-mono text-gray-500">' + Math.round(d.production_qty || 0).toLocaleString() + '</td>' +
-            '<td class="text-xs text-gray-400 max-w-[150px] truncate" title="' + (d.notes||'').replace(/"/g,'&quot;') + '">' + (d.notes || '-') + '</td>' +
+        const numFmt = (v) => v != null ? Number(v).toLocaleString(undefined, {maximumFractionDigits:2}) : '-';
+        tbody.innerHTML = dvPageData.map((d, idx) => {
+          const rowNum = start + idx + 1;
+          const chipClass = (d.machine_code||'') === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+          return '<tr class="hover:bg-blue-50/30">' +
+            '<td class="!px-2 text-gray-400">' + rowNum + '</td>' +
+            '<td class="!px-2">' + (d.calendar_ym||'') + '</td>' +
+            '<td class="!px-2">' + (d.process_code||'') + '</td>' +
+            '<td class="!px-2">' + (d.process_name||'') + '</td>' +
+            '<td class="!px-2"><span class="unit-chip '+chipClass+'">' + (d.machine_code||'') + '</span></td>' +
+            '<td class="!px-2">' + (d.machine_name||'') + '</td>' +
+            '<td class="!px-2">' + (d.product_level1||'') + '</td>' +
+            '<td class="!px-2">' + (d.product_level1_name||'') + '</td>' +
+            '<td class="!px-2">' + (d.product_level2||'') + '</td>' +
+            '<td class="!px-2">' + (d.product_level2_name||'') + '</td>' +
+            '<td class="!px-2">' + (d.product_level3||'') + '</td>' +
+            '<td class="!px-2 max-w-[120px] truncate" title="'+(d.product_level3_name||'')+'">' + (d.product_level3_name||'') + '</td>' +
+            '<td class="!px-2">' + (d.product_level4||'') + '</td>' +
+            '<td class="!px-2 max-w-[120px] truncate" title="'+(d.product_level4_name||'')+'">' + (d.product_level4_name||'') + '</td>' +
+            '<td class="!px-2 font-mono text-[10px]">' + (d.material_code||'') + '</td>' +
+            '<td class="!px-2 font-medium">' + (d.material_name||'') + '</td>' +
+            '<td class="!px-2">' + (d.material_group||'') + '</td>' +
+            '<td class="!px-2 max-w-[100px] truncate" title="'+(d.material_group_name||'')+'">' + (d.material_group_name||'') + '</td>' +
+            '<td class="!px-2">' + (d.material_group_major||'') + '</td>' +
+            '<td class="!px-2">' + (d.material_group_major_name||'') + '</td>' +
+            '<td class="!px-2">' + (d.product_type_code||'') + '</td>' +
+            '<td class="!px-2">' + (d.product_type_name||'') + '</td>' +
+            '<td class="!px-2 text-right font-mono">' + numFmt(d.plan_unit_consumption) + '</td>' +
+            '<td class="!px-2 text-right font-mono">' + numFmt(d.component_qty) + '</td>' +
+            '<td class="!px-2 text-right font-mono">' + numFmt(d.base_qty) + '</td>' +
+            '<td class="!px-2 text-right font-mono">' + numFmt(d.plan_unit_consumption_waste) + '</td>' +
+            '<td class="!px-2 text-right font-mono">' + numFmt(d.plan_unit_price) + '</td>' +
+            '<td class="!px-2 text-right font-mono">' + numFmt(d.plan_alloc_qty) + '</td>' +
+            '<td class="!px-2 text-right font-mono">' + numFmt(d.total_production) + '</td>' +
+            '<td class="!px-2 text-right font-mono">' + numFmt(d.production_qty) + '</td>' +
+            '<td class="!px-2 text-right font-mono">' + numFmt(d.waste_qty) + '</td>' +
+            '<td class="!px-2 text-right font-mono">' + numFmt(d.actual_unit_consumption) + '</td>' +
+            '<td class="!px-2 text-right font-mono">' + numFmt(d.actual_alloc_qty) + '</td>' +
+            '<td class="!px-2 text-right font-mono">' + numFmt(d.actual_unit_price) + '</td>' +
+            '<td class="!px-2 text-right font-mono font-semibold">' + numFmt(d.issue_qty) + '</td>' +
+            '<td class="!px-2 text-right font-mono font-semibold">' + numFmt(d.issue_amount) + '</td>' +
+            '<td class="!px-2 text-right font-mono">' + numFmt(d.plan_vs_usage_diff) + '</td>' +
+            '<td class="!px-2 text-right font-mono">' + numFmt(d.plan_vs_price_diff) + '</td>' +
           '</tr>';
         }).join('');
       }
 
       // Pagination
-      const totalPages = Math.ceil(dvFilteredData.length / dvPageSize);
-      document.getElementById('dv-page-info').textContent = 
-        dvFilteredData.length > 0 ? (start+1) + '~' + Math.min(start+dvPageSize, dvFilteredData.length) + ' / ' + dvFilteredData.length + '건 (페이지 ' + (dvCurrentPage+1) + '/' + totalPages + ')' : '데이터 없음';
+      const totalPages = Math.ceil(dvTotal / limit) || 1;
+      document.getElementById('dv-page-info').textContent = dvTotal > 0 ? (start+1) + '~' + Math.min(start+limit, dvTotal) + ' / 총 ' + dvTotal.toLocaleString() + '건' : '데이터 없음';
+      document.getElementById('dv-page-num').textContent = (dvCurrentPage+1) + '/' + totalPages;
       document.getElementById('dv-prev-btn').disabled = dvCurrentPage === 0;
       document.getElementById('dv-next-btn').disabled = dvCurrentPage >= totalPages - 1;
     }
 
     function dvChangePage(dir) {
-      const totalPages = Math.ceil(dvFilteredData.length / dvPageSize);
+      const limit = parseInt(document.getElementById('dv-page-size').value);
+      const totalPages = Math.ceil(dvTotal / limit);
       dvCurrentPage = Math.max(0, Math.min(totalPages - 1, dvCurrentPage + dir));
-      renderDataView();
+      loadDataView();
     }
 
     function exportDataViewCSV() {
-      if (dvFilteredData.length === 0) { alert('내보낼 데이터가 없습니다.'); return; }
-      const headers = ['호기','분류','자재코드','자재명','연도','월','출고수량','단가','출고금액','생산량','비고'];
-      const rows = dvFilteredData.map(d => [
-        d.unit_code, d.category === 'RAW' ? '원재료' : '부재료', d.material_code, d.material_name,
-        d.year, d.month, d.usage_qty, d.unit_price, d.total_cost, Math.round(d.production_qty||0), d.notes || ''
+      if (dvPageData.length === 0) { alert('내보낼 데이터가 없습니다.'); return; }
+      const headers = ['달력연도/월','공정','공정명','생산호기','생산호기명','제품레벨1','제품레벨1명','제품레벨2','제품레벨2명','제품레벨3','제품레벨3명','제품레벨4','제품레벨4명','자재코드','자재명','자재그룹','자재그룹명','대분류','대분류명','지종구분','지종구분명','계획원단위','구성부품수량','기준수량','계획원단위(폐품)','계획단가','계획배부수량','총생산량','생산수량','폐품수량','실제원단위','실제배부수량','실제단가','출고수량','출고금액','사용량차이','단가차이'];
+      const rows = dvPageData.map(d => [
+        d.calendar_ym, d.process_code, d.process_name, d.machine_code, d.machine_name,
+        d.product_level1, d.product_level1_name, d.product_level2, d.product_level2_name,
+        d.product_level3, d.product_level3_name, d.product_level4, d.product_level4_name,
+        d.material_code, d.material_name, d.material_group, d.material_group_name,
+        d.material_group_major, d.material_group_major_name, d.product_type_code, d.product_type_name,
+        d.plan_unit_consumption, d.component_qty, d.base_qty, d.plan_unit_consumption_waste,
+        d.plan_unit_price, d.plan_alloc_qty, d.total_production, d.production_qty, d.waste_qty,
+        d.actual_unit_consumption, d.actual_alloc_qty, d.actual_unit_price,
+        d.issue_qty, d.issue_amount, d.plan_vs_usage_diff, d.plan_vs_price_diff
       ]);
-      const csvContent = String.fromCharCode(0xFEFF) + [headers, ...rows].map(r => r.map(v => String.fromCharCode(34) + String(v).replace(/"/g, String.fromCharCode(34)+String.fromCharCode(34)) + String.fromCharCode(34)).join(',')).join(String.fromCharCode(10));
-      const blob = new Blob([csvContent], {type: 'text/csv;charset=utf-8;'});
+      const dq = String.fromCharCode(34);
+      const nl = String.fromCharCode(10);
+      const bom = String.fromCharCode(0xFEFF);
+      const csvStr = bom + [headers, ...rows].map(r => r.map(v => dq + String(v==null?'':v).replace(new RegExp(dq,'g'), dq+dq) + dq).join(',')).join(nl);
+      const blob = new Blob([csvStr], {type: 'text/csv;charset=utf-8;'});
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = 'material_data_' + document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0') + '.csv';
+      const ym = document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0');
+      link.download = 'raw_data_' + ym + '.csv';
       link.click();
     }
   </script>
