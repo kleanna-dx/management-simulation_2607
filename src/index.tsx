@@ -521,41 +521,18 @@ app.post('/api/upload/smart', async (c) => {
     })
   }
 
-  // 5. Aggregate: 같은 (unit_id, material_id, year, month) → 합산
-  const aggregated = new Map<string, any>()
-  for (const r of records) {
-    const key = `${r.unit_id}-${r.material_id}-${r.year}-${r.month}`
-    if (aggregated.has(key)) {
-      const existing = aggregated.get(key)
-      existing.usage_qty += r.usage_qty
-      existing.total_cost += r.total_cost
-      existing.production_qty = Math.max(existing.production_qty, r.production_qty)
-    } else {
-      aggregated.set(key, { ...r })
-    }
-  }
-
-  // Recalculate unit_price from aggregated total_cost / usage_qty
-  const finalRecords = [...aggregated.values()].map(r => ({
-    ...r,
-    unit_price: r.usage_qty > 0 ? Math.round(r.total_cost / r.usage_qty) : r.unit_price
-  }))
-
-  // 6. Batch insert
+  // 5. Batch insert: 합산 없이 모든 행을 개별 레코드로 저장
   const stmt = db.prepare(`
     INSERT INTO monthly_records (unit_id, material_id, year, month, usage_qty, unit_price, production_qty, notes)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(unit_id, material_id, year, month) 
-    DO UPDATE SET usage_qty = ?, unit_price = ?, production_qty = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
   `)
   
   const batchSize = 50
   let inserted = 0
-  for (let i = 0; i < finalRecords.length; i += batchSize) {
-    const chunk = finalRecords.slice(i, i + batchSize)
+  for (let i = 0; i < records.length; i += batchSize) {
+    const chunk = records.slice(i, i + batchSize)
     const batch = chunk.map(r => 
-      stmt.bind(r.unit_id, r.material_id, r.year, r.month, r.usage_qty, r.unit_price, r.production_qty, r.notes || '',
-                r.usage_qty, r.unit_price, r.production_qty, r.notes || '')
+      stmt.bind(r.unit_id, r.material_id, r.year, r.month, r.usage_qty, r.unit_price, r.production_qty, r.notes || '')
     )
     await db.batch(batch)
     inserted += chunk.length
@@ -568,8 +545,7 @@ app.post('/api/upload/smart', async (c) => {
       records_inserted: inserted,
       raw_records_inserted: rawRows?.length || 0,
       new_materials: newMatCount,
-      skipped: skipped.length,
-      aggregated_from: records.length
+      skipped: skipped.length
     }
   })
   } catch (err: any) {
