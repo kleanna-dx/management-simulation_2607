@@ -845,26 +845,39 @@ export function mainPage(): string {
     
     // SAP 형식 자동 감지
     function detectSAPFormat(headers) {
-      const sapIndicators = ['달력연도/월', '생산호기', '자재 그룹', '출고수량', '출고금액', '실제단가', '실제 원단위'];
+      const sapIndicators = ['달력연도/월', '생산호기', '자재 그룹', '출고수량', '출고금액', '실제단가', '실제 원단위', '자재그룹(대분류)', '생산호기명'];
       const matchCount = sapIndicators.filter(ind => headers.some(h => (h||'').includes(ind))).length;
       return matchCount >= 3;
     }
 
     // SAP 형식 데이터를 내부 구조로 변환
     function parseSAPData(json, headers) {
+      // 두 번째 행이 기술코드(BIC_xxx, CALMONTH 등)인지 확인 → 스킵
+      let dataRows = json;
+      if (json.length > 0) {
+        const firstVals = Object.values(json[0]);
+        if (firstVals.some(v => String(v||'').startsWith('BIC_') || String(v||'').startsWith('CALMONTH'))) {
+          dataRows = json.slice(1);
+        }
+      }
+      
       // SAP 컬럼 인덱스 매핑 (헤더에서 찾기)
       const findCol = (keywords) => headers.findIndex(h => h && keywords.some(k => h.includes(k)));
       
+      // 부재료 형식: "자재명" 컬럼 있음, 원재료 형식: "-3" 컬럼에 자재명
       const colMap = {
         period: findCol(['달력연도/월', '달력연도']),
         machine: findCol(['생산호기']),
+        machineName: findCol(['생산호기명']),
         matGroupCode: findCol(['자재 그룹']),
-        productType: findCol(['지종/제품구분', '지종']),
+        matGroupName: findCol(['자재 그룹명']),
+        productType: findCol(['지종/제품구분']),
         productLevel1: findCol(['제품계층 구조레벨 1', '제품계층']),
-        matGroupDesc: findCol(['자재그룹(대분류)']),
+        matGroupCategory: findCol(['자재그룹(대분류)']),
+        matGroupCategoryName: findCol(['자재그룹(대분류)명']),
         matCode: findCol(['자재']),
+        matName: findCol(['자재명']),
         unit: findCol(['단위']),
-        matName: headers.indexOf('-3') > -1 ? headers.indexOf('-3') : findCol(['자재명']),
         totalProduction: findCol(['총생산량']),
         productionQty: findCol(['생산수량']),
         actualUnitConsumption: findCol(['실제 원단위(KG/Ton)']),
@@ -872,37 +885,45 @@ export function mainPage(): string {
         actualDistQty: findCol(['실제 배부수량']),
         issueQty: findCol(['출고수량']),
         issueAmount: findCol(['출고금액']),
-        planVsUsageDiff: findCol(['계획대비\\n사용량차이', '사용량차이']),
-        planVsPriceDiff: findCol(['계획대비\\n단가차이', '단가차이']),
+        planVsUsageDiff: findCol(['계획대비 사용량', '사용량차이', '사용량 차이']),
+        planVsPriceDiff: findCol(['계획대비 단가', '단가차이', '단가 차이']),
       };
       
-      // 자재명은 보통 '-3' 컬럼 (col index 14) 에 있음
-      // 자재그룹 설명은 '-' 컬럼 (col index 3)
-      const matDescCol = headers.indexOf('-');
+      // 자재명이 "-3" 컬럼에 있는 경우 (원재료 형식)
+      if (colMap.matName < 0) {
+        const dashCol = headers.indexOf('-3');
+        if (dashCol >= 0) colMap.matName = dashCol;
+      }
+      // 자재그룹 설명이 "-" 컬럼에 있는 경우
+      if (colMap.matGroupName < 0) {
+        const dashCol = headers.indexOf('-');
+        if (dashCol >= 0) colMap.matGroupName = dashCol;
+      }
       
-      return json.map(row => {
-        const vals = Object.values(row);
-        // json_to_json gives us object with header keys
+      return dataRows.map(row => {
+        const get = (colIdx) => colIdx >= 0 ? (row[headers[colIdx]] ?? '') : '';
+        const getNum = (colIdx) => colIdx >= 0 ? (parseFloat(row[headers[colIdx]]) || 0) : 0;
+        
         return {
-          period: row[headers[colMap.period]] || '',
-          machine: row[headers[colMap.machine]] || '',
-          mat_group_code: row[headers[colMap.matGroupCode]] || '',
-          mat_group_desc: colMap.matGroupDesc >= 0 ? (row[headers[colMap.matGroupDesc]] || '') : (matDescCol >= 0 ? (row[headers[matDescCol]] || '') : ''),
-          product_type: row[headers[colMap.productType]] || '',
-          product_level1: colMap.productLevel1 >= 0 ? (row[headers[colMap.productLevel1]] || '') : '',
-          mat_code: row[headers[colMap.matCode]] || '',
-          mat_name: colMap.matName >= 0 ? (row[headers[colMap.matName]] || '') : '',
-          unit: row[headers[colMap.unit]] || 'KG',
-          total_production: colMap.totalProduction >= 0 ? (row[headers[colMap.totalProduction]] || 0) : 0,
-          production_qty: colMap.productionQty >= 0 ? (row[headers[colMap.productionQty]] || 0) : 0,
-          actual_unit_consumption: colMap.actualUnitConsumption >= 0 ? (row[headers[colMap.actualUnitConsumption]] || 0) : 0,
-          actual_unit_price: colMap.actualUnitPrice >= 0 ? (row[headers[colMap.actualUnitPrice]] || 0) : 0,
-          issue_qty: colMap.issueQty >= 0 ? (row[headers[colMap.issueQty]] || 0) : 0,
-          issue_amount: colMap.issueAmount >= 0 ? (row[headers[colMap.issueAmount]] || 0) : 0,
-          plan_vs_usage_diff: colMap.planVsUsageDiff >= 0 ? (row[headers[colMap.planVsUsageDiff]] || 0) : 0,
-          plan_vs_price_diff: colMap.planVsPriceDiff >= 0 ? (row[headers[colMap.planVsPriceDiff]] || 0) : 0,
+          period: String(get(colMap.period)),
+          machine: String(get(colMap.machine)),
+          mat_group_code: String(get(colMap.matGroupCode)),
+          mat_group_desc: get(colMap.matGroupCategoryName) || get(colMap.matGroupName) || get(colMap.matGroupCategory) || '',
+          product_type: get(colMap.productType) || '',
+          product_level1: get(colMap.productLevel1) || '',
+          mat_code: String(get(colMap.matCode)).replace(/^0+/, '') || String(get(colMap.matCode)),  // Remove leading zeros
+          mat_name: get(colMap.matName) || '',
+          unit: get(colMap.unit) || 'KG',
+          total_production: getNum(colMap.totalProduction),
+          production_qty: getNum(colMap.productionQty),
+          actual_unit_consumption: getNum(colMap.actualUnitConsumption),
+          actual_unit_price: getNum(colMap.actualUnitPrice),
+          issue_qty: getNum(colMap.issueQty),
+          issue_amount: getNum(colMap.issueAmount),
+          plan_vs_usage_diff: getNum(colMap.planVsUsageDiff),
+          plan_vs_price_diff: getNum(colMap.planVsPriceDiff),
         };
-      }).filter(r => r.period && r.machine && r.mat_code);
+      }).filter(r => r.period && r.machine && r.mat_code && r.mat_code !== '0');
     }
 
     function processFile(file) {

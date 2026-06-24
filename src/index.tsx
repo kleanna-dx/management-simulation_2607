@@ -403,7 +403,9 @@ app.post('/api/upload/smart', async (c) => {
   for (const row of rows) {
     const matCode = row.mat_code
     if (!matCode || matMap.has(matCode)) continue
-    const category = (row.mat_group_desc || '').includes('펄프') ? 'RAW' : 'RAW'  // 펄프/고지 모두 RAW
+    // 카테고리 분류: 펄프/고지 → RAW, 약품/기타 → SUB
+    const desc = (row.mat_group_desc || '').toLowerCase()
+    const category = (desc.includes('펄프') || desc.includes('고지')) ? 'RAW' : 'SUB'
     newMaterials.push({ code: matCode, name: row.mat_name || matCode, category, unit: (row.unit || 'KG').toUpperCase() })
     matMap.set(matCode, -1) // placeholder
   }
@@ -433,8 +435,8 @@ app.post('/api/upload/smart', async (c) => {
   const skipped: any[] = []
 
   for (const row of rows) {
-    // Period parsing
-    const periodStr = row.period || ''
+    // Period parsing: "2026.05", "2026-05", 202605, "202605"
+    const periodStr = String(row.period || '')
     let year: number, month: number
     if (periodStr.includes('.')) {
       const parts = periodStr.split('.')
@@ -444,6 +446,10 @@ app.post('/api/upload/smart', async (c) => {
       const parts = periodStr.split('-')
       year = parseInt(parts[0])
       month = parseInt(parts[1])
+    } else if (/^\d{6}$/.test(periodStr)) {
+      // 202605 format
+      year = parseInt(periodStr.substring(0, 4))
+      month = parseInt(periodStr.substring(4, 6))
     } else { skipped.push({ row, reason: 'invalid period' }); continue }
 
     // Unit mapping (생산호기)
