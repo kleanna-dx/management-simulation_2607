@@ -96,6 +96,9 @@ export function mainPage(): string {
           <button onclick="switchTab('upload')" id="tab-upload" class="pill-tab pill-tab-inactive">
             <i class="fas fa-file-excel mr-1.5"></i>데이터 업로드
           </button>
+          <button onclick="switchTab('dataview')" id="tab-dataview" class="pill-tab pill-tab-inactive">
+            <i class="fas fa-database mr-1.5"></i>데이터 조회
+          </button>
           <button onclick="switchTab('input')" id="tab-input" class="pill-tab pill-tab-inactive">
             <i class="fas fa-keyboard mr-1.5"></i>수동 입력
           </button>
@@ -391,6 +394,96 @@ export function mainPage(): string {
       </div>
     </div>
 
+    <!-- Data View Tab (업로드된 데이터 조회) -->
+    <div id="content-dataview" class="hidden fade-in space-y-5">
+      <div class="card p-6">
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700">업로드 데이터 조회</h3>
+            <p class="text-xs text-gray-400 mt-1">데이터베이스에 저장된 원부자재 실적 데이터를 조회합니다.</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-gray-500">호기:</label>
+              <select id="dv-unit" class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm" onchange="loadDataView()">
+                <option value="">전체</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-gray-500">분류:</label>
+              <select id="dv-category" class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm" onchange="loadDataView()">
+                <option value="">전체</option>
+                <option value="RAW">원재료</option>
+                <option value="SUB">부재료</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-gray-500">검색:</label>
+              <input type="text" id="dv-search" placeholder="자재명 검색..." class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-40" oninput="filterDataView()">
+            </div>
+            <button onclick="exportDataViewCSV()" class="bg-green-50 text-green-700 border border-green-200 rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-green-100 transition">
+              <i class="fas fa-download mr-1"></i>CSV 내보내기
+            </button>
+          </div>
+        </div>
+
+        <!-- Summary -->
+        <div id="dv-summary" class="grid grid-cols-4 gap-4 mb-5">
+          <div class="bg-slate-50 rounded-xl p-4 text-center">
+            <p class="text-xs text-gray-400 mb-1">총 레코드</p>
+            <p class="text-xl font-bold text-gray-800 stat-value" id="dv-total-count">-</p>
+          </div>
+          <div class="bg-blue-50 rounded-xl p-4 text-center">
+            <p class="text-xs text-gray-400 mb-1">원재료 (RAW)</p>
+            <p class="text-xl font-bold text-blue-700 stat-value" id="dv-raw-count">-</p>
+          </div>
+          <div class="bg-purple-50 rounded-xl p-4 text-center">
+            <p class="text-xs text-gray-400 mb-1">부재료 (SUB)</p>
+            <p class="text-xl font-bold text-purple-700 stat-value" id="dv-sub-count">-</p>
+          </div>
+          <div class="bg-emerald-50 rounded-xl p-4 text-center">
+            <p class="text-xs text-gray-400 mb-1">총 출고금액</p>
+            <p class="text-xl font-bold text-emerald-700 stat-value" id="dv-total-cost">-</p>
+          </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="overflow-x-auto max-h-[600px] overflow-y-auto border border-gray-100 rounded-xl">
+          <table class="data-table" id="dv-table">
+            <thead class="sticky top-0 z-10">
+              <tr>
+                <th class="cursor-pointer hover:text-primary-600" onclick="sortDataView('unit')">호기 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="cursor-pointer hover:text-primary-600" onclick="sortDataView('category')">분류 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="cursor-pointer hover:text-primary-600" onclick="sortDataView('code')">자재코드 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="cursor-pointer hover:text-primary-600" onclick="sortDataView('name')">자재명 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="cursor-pointer hover:text-primary-600" onclick="sortDataView('year')">연도 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="cursor-pointer hover:text-primary-600" onclick="sortDataView('month')">월 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="text-right cursor-pointer hover:text-primary-600" onclick="sortDataView('usage_qty')">출고수량 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="text-right cursor-pointer hover:text-primary-600" onclick="sortDataView('unit_price')">단가 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="text-right cursor-pointer hover:text-primary-600" onclick="sortDataView('total_cost')">출고금액 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
+                <th class="text-right cursor-pointer hover:text-primary-600" onclick="sortDataView('production_qty')">생산량 <i class="fas fa-sort text-gray-300 ml-1"></i></th>
+                <th>비고</th>
+              </tr>
+            </thead>
+            <tbody id="dv-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex items-center justify-between mt-4">
+          <p class="text-xs text-gray-400" id="dv-page-info">-</p>
+          <div class="flex items-center gap-2">
+            <button onclick="dvChangePage(-1)" class="px-3 py-1.5 text-xs bg-gray-100 rounded-lg hover:bg-gray-200 transition" id="dv-prev-btn" disabled>
+              <i class="fas fa-chevron-left mr-1"></i>이전
+            </button>
+            <button onclick="dvChangePage(1)" class="px-3 py-1.5 text-xs bg-gray-100 rounded-lg hover:bg-gray-200 transition" id="dv-next-btn" disabled>
+              다음<i class="fas fa-chevron-right ml-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Input Tab -->
     <div id="content-input" class="hidden fade-in">
       <div class="card p-6">
@@ -675,7 +768,7 @@ export function mainPage(): string {
     });
 
     function switchTab(tab) {
-      ['dashboard','detail','upload','input','master','simulation','bom'].forEach(t => {
+      ['dashboard','detail','upload','dataview','input','master','simulation','bom'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.add('pill-tab-inactive'); }
@@ -687,6 +780,7 @@ export function mainPage(): string {
       if (tab === 'master') { loadUnitsList(); loadMaterialsList(); loadProductionList(); }
       if (tab === 'simulation') { loadSimProducts(); loadSimHistory(); }
       if (tab === 'bom') { loadProductsBom(); }
+      if (tab === 'dataview') { initDataView(); }
     }
 
     function setUnitFilter(id) {
@@ -1359,6 +1453,175 @@ export function mainPage(): string {
       if (!confirm('삭제하시겠습니까?')) return;
       await fetch('/api/bom/'+id,{method:'DELETE'});
       loadProductsBom();
+    }
+
+    // ===== Data View (데이터 조회) =====
+    let dvAllData = [];
+    let dvFilteredData = [];
+    let dvCurrentPage = 0;
+    const dvPageSize = 50;
+    let dvSortKey = 'unit';
+    let dvSortAsc = true;
+
+    async function initDataView() {
+      // Populate unit filter
+      const unitSel = document.getElementById('dv-unit');
+      if (unitSel.options.length <= 1 && unitsCache.length) {
+        unitsCache.forEach(u => {
+          const opt = document.createElement('option');
+          opt.value = u.id;
+          opt.textContent = u.unit_name + ' (' + u.unit_code + ')';
+          unitSel.appendChild(opt);
+        });
+      }
+      await loadDataView();
+    }
+
+    async function loadDataView() {
+      const year = document.getElementById('analysisYear').value;
+      const month = document.getElementById('analysisMonth').value;
+      const unitId = document.getElementById('dv-unit').value;
+      const category = document.getElementById('dv-category').value;
+
+      let url = '/api/records?year=' + year + '&month=' + month;
+      if (unitId) url += '&unit_id=' + unitId;
+
+      const records = await fetch(url).then(r => r.json());
+      
+      // Enrich with material info
+      const matById = {};
+      materialsCache.forEach(m => { matById[m.id] = m; });
+      const unitById = {};
+      unitsCache.forEach(u => { unitById[u.id] = u; });
+
+      dvAllData = records.map(r => {
+        const mat = matById[r.material_id] || {};
+        const unit = unitById[r.unit_id] || {};
+        return {
+          ...r,
+          unit_code: unit.unit_code || '',
+          unit_name: unit.unit_name || '',
+          material_code: mat.material_code || '',
+          material_name: mat.material_name || '',
+          category: mat.category || '',
+          total_cost: r.usage_qty * r.unit_price
+        };
+      });
+
+      // Apply category filter
+      if (category) {
+        dvAllData = dvAllData.filter(d => d.category === category);
+      }
+
+      dvCurrentPage = 0;
+      filterDataView();
+    }
+
+    function filterDataView() {
+      const search = (document.getElementById('dv-search').value || '').toLowerCase();
+      dvFilteredData = dvAllData.filter(d => {
+        if (!search) return true;
+        return d.material_name.toLowerCase().includes(search) || 
+               d.material_code.includes(search) ||
+               d.unit_code.toLowerCase().includes(search) ||
+               (d.notes || '').toLowerCase().includes(search);
+      });
+      applySortAndRender();
+    }
+
+    function sortDataView(key) {
+      if (dvSortKey === key) {
+        dvSortAsc = !dvSortAsc;
+      } else {
+        dvSortKey = key;
+        dvSortAsc = true;
+      }
+      applySortAndRender();
+    }
+
+    function applySortAndRender() {
+      const keyMap = {
+        'unit': 'unit_code', 'category': 'category', 'code': 'material_code',
+        'name': 'material_name', 'year': 'year', 'month': 'month',
+        'usage_qty': 'usage_qty', 'unit_price': 'unit_price', 
+        'total_cost': 'total_cost', 'production_qty': 'production_qty'
+      };
+      const field = keyMap[dvSortKey] || 'unit_code';
+      dvFilteredData.sort((a, b) => {
+        let va = a[field], vb = b[field];
+        if (typeof va === 'string') { va = va.toLowerCase(); vb = (vb||'').toLowerCase(); }
+        if (va < vb) return dvSortAsc ? -1 : 1;
+        if (va > vb) return dvSortAsc ? 1 : -1;
+        return 0;
+      });
+      renderDataView();
+    }
+
+    function renderDataView() {
+      // Summary
+      const rawData = dvFilteredData.filter(d => d.category === 'RAW');
+      const subData = dvFilteredData.filter(d => d.category === 'SUB');
+      const totalCost = dvFilteredData.reduce((s, d) => s + d.total_cost, 0);
+      
+      document.getElementById('dv-total-count').textContent = dvFilteredData.length.toLocaleString() + '건';
+      document.getElementById('dv-raw-count').textContent = rawData.length.toLocaleString() + '건';
+      document.getElementById('dv-sub-count').textContent = subData.length.toLocaleString() + '건';
+      document.getElementById('dv-total-cost').textContent = (totalCost / 100000000).toFixed(0) + '억원';
+
+      // Table
+      const start = dvCurrentPage * dvPageSize;
+      const pageData = dvFilteredData.slice(start, start + dvPageSize);
+      const tbody = document.getElementById('dv-tbody');
+      
+      if (pageData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-gray-400 py-12"><i class="fas fa-inbox text-3xl mb-3 block text-gray-200"></i>데이터가 없습니다.</td></tr>';
+      } else {
+        tbody.innerHTML = pageData.map(d => {
+          const chipClass = d.unit_code === 'PM2' ? 'unit-chip-pm2' : d.unit_code === 'PM3' ? 'unit-chip-pm3' : d.unit_code === 'CHEM' ? 'unit-chip-chem' : 'unit-chip-tissue';
+          const catLabel = d.category === 'RAW' ? '<span class="text-xs px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded font-medium">원재료</span>' : '<span class="text-xs px-1.5 py-0.5 bg-teal-50 text-teal-700 rounded font-medium">부재료</span>';
+          return '<tr>' +
+            '<td><span class="unit-chip ' + chipClass + '">' + d.unit_code + '</span></td>' +
+            '<td>' + catLabel + '</td>' +
+            '<td class="text-xs text-gray-500 font-mono">' + d.material_code + '</td>' +
+            '<td class="font-medium">' + d.material_name + '</td>' +
+            '<td class="text-center">' + d.year + '</td>' +
+            '<td class="text-center">' + d.month + '</td>' +
+            '<td class="text-right font-mono">' + (d.usage_qty || 0).toLocaleString() + '</td>' +
+            '<td class="text-right font-mono">' + (d.unit_price || 0).toLocaleString() + '원</td>' +
+            '<td class="text-right font-mono font-semibold">' + Math.round(d.total_cost / 10000).toLocaleString() + '만원</td>' +
+            '<td class="text-right font-mono text-gray-500">' + Math.round(d.production_qty || 0).toLocaleString() + '</td>' +
+            '<td class="text-xs text-gray-400 max-w-[150px] truncate" title="' + (d.notes||'').replace(/"/g,'&quot;') + '">' + (d.notes || '-') + '</td>' +
+          '</tr>';
+        }).join('');
+      }
+
+      // Pagination
+      const totalPages = Math.ceil(dvFilteredData.length / dvPageSize);
+      document.getElementById('dv-page-info').textContent = 
+        dvFilteredData.length > 0 ? (start+1) + '~' + Math.min(start+dvPageSize, dvFilteredData.length) + ' / ' + dvFilteredData.length + '건 (페이지 ' + (dvCurrentPage+1) + '/' + totalPages + ')' : '데이터 없음';
+      document.getElementById('dv-prev-btn').disabled = dvCurrentPage === 0;
+      document.getElementById('dv-next-btn').disabled = dvCurrentPage >= totalPages - 1;
+    }
+
+    function dvChangePage(dir) {
+      const totalPages = Math.ceil(dvFilteredData.length / dvPageSize);
+      dvCurrentPage = Math.max(0, Math.min(totalPages - 1, dvCurrentPage + dir));
+      renderDataView();
+    }
+
+    function exportDataViewCSV() {
+      if (dvFilteredData.length === 0) { alert('내보낼 데이터가 없습니다.'); return; }
+      const headers = ['호기','분류','자재코드','자재명','연도','월','출고수량','단가','출고금액','생산량','비고'];
+      const rows = dvFilteredData.map(d => [
+        d.unit_code, d.category === 'RAW' ? '원재료' : '부재료', d.material_code, d.material_name,
+        d.year, d.month, d.usage_qty, d.unit_price, d.total_cost, Math.round(d.production_qty||0), d.notes || ''
+      ]);
+      const bom = '\uFEFF' + [headers, ...rows].map(r => r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
+      const blob = new Blob([bom], {type: 'text/csv;charset=utf-8;'});
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'material_data_' + document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0') + '.csv';
+      link.click();
     }
   </script>
 </body>
