@@ -962,6 +962,7 @@ export function mainPage(): string {
 
     // Excel Upload
     let uploadMode = 'simple'; // 'simple' or 'sap'
+    let uploadRawData = []; // SAP 원본 37컬럼 전체 데이터
     function handleDrop(e) { e.preventDefault(); e.currentTarget.classList.remove('border-primary-400','bg-primary-50/50'); processFile(e.dataTransfer.files[0]); }
     function handleFileSelect(e) { processFile(e.target.files[0]); }
     
@@ -986,56 +987,75 @@ export function mainPage(): string {
       // SAP 컬럼 인덱스 매핑 (헤더에서 찾기)
       const findCol = (keywords) => headers.findIndex(h => h && keywords.some(k => h.includes(k)));
       
-      // 부재료 형식: "자재명" 컬럼 있음, 원재료 형식: "-3" 컬럼에 자재명
       const colMap = {
         period: findCol(['달력연도/월', '달력연도']),
+        processCode: findCol(['공정']),
+        processName: findCol(['공정명']),
         machine: findCol(['생산호기']),
         machineName: findCol(['생산호기명']),
-        matGroupCode: findCol(['자재 그룹']),
-        matGroupName: findCol(['자재 그룹명']),
-        productType: findCol(['지종/제품구분']),
         productLevel1: findCol(['제품계층 구조레벨 1', '제품계층']),
-        matGroupCategory: findCol(['자재그룹(대분류)']),
-        matGroupCategoryName: findCol(['자재그룹(대분류)명']),
+        productLevel1Name: findCol(['제품계층 구조레벨 1명', '제품계층 구조레벨 1']),
+        productLevel2: findCol(['제품 계층구조레벨 2']),
+        productLevel2Name: findCol(['제품 계층구조레벨 2명']),
+        productLevel3: findCol(['제품 계층구조레벨 3']),
+        productLevel3Name: findCol(['제품 계층구조레벨 3명']),
+        productLevel4: findCol(['제품 계층구조레벨 4']),
+        productLevel4Name: findCol(['제품 계층구조레벨 4명']),
         matCode: findCol(['자재']),
         matName: findCol(['자재명']),
-        unit: findCol(['단위']),
+        matGroupCode: findCol(['자재 그룹']),
+        matGroupName: findCol(['자재 그룹명']),
+        matGroupMajor: findCol(['자재그룹(대분류)']),
+        matGroupMajorName: findCol(['자재그룹(대분류)명']),
+        productTypeCode: findCol(['지종/제품구분']),
+        productTypeName: findCol(['지종/제품구분명']),
+        planUnitConsumption: findCol(['계획 원단위(KG/Ton)']),
+        componentQty: findCol(['구성부품수량']),
+        baseQty: findCol(['기준수량']),
+        planUnitConsumptionWaste: findCol(['계획 원단위(폐품포함)']),
+        planUnitPrice: findCol(['계획 단가']),
+        planAllocQty: findCol(['계획 배부수량']),
         totalProduction: findCol(['총생산량']),
         productionQty: findCol(['생산수량']),
+        wasteQty: findCol(['폐품수량']),
         actualUnitConsumption: findCol(['실제 원단위(KG/Ton)']),
+        actualAllocQty: findCol(['실제 배부수량']),
         actualUnitPrice: findCol(['실제단가']),
-        actualDistQty: findCol(['실제 배부수량']),
         issueQty: findCol(['출고수량']),
         issueAmount: findCol(['출고금액']),
         planVsUsageDiff: findCol(['계획대비 사용량', '사용량차이', '사용량 차이']),
         planVsPriceDiff: findCol(['계획대비 단가', '단가차이', '단가 차이']),
       };
-      
-      // 자재명이 "-3" 컬럼에 있는 경우 (원재료 형식)
-      if (colMap.matName < 0) {
-        const dashCol = headers.indexOf('-3');
-        if (dashCol >= 0) colMap.matName = dashCol;
-      }
-      // 자재그룹 설명이 "-" 컬럼에 있는 경우
-      if (colMap.matGroupName < 0) {
-        const dashCol = headers.indexOf('-');
-        if (dashCol >= 0) colMap.matGroupName = dashCol;
+
+      // productLevel1Name이 productLevel1과 같은 인덱스를 가리키면 다시 찾기
+      if (colMap.productLevel1Name === colMap.productLevel1) {
+        colMap.productLevel1Name = headers.findIndex((h,i) => i !== colMap.productLevel1 && h && h.includes('제품계층 구조레벨 1'));
       }
       
-      return dataRows.map(row => {
-        const get = (colIdx) => colIdx >= 0 ? (row[headers[colIdx]] ?? '') : '';
+      const results = { rows: [], rawRows: [] };
+      
+      dataRows.forEach(row => {
+        const get = (colIdx) => colIdx >= 0 ? String(row[headers[colIdx]] ?? '') : '';
         const getNum = (colIdx) => colIdx >= 0 ? (parseFloat(row[headers[colIdx]]) || 0) : 0;
         
-        return {
-          period: String(get(colMap.period)),
-          machine: String(get(colMap.machine)),
-          mat_group_code: String(get(colMap.matGroupCode)),
-          mat_group_desc: get(colMap.matGroupCategoryName) || get(colMap.matGroupName) || get(colMap.matGroupCategory) || '',
-          product_type: get(colMap.productType) || '',
-          product_level1: get(colMap.productLevel1) || '',
-          mat_code: String(get(colMap.matCode)).replace(/^0+/, '') || String(get(colMap.matCode)),  // Remove leading zeros
-          mat_name: get(colMap.matName) || '',
-          unit: get(colMap.unit) || 'KG',
+        const period = get(colMap.period);
+        const machine = get(colMap.machine);
+        const matCodeRaw = get(colMap.matCode);
+        const matCode = matCodeRaw.replace(/^0+/, '') || matCodeRaw;
+        
+        if (!period || !machine || !matCode || matCode === '0') return;
+        
+        // monthly_records용 (집계 대상)
+        results.rows.push({
+          period: period,
+          machine: machine,
+          mat_group_code: get(colMap.matGroupCode),
+          mat_group_desc: get(colMap.matGroupMajorName) || get(colMap.matGroupName) || '',
+          product_type: get(colMap.productTypeName) || get(colMap.productTypeCode) || '',
+          product_level1: get(colMap.productLevel1),
+          mat_code: matCode,
+          mat_name: get(colMap.matName),
+          unit: 'KG',
           total_production: getNum(colMap.totalProduction),
           production_qty: getNum(colMap.productionQty),
           actual_unit_consumption: getNum(colMap.actualUnitConsumption),
@@ -1044,8 +1064,51 @@ export function mainPage(): string {
           issue_amount: getNum(colMap.issueAmount),
           plan_vs_usage_diff: getNum(colMap.planVsUsageDiff),
           plan_vs_price_diff: getNum(colMap.planVsPriceDiff),
-        };
-      }).filter(r => r.period && r.machine && r.mat_code && r.mat_code !== '0');
+        });
+        
+        // raw_records용 (37컬럼 전체, 원본 그대로)
+        results.rawRows.push({
+          calendar_ym: period,
+          process_code: get(colMap.processCode),
+          process_name: get(colMap.processName),
+          machine_code: machine,
+          machine_name: get(colMap.machineName),
+          product_level1: get(colMap.productLevel1),
+          product_level1_name: get(colMap.productLevel1Name),
+          product_level2: get(colMap.productLevel2),
+          product_level2_name: get(colMap.productLevel2Name),
+          product_level3: get(colMap.productLevel3),
+          product_level3_name: get(colMap.productLevel3Name),
+          product_level4: get(colMap.productLevel4),
+          product_level4_name: get(colMap.productLevel4Name),
+          material_code: matCodeRaw,
+          material_name: get(colMap.matName),
+          material_group: get(colMap.matGroupCode),
+          material_group_name: get(colMap.matGroupName),
+          material_group_major: get(colMap.matGroupMajor),
+          material_group_major_name: get(colMap.matGroupMajorName),
+          product_type_code: get(colMap.productTypeCode),
+          product_type_name: get(colMap.productTypeName),
+          plan_unit_consumption: getNum(colMap.planUnitConsumption),
+          component_qty: getNum(colMap.componentQty),
+          base_qty: getNum(colMap.baseQty),
+          plan_unit_consumption_waste: getNum(colMap.planUnitConsumptionWaste),
+          plan_unit_price: getNum(colMap.planUnitPrice),
+          plan_alloc_qty: getNum(colMap.planAllocQty),
+          total_production: getNum(colMap.totalProduction),
+          production_qty: getNum(colMap.productionQty),
+          waste_qty: getNum(colMap.wasteQty),
+          actual_unit_consumption: getNum(colMap.actualUnitConsumption),
+          actual_alloc_qty: getNum(colMap.actualAllocQty),
+          actual_unit_price: getNum(colMap.actualUnitPrice),
+          issue_qty: getNum(colMap.issueQty),
+          issue_amount: getNum(colMap.issueAmount),
+          plan_vs_usage_diff: getNum(colMap.planVsUsageDiff),
+          plan_vs_price_diff: getNum(colMap.planVsPriceDiff),
+        });
+      });
+      
+      return results;
     }
 
     function processFile(file) {
@@ -1063,13 +1126,14 @@ export function mainPage(): string {
         if (isSAP) {
           uploadMode = 'sap';
           const parsed = parseSAPData(json, headers);
-          uploadData = parsed;
+          uploadData = parsed.rows;
+          uploadRawData = parsed.rawRows;
           
           document.getElementById('upload-area').classList.add('hidden');
           document.getElementById('upload-preview').classList.remove('hidden');
           document.getElementById('upload-filename').textContent = file.name;
-          document.getElementById('upload-info').innerHTML = '<span class="inline-flex items-center px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs font-medium mr-2">SAP 형식 감지</span>' + parsed.length + '행 (유효 데이터)';
-          document.getElementById('upload-count').textContent = parsed.length;
+          document.getElementById('upload-info').innerHTML = '<span class="inline-flex items-center px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs font-medium mr-2">SAP 형식 감지</span>' + parsed.rows.length + '행 (유효 데이터) | 원본 ' + parsed.rawRows.length + '행 전체 저장';
+          document.getElementById('upload-count').textContent = parsed.rows.length;
           
           // SAP preview table
           const previewHeaders = ['기간','호기','자재코드','자재명','자재그룹','제품구분','출고수량','실제단가','출고금액','생산수량'];
@@ -1097,32 +1161,50 @@ export function mainPage(): string {
       if (!uploadData.length) return;
       
       if (uploadMode === 'sap') {
-        // SAP 형식: 스마트 업로드 API 호출
+        // SAP 형식: 스마트 업로드 API 호출 (집계 + 원본 전체)
         const btn = event.target;
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>처리중...';
         try {
-          const res = await fetch('/api/upload/smart', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ rows: uploadData })
-          });
-          const result = await res.json();
-          if (res.ok && result.success) {
-            alert('업로드 완료!\\n\\n' +
-              '총 입력 행: ' + result.summary.total_rows + '건\\n' +
-              '등록된 레코드: ' + result.summary.records_inserted + '건\\n' +
-              '신규 자재 등록: ' + result.summary.new_materials + '건\\n' +
-              '스킵: ' + result.summary.skipped + '건\\n' +
-              '(동일 호기/자재/월 데이터는 합산됨)');
-            resetUpload();
-            loadAnalysis();
-            // Refresh caches
-            unitsCache = await fetch('/api/units').then(r=>r.json());
-            materialsCache = await fetch('/api/materials').then(r=>r.json());
-          } else {
-            alert('업로드 실패: ' + (result.error || '알 수 없는 오류'));
+          // 원본 데이터를 청크로 분할 업로드
+          const chunkSize = 500;
+          const rawData = uploadRawData || [];
+          let totalRawInserted = 0;
+          let mainResult = null;
+          
+          for (let i = 0; i < Math.max(rawData.length, 1); i += chunkSize) {
+            const rawChunk = rawData.slice(i, i + chunkSize);
+            const payload = {
+              rows: i === 0 ? uploadData : [],  // monthly rows는 첫 청크에만
+              rawRows: rawChunk,
+              fileName: document.getElementById('upload-filename')?.textContent || ''
+            };
+            
+            const res = await fetch('/api/upload/smart', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+            if (!res.ok || !result.success) {
+              alert('업로드 실패 (청크 ' + i + '): ' + (result.error || '알 수 없는 오류'));
+              return;
+            }
+            totalRawInserted += rawChunk.length;
+            if (i === 0) mainResult = result;
           }
+          
+          alert('업로드 완료!\\n\\n' +
+            '총 입력 행: ' + (mainResult?.summary?.total_rows || uploadData.length) + '건\\n' +
+            '등록된 레코드: ' + (mainResult?.summary?.records_inserted || 0) + '건\\n' +
+            '원본 데이터 저장: ' + totalRawInserted + '건 (37컬럼 전체)\\n' +
+            '신규 자재 등록: ' + (mainResult?.summary?.new_materials || 0) + '건\\n' +
+            '스킵: ' + (mainResult?.summary?.skipped || 0) + '건\\n' +
+            '(동일 호기/자재/월 데이터는 합산됨)');
+          resetUpload();
+          loadAnalysis();
+          unitsCache = await fetch('/api/units').then(r=>r.json());
+          materialsCache = await fetch('/api/materials').then(r=>r.json());
         } catch(err) {
           alert('업로드 중 오류: ' + err.message);
         } finally {
@@ -1145,7 +1227,7 @@ export function mainPage(): string {
       }
     }
     
-    function resetUpload() { uploadData=[]; uploadMode='simple'; document.getElementById('upload-area').classList.remove('hidden'); document.getElementById('upload-preview').classList.add('hidden'); document.getElementById('file-input').value=''; }
+    function resetUpload() { uploadData=[]; uploadRawData=[]; uploadMode='simple'; document.getElementById('upload-area').classList.remove('hidden'); document.getElementById('upload-preview').classList.add('hidden'); document.getElementById('file-input').value=''; }
     function downloadTemplate() {
       const t = [
         {호기코드:'PM2',자재코드:'RM-001',년도:2026,월:6,사용량:3200,단가:880000,생산량:12500,비고:''},
