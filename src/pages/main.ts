@@ -864,9 +864,153 @@ export function mainPage(): string {
           </table>
         </div>
       </div>
-    </div>
 
-    <!-- Simulation Tab -->
+      <!-- 매핑 INDEX 기준정보 -->
+      <div class="card p-6 mt-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-database text-indigo-500 mr-1.5"></i>매핑 INDEX 기준정보</h3>
+            <p class="text-xs text-gray-400 mt-0.5">제지/화장지 제품분류 및 원부재료 분류 매핑 기준을 관리합니다.</p>
+          </div>
+        </div>
+        <!-- Sub tabs for master index -->
+        <div class="flex flex-wrap gap-1 mb-4 border-b border-slate-200 pb-3">
+          <button onclick="switchMasterIdx('paper-products')" id="midx-tab-paper-products" class="pill-tab pill-tab-active text-xs !px-3 !py-1.5">제지 제품분류</button>
+          <button onclick="switchMasterIdx('paper-raw')" id="midx-tab-paper-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1.5">제지 원재료</button>
+          <button onclick="switchMasterIdx('paper-sub')" id="midx-tab-paper-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1.5">제지 부재료</button>
+          <button onclick="switchMasterIdx('tissue-products')" id="midx-tab-tissue-products" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1.5">화장지 제품</button>
+          <button onclick="switchMasterIdx('tissue-raw')" id="midx-tab-tissue-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1.5">화장지 원재료</button>
+        </div>
+
+        <!-- 제지 제품분류 -->
+        <div id="midx-paper-products" class="midx-section">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs text-gray-500">제품 계층구조레벨3 / 지종코드 / 지종 / 지종(세부)</span>
+            <div class="flex gap-2">
+              <button onclick="addMasterRow('paper-products')" class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-100"><i class="fas fa-plus mr-1"></i>행 추가</button>
+              <button onclick="clearMasterTable('paper-products')" class="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100"><i class="fas fa-trash mr-1"></i>전체 삭제</button>
+            </div>
+          </div>
+          <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+            <table class="data-table text-xs">
+              <thead class="sticky top-0 bg-white z-10">
+                <tr>
+                  <th class="!py-2 w-8">#</th>
+                  <th class="!py-2">제품 계층구조레벨3</th>
+                  <th class="!py-2">지종코드</th>
+                  <th class="!py-2">지종</th>
+                  <th class="!py-2">지종(세부)</th>
+                  <th class="!py-2 w-16">작업</th>
+                </tr>
+              </thead>
+              <tbody id="midx-paper-products-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 제지 원재료 분류 -->
+        <div id="midx-paper-raw" class="midx-section hidden">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs text-gray-500">분류1 / 자재분류 / 자재(소분류) / 자재코드 / 자재명 / 자재그룹</span>
+            <div class="flex gap-2">
+              <button onclick="addMasterRow('paper-raw')" class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-100"><i class="fas fa-plus mr-1"></i>행 추가</button>
+              <button onclick="clearMasterTable('paper-raw')" class="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100"><i class="fas fa-trash mr-1"></i>전체 삭제</button>
+            </div>
+          </div>
+          <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+            <table class="data-table text-xs">
+              <thead class="sticky top-0 bg-white z-10">
+                <tr>
+                  <th class="!py-2 w-8">#</th>
+                  <th class="!py-2">분류1</th>
+                  <th class="!py-2">자재분류</th>
+                  <th class="!py-2">자재(소분류)</th>
+                  <th class="!py-2">자재코드</th>
+                  <th class="!py-2">자재명</th>
+                  <th class="!py-2">자재그룹</th>
+                  <th class="!py-2 w-16">작업</th>
+                </tr>
+              </thead>
+              <tbody id="midx-paper-raw-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 제지 부재료 분류 -->
+        <div id="midx-paper-sub" class="midx-section hidden">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs text-gray-500">자재코드 / 자재명 / 자재그룹</span>
+            <div class="flex gap-2">
+              <button onclick="addMasterRow('paper-sub')" class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-100"><i class="fas fa-plus mr-1"></i>행 추가</button>
+              <button onclick="clearMasterTable('paper-sub')" class="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100"><i class="fas fa-trash mr-1"></i>전체 삭제</button>
+            </div>
+          </div>
+          <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+            <table class="data-table text-xs">
+              <thead class="sticky top-0 bg-white z-10">
+                <tr>
+                  <th class="!py-2 w-8">#</th>
+                  <th class="!py-2">자재코드</th>
+                  <th class="!py-2">자재명</th>
+                  <th class="!py-2">자재그룹</th>
+                  <th class="!py-2 w-16">작업</th>
+                </tr>
+              </thead>
+              <tbody id="midx-paper-sub-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 화장지 제품분류 -->
+        <div id="midx-tissue-products" class="midx-section hidden">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs text-gray-500">분류 / 제품명</span>
+            <div class="flex gap-2">
+              <button onclick="addMasterRow('tissue-products')" class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-100"><i class="fas fa-plus mr-1"></i>행 추가</button>
+              <button onclick="clearMasterTable('tissue-products')" class="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100"><i class="fas fa-trash mr-1"></i>전체 삭제</button>
+            </div>
+          </div>
+          <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+            <table class="data-table text-xs">
+              <thead class="sticky top-0 bg-white z-10">
+                <tr>
+                  <th class="!py-2 w-8">#</th>
+                  <th class="!py-2">분류</th>
+                  <th class="!py-2">제품명</th>
+                  <th class="!py-2 w-16">작업</th>
+                </tr>
+              </thead>
+              <tbody id="midx-tissue-products-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 화장지 원재료 분류 -->
+        <div id="midx-tissue-raw" class="midx-section hidden">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs text-gray-500">분류 / 자재코드 / 재료명</span>
+            <div class="flex gap-2">
+              <button onclick="addMasterRow('tissue-raw')" class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-100"><i class="fas fa-plus mr-1"></i>행 추가</button>
+              <button onclick="clearMasterTable('tissue-raw')" class="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100"><i class="fas fa-trash mr-1"></i>전체 삭제</button>
+            </div>
+          </div>
+          <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+            <table class="data-table text-xs">
+              <thead class="sticky top-0 bg-white z-10">
+                <tr>
+                  <th class="!py-2 w-8">#</th>
+                  <th class="!py-2">분류</th>
+                  <th class="!py-2">자재코드</th>
+                  <th class="!py-2">재료명</th>
+                  <th class="!py-2 w-16">작업</th>
+                </tr>
+              </thead>
+              <tbody id="midx-tissue-raw-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
     <div id="content-simulation" class="hidden fade-in space-y-5">
       <div class="card p-6">
         <div class="flex items-center justify-between mb-5">
@@ -1022,7 +1166,7 @@ export function mainPage(): string {
       const a = document.getElementById('tab-' + tab);
       if (a) { a.classList.add('pill-tab-active'); a.classList.remove('pill-tab-inactive'); }
       if (tab === 'input') loadRecentRecords();
-      if (tab === 'master') { loadUnitsList(); loadMaterialsList(); loadProductionList(); }
+      if (tab === 'master') { loadUnitsList(); loadMaterialsList(); loadProductionList(); loadMasterIdx(currentMidxTab); }
       if (tab === 'simulation') { loadSimProducts(); loadSimHistory(); }
       if (tab === 'bom') { loadProductsBom(); }
       if (tab === 'dataview') { initDataView(); }
@@ -1043,6 +1187,122 @@ export function mainPage(): string {
       document.getElementById('input-material').innerHTML = m.map(x=>'<option value="'+x.id+'">'+(x.category==='RAW'?'[원]':'[부]')+' '+x.material_name+'</option>').join('');
       document.getElementById('prod-unit').innerHTML = u.map(x=>'<option value="'+x.id+'">'+x.unit_name+'</option>').join('');
       document.getElementById('new-prd-unit').innerHTML = u.map(x=>'<option value="'+x.id+'">'+x.unit_name+'</option>').join('');
+    }
+
+    // ============ 매핑 INDEX 기준정보 ============
+    let currentMidxTab = 'paper-products';
+
+    function switchMasterIdx(tab) {
+      currentMidxTab = tab;
+      document.querySelectorAll('.midx-section').forEach(el => el.classList.add('hidden'));
+      document.getElementById('midx-' + tab).classList.remove('hidden');
+      ['paper-products','paper-raw','paper-sub','tissue-products','tissue-raw'].forEach(t => {
+        const btn = document.getElementById('midx-tab-' + t);
+        if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(t === tab ? 'pill-tab-active' : 'pill-tab-inactive'); }
+      });
+      loadMasterIdx(tab);
+    }
+
+    async function loadMasterIdx(tab) {
+      const res = await fetch('/api/master/' + tab).then(r => r.json());
+      renderMasterIdx(tab, res);
+    }
+
+    function renderMasterIdx(tab, data) {
+      const tbody = document.getElementById('midx-' + tab + '-body');
+      if (!data || data.length === 0) {
+        const colCount = tab === 'paper-products' ? 6 : tab === 'paper-raw' ? 8 : tab === 'paper-sub' ? 5 : tab === 'tissue-products' ? 4 : 5;
+        tbody.innerHTML = '<tr><td colspan="'+colCount+'" class="text-center text-gray-400 py-6">\ub4f1\ub85d\ub41c \ub370\uc774\ud130\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.</td></tr>';
+        return;
+      }
+      if (tab === 'paper-products') {
+        tbody.innerHTML = data.map((d, i) =>
+          '<tr class="hover:bg-blue-50/30">' +
+          '<td class="!py-1.5 text-gray-400">'+(i+1)+'</td>' +
+          '<td class="!py-1.5">'+d.product_hierarchy_level3+'</td>' +
+          '<td class="!py-1.5 font-mono">'+d.grade_code+'</td>' +
+          '<td class="!py-1.5 font-semibold">'+d.grade_name+'</td>' +
+          '<td class="!py-1.5 text-gray-600">'+(d.grade_detail||'-')+'</td>' +
+          '<td class="!py-1.5"><button onclick="deleteMasterRow(&quot;paper-products&quot;,'+d.id+')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>' +
+          '</tr>'
+        ).join('');
+      } else if (tab === 'paper-raw') {
+        tbody.innerHTML = data.map((d, i) =>
+          '<tr class="hover:bg-blue-50/30">' +
+          '<td class="!py-1.5 text-gray-400">'+(i+1)+'</td>' +
+          '<td class="!py-1.5">'+(d.category1||'-')+'</td>' +
+          '<td class="!py-1.5">'+d.material_class+'</td>' +
+          '<td class="!py-1.5">'+d.material_subclass+'</td>' +
+          '<td class="!py-1.5 font-mono">'+d.material_code+'</td>' +
+          '<td class="!py-1.5">'+d.material_name+'</td>' +
+          '<td class="!py-1.5"><span class="px-1.5 py-0.5 bg-slate-100 rounded text-[10px]">'+d.material_group+'</span></td>' +
+          '<td class="!py-1.5"><button onclick="deleteMasterRow(&quot;paper-raw&quot;,'+d.id+')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>' +
+          '</tr>'
+        ).join('');
+      } else if (tab === 'paper-sub') {
+        tbody.innerHTML = data.map((d, i) =>
+          '<tr class="hover:bg-blue-50/30">' +
+          '<td class="!py-1.5 text-gray-400">'+(i+1)+'</td>' +
+          '<td class="!py-1.5 font-mono">'+d.material_code+'</td>' +
+          '<td class="!py-1.5">'+d.material_name+'</td>' +
+          '<td class="!py-1.5"><span class="px-1.5 py-0.5 bg-slate-100 rounded text-[10px]">'+d.material_group+'</span></td>' +
+          '<td class="!py-1.5"><button onclick="deleteMasterRow(&quot;paper-sub&quot;,'+d.id+')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>' +
+          '</tr>'
+        ).join('');
+      } else if (tab === 'tissue-products') {
+        tbody.innerHTML = data.map((d, i) =>
+          '<tr class="hover:bg-blue-50/30">' +
+          '<td class="!py-1.5 text-gray-400">'+(i+1)+'</td>' +
+          '<td class="!py-1.5"><span class="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px]">'+d.category+'</span></td>' +
+          '<td class="!py-1.5">'+d.product_name+'</td>' +
+          '<td class="!py-1.5"><button onclick="deleteMasterRow(&quot;tissue-products&quot;,'+d.id+')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>' +
+          '</tr>'
+        ).join('');
+      } else if (tab === 'tissue-raw') {
+        tbody.innerHTML = data.map((d, i) =>
+          '<tr class="hover:bg-blue-50/30">' +
+          '<td class="!py-1.5 text-gray-400">'+(i+1)+'</td>' +
+          '<td class="!py-1.5"><span class="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px]">'+d.category+'</span></td>' +
+          '<td class="!py-1.5 font-mono">'+d.material_code+'</td>' +
+          '<td class="!py-1.5">'+d.material_name+'</td>' +
+          '<td class="!py-1.5"><button onclick="deleteMasterRow(&quot;tissue-raw&quot;,'+d.id+')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>' +
+          '</tr>'
+        ).join('');
+      }
+    }
+
+    async function deleteMasterRow(tab, id) {
+      if (!confirm('\uc0ad\uc81c\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?')) return;
+      await fetch('/api/master/' + tab + '/' + id, { method: 'DELETE' });
+      loadMasterIdx(tab);
+    }
+
+    async function clearMasterTable(tab) {
+      if (!confirm('\uc804\uccb4 \ub370\uc774\ud130\ub97c \uc0ad\uc81c\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c? \uc774 \uc791\uc5c5\uc740 \ub418\ub3cc\ub9b4 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.')) return;
+      await fetch('/api/master/' + tab, { method: 'DELETE' });
+      loadMasterIdx(tab);
+    }
+
+    function addMasterRow(tab) {
+      let body;
+      if (tab === 'paper-products') {
+        body = { product_hierarchy_level3: prompt('\uc81c\ud488 \uacc4\uce35\uad6c\uc870\ub808\ubca84 3:') || '', grade_code: prompt('\uc9c0\uc885\ucf54\ub4dc:') || '', grade_name: prompt('\uc9c0\uc885:') || '', grade_detail: prompt('\uc9c0\uc885(\uc138\ubd80):') || '' };
+        if (!body.grade_code || !body.grade_name) return;
+      } else if (tab === 'paper-raw') {
+        body = { category1: prompt('\ubd84\ub8581:') || '', material_class: prompt('\uc790\uc7ac\ubd84\ub958:') || '', material_subclass: prompt('\uc790\uc7ac(\uc18c\ubd84\ub958):') || '', material_code: prompt('\uc790\uc7ac\ucf54\ub4dc:') || '', material_name: prompt('\uc790\uc7ac\uba85:') || '', material_group: prompt('\uc790\uc7ac\uadf8\ub8f9:') || '' };
+        if (!body.material_code || !body.material_name) return;
+      } else if (tab === 'paper-sub') {
+        body = { material_code: prompt('\uc790\uc7ac\ucf54\ub4dc:') || '', material_name: prompt('\uc790\uc7ac\uba85:') || '', material_group: prompt('\uc790\uc7ac\uadf8\ub8f9:') || '' };
+        if (!body.material_code || !body.material_name) return;
+      } else if (tab === 'tissue-products') {
+        body = { category: prompt('\ubd84\ub958:') || '', product_name: prompt('\uc81c\ud488\uba85:') || '' };
+        if (!body.category || !body.product_name) return;
+      } else if (tab === 'tissue-raw') {
+        body = { category: prompt('\ubd84\ub958:') || '', material_code: prompt('\uc790\uc7ac\ucf54\ub4dc:') || '', material_name: prompt('\uc7ac\ub8cc\uba85:') || '' };
+        if (!body.material_code || !body.material_name) return;
+      }
+      fetch('/api/master/' + tab, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
+        .then(() => loadMasterIdx(tab));
     }
 
     async function loadAnalysis() {

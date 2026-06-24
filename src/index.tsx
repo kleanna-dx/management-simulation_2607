@@ -964,6 +964,243 @@ app.get('/api/raw-records/summary', async (c) => {
   return c.json(result.results)
 })
 
+// ============ 기준정보 (Master Index) API ============
+
+// --- 제지 제품분류 ---
+app.get('/api/master/paper-products', async (c) => {
+  const db = c.env.DB
+  const results = await db.prepare('SELECT * FROM master_paper_products ORDER BY grade_name, grade_code').all()
+  return c.json(results.results)
+})
+
+app.post('/api/master/paper-products', async (c) => {
+  const db = c.env.DB
+  const { product_hierarchy_level3, grade_code, grade_name, grade_detail } = await c.req.json()
+  const result = await db.prepare(
+    'INSERT INTO master_paper_products (product_hierarchy_level3, grade_code, grade_name, grade_detail) VALUES (?, ?, ?, ?)'
+  ).bind(product_hierarchy_level3, grade_code, grade_name, grade_detail || '').run()
+  return c.json({ success: true, id: result.meta.last_row_id })
+})
+
+app.post('/api/master/paper-products/bulk', async (c) => {
+  const db = c.env.DB
+  const { records } = await c.req.json()
+  const stmt = db.prepare('INSERT INTO master_paper_products (product_hierarchy_level3, grade_code, grade_name, grade_detail) VALUES (?, ?, ?, ?)')
+  const batch = records.map((r: any) => stmt.bind(r.product_hierarchy_level3, r.grade_code, r.grade_name, r.grade_detail || ''))
+  await db.batch(batch)
+  return c.json({ success: true, count: records.length })
+})
+
+app.put('/api/master/paper-products/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  const { product_hierarchy_level3, grade_code, grade_name, grade_detail } = await c.req.json()
+  await db.prepare(
+    'UPDATE master_paper_products SET product_hierarchy_level3=?, grade_code=?, grade_name=?, grade_detail=?, updated_at=CURRENT_TIMESTAMP WHERE id=?'
+  ).bind(product_hierarchy_level3, grade_code, grade_name, grade_detail || '', id).run()
+  return c.json({ success: true })
+})
+
+app.delete('/api/master/paper-products/:id', async (c) => {
+  const db = c.env.DB
+  await db.prepare('DELETE FROM master_paper_products WHERE id=?').bind(c.req.param('id')).run()
+  return c.json({ success: true })
+})
+
+app.delete('/api/master/paper-products', async (c) => {
+  const db = c.env.DB
+  await db.prepare('DELETE FROM master_paper_products').run()
+  return c.json({ success: true })
+})
+
+// --- 제지 원재료 분류 ---
+app.get('/api/master/paper-raw', async (c) => {
+  const db = c.env.DB
+  const results = await db.prepare('SELECT * FROM master_paper_raw_materials ORDER BY material_class, material_subclass, material_code').all()
+  return c.json(results.results)
+})
+
+app.post('/api/master/paper-raw', async (c) => {
+  const db = c.env.DB
+  const { category1, material_class, material_subclass, material_code, material_name, material_group } = await c.req.json()
+  const result = await db.prepare(
+    'INSERT INTO master_paper_raw_materials (category1, material_class, material_subclass, material_code, material_name, material_group) VALUES (?, ?, ?, ?, ?, ?)'
+  ).bind(category1 || '', material_class, material_subclass, material_code, material_name, material_group).run()
+  return c.json({ success: true, id: result.meta.last_row_id })
+})
+
+app.post('/api/master/paper-raw/bulk', async (c) => {
+  const db = c.env.DB
+  const { records } = await c.req.json()
+  const stmt = db.prepare('INSERT INTO master_paper_raw_materials (category1, material_class, material_subclass, material_code, material_name, material_group) VALUES (?, ?, ?, ?, ?, ?)')
+  const batch = records.map((r: any) => stmt.bind(r.category1 || '', r.material_class, r.material_subclass, r.material_code, r.material_name, r.material_group))
+  await db.batch(batch)
+  return c.json({ success: true, count: records.length })
+})
+
+app.put('/api/master/paper-raw/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  const { category1, material_class, material_subclass, material_code, material_name, material_group } = await c.req.json()
+  await db.prepare(
+    'UPDATE master_paper_raw_materials SET category1=?, material_class=?, material_subclass=?, material_code=?, material_name=?, material_group=?, updated_at=CURRENT_TIMESTAMP WHERE id=?'
+  ).bind(category1 || '', material_class, material_subclass, material_code, material_name, material_group, id).run()
+  return c.json({ success: true })
+})
+
+app.delete('/api/master/paper-raw/:id', async (c) => {
+  const db = c.env.DB
+  await db.prepare('DELETE FROM master_paper_raw_materials WHERE id=?').bind(c.req.param('id')).run()
+  return c.json({ success: true })
+})
+
+app.delete('/api/master/paper-raw', async (c) => {
+  const db = c.env.DB
+  await db.prepare('DELETE FROM master_paper_raw_materials').run()
+  return c.json({ success: true })
+})
+
+// --- 제지 부재료 분류 ---
+app.get('/api/master/paper-sub', async (c) => {
+  const db = c.env.DB
+  const results = await db.prepare('SELECT * FROM master_paper_sub_materials ORDER BY material_group, material_code').all()
+  return c.json(results.results)
+})
+
+app.post('/api/master/paper-sub', async (c) => {
+  const db = c.env.DB
+  const { material_code, material_name, material_group } = await c.req.json()
+  const result = await db.prepare(
+    'INSERT INTO master_paper_sub_materials (material_code, material_name, material_group) VALUES (?, ?, ?)'
+  ).bind(material_code, material_name, material_group).run()
+  return c.json({ success: true, id: result.meta.last_row_id })
+})
+
+app.post('/api/master/paper-sub/bulk', async (c) => {
+  const db = c.env.DB
+  const { records } = await c.req.json()
+  const stmt = db.prepare('INSERT INTO master_paper_sub_materials (material_code, material_name, material_group) VALUES (?, ?, ?)')
+  const batch = records.map((r: any) => stmt.bind(r.material_code, r.material_name, r.material_group))
+  await db.batch(batch)
+  return c.json({ success: true, count: records.length })
+})
+
+app.put('/api/master/paper-sub/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  const { material_code, material_name, material_group } = await c.req.json()
+  await db.prepare(
+    'UPDATE master_paper_sub_materials SET material_code=?, material_name=?, material_group=?, updated_at=CURRENT_TIMESTAMP WHERE id=?'
+  ).bind(material_code, material_name, material_group, id).run()
+  return c.json({ success: true })
+})
+
+app.delete('/api/master/paper-sub/:id', async (c) => {
+  const db = c.env.DB
+  await db.prepare('DELETE FROM master_paper_sub_materials WHERE id=?').bind(c.req.param('id')).run()
+  return c.json({ success: true })
+})
+
+app.delete('/api/master/paper-sub', async (c) => {
+  const db = c.env.DB
+  await db.prepare('DELETE FROM master_paper_sub_materials').run()
+  return c.json({ success: true })
+})
+
+// --- 화장지 제품분류 ---
+app.get('/api/master/tissue-products', async (c) => {
+  const db = c.env.DB
+  const results = await db.prepare('SELECT * FROM master_tissue_products ORDER BY category, product_name').all()
+  return c.json(results.results)
+})
+
+app.post('/api/master/tissue-products', async (c) => {
+  const db = c.env.DB
+  const { category, product_name } = await c.req.json()
+  const result = await db.prepare(
+    'INSERT INTO master_tissue_products (category, product_name) VALUES (?, ?)'
+  ).bind(category, product_name).run()
+  return c.json({ success: true, id: result.meta.last_row_id })
+})
+
+app.post('/api/master/tissue-products/bulk', async (c) => {
+  const db = c.env.DB
+  const { records } = await c.req.json()
+  const stmt = db.prepare('INSERT INTO master_tissue_products (category, product_name) VALUES (?, ?)')
+  const batch = records.map((r: any) => stmt.bind(r.category, r.product_name))
+  await db.batch(batch)
+  return c.json({ success: true, count: records.length })
+})
+
+app.put('/api/master/tissue-products/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  const { category, product_name } = await c.req.json()
+  await db.prepare(
+    'UPDATE master_tissue_products SET category=?, product_name=?, updated_at=CURRENT_TIMESTAMP WHERE id=?'
+  ).bind(category, product_name, id).run()
+  return c.json({ success: true })
+})
+
+app.delete('/api/master/tissue-products/:id', async (c) => {
+  const db = c.env.DB
+  await db.prepare('DELETE FROM master_tissue_products WHERE id=?').bind(c.req.param('id')).run()
+  return c.json({ success: true })
+})
+
+app.delete('/api/master/tissue-products', async (c) => {
+  const db = c.env.DB
+  await db.prepare('DELETE FROM master_tissue_products').run()
+  return c.json({ success: true })
+})
+
+// --- 화장지 원재료 분류 ---
+app.get('/api/master/tissue-raw', async (c) => {
+  const db = c.env.DB
+  const results = await db.prepare('SELECT * FROM master_tissue_raw_materials ORDER BY category, material_code').all()
+  return c.json(results.results)
+})
+
+app.post('/api/master/tissue-raw', async (c) => {
+  const db = c.env.DB
+  const { category, material_code, material_name } = await c.req.json()
+  const result = await db.prepare(
+    'INSERT INTO master_tissue_raw_materials (category, material_code, material_name) VALUES (?, ?, ?)'
+  ).bind(category, material_code, material_name).run()
+  return c.json({ success: true, id: result.meta.last_row_id })
+})
+
+app.post('/api/master/tissue-raw/bulk', async (c) => {
+  const db = c.env.DB
+  const { records } = await c.req.json()
+  const stmt = db.prepare('INSERT INTO master_tissue_raw_materials (category, material_code, material_name) VALUES (?, ?, ?)')
+  const batch = records.map((r: any) => stmt.bind(r.category, r.material_code, r.material_name))
+  await db.batch(batch)
+  return c.json({ success: true, count: records.length })
+})
+
+app.put('/api/master/tissue-raw/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  const { category, material_code, material_name } = await c.req.json()
+  await db.prepare(
+    'UPDATE master_tissue_raw_materials SET category=?, material_code=?, material_name=?, updated_at=CURRENT_TIMESTAMP WHERE id=?'
+  ).bind(category, material_code, material_name, id).run()
+  return c.json({ success: true })
+})
+
+app.delete('/api/master/tissue-raw/:id', async (c) => {
+  const db = c.env.DB
+  await db.prepare('DELETE FROM master_tissue_raw_materials WHERE id=?').bind(c.req.param('id')).run()
+  return c.json({ success: true })
+})
+
+app.delete('/api/master/tissue-raw', async (c) => {
+  const db = c.env.DB
+  await db.prepare('DELETE FROM master_tissue_raw_materials').run()
+  return c.json({ success: true })
+})
+
 // ============ 메인 페이지 ============
 app.get('/', (c) => {
   return c.html(mainPage())
