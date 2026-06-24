@@ -30,6 +30,12 @@ export function mainPage(): string {
     .pill-tab-inactive { background: white; color: #4b5563; border-color: #e5e7eb; }
     .pill-tab-inactive:hover { background: #f9fafb; border-color: #d1d5db; }
     .card { background: white; border-radius: 16px; border: 1px solid #f1f5f9; box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02); }
+    .card-header-toggle { cursor: pointer; user-select: none; transition: background 0.15s; }
+    .card-header-toggle:hover { background: #f8fafc; }
+    .card-body-collapsible { transition: max-height 0.3s ease, opacity 0.2s ease; overflow: hidden; }
+    .card-body-collapsed { max-height: 0 !important; opacity: 0; overflow: hidden; }
+    .card-chevron { transition: transform 0.3s ease; display: inline-block; }
+    .card-chevron-collapsed { transform: rotate(-90deg); }
     .positive { color: #dc2626; }
     .negative { color: #2563eb; }
     .btn-primary { background: #4f46e5; color: white; padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 500; transition: all 0.15s; border: none; cursor: pointer; }
@@ -261,16 +267,16 @@ export function mainPage(): string {
 
       <!-- 재료비 총괄 (호기별 지종별) + 원재료 손익 통합 카드 -->
       <div class="card overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between card-header-toggle" onclick="toggleCard('card-overview')">
           <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-bar text-blue-600 mr-1.5"></i>재료비 총괄 (호기별 지종별)</h3>
           <div class="flex items-center gap-2">
-            <button onclick="setOverviewFilter('ALL')" id="ov-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
-            <button onclick="setOverviewFilter('RAW')" id="ov-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
-            <button onclick="setOverviewFilter('SUB')" id="ov-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
+            <button onclick="event.stopPropagation();setOverviewFilter('ALL')" id="ov-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
+            <button onclick="event.stopPropagation();setOverviewFilter('RAW')" id="ov-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
+            <button onclick="event.stopPropagation();setOverviewFilter('SUB')" id="ov-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
+            <i class="fas fa-chevron-down card-chevron text-gray-400 ml-2" id="card-overview-chevron"></i>
           </div>
         </div>
-
-        <!-- 원재료 손익 요약 -->
+        <div id="card-overview" class="card-body-collapsible">
         <div class="px-5 py-3 bg-gradient-to-r from-indigo-50/50 to-transparent border-b border-slate-100 flex items-center justify-between">
           <div class="flex items-center gap-4">
             <div class="flex items-center gap-2">
@@ -352,19 +358,22 @@ export function mainPage(): string {
             <tfoot class="bg-slate-50 font-semibold sticky bottom-0" id="dash-overview-foot"></tfoot>
           </table>
         </div>
+        </div><!-- /card-overview -->
       </div>
 
       <!-- 1) 호기별 > 제품레벨2 > 자재그룹명별 재료비 요약 -->
       <div class="card overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between card-header-toggle" onclick="toggleCard('card-matcost')">
           <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-layer-group text-indigo-500 mr-1.5"></i>호기별 제품구분별 자재그룹 재료비 요약</h3>
           <div class="flex items-center gap-2">
-            <button onclick="setMatCostFilter('ALL')" id="mc-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
-            <button onclick="setMatCostFilter('RAW')" id="mc-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
-            <button onclick="setMatCostFilter('SUB')" id="mc-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
+            <button onclick="event.stopPropagation();setMatCostFilter('ALL')" id="mc-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
+            <button onclick="event.stopPropagation();setMatCostFilter('RAW')" id="mc-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
+            <button onclick="event.stopPropagation();setMatCostFilter('SUB')" id="mc-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
             <span class="text-xs text-gray-400 ml-2">실적배부수량 x 실적단가</span>
+            <i class="fas fa-chevron-down card-chevron text-gray-400 ml-2" id="card-matcost-chevron"></i>
           </div>
         </div>
+        <div id="card-matcost" class="card-body-collapsible">
         <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
           <table class="data-table text-xs">
             <thead class="sticky top-0 bg-white z-10">
@@ -394,18 +403,21 @@ export function mainPage(): string {
             </tfoot>
           </table>
         </div>
+        </div><!-- /card-matcost -->
       </div>
 
       <!-- 2) 호기별 > 자재그룹(대분류)명 > 제품구분별 재료비 요약 -->
       <div class="card overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between card-header-toggle" onclick="toggleCard('card-matgroup')">
           <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-cubes text-violet-500 mr-1.5"></i>호기별 자재그룹(대분류)별 제품구분 재료비</h3>
           <div class="flex items-center gap-2">
-            <button onclick="setMatGroupFilter('ALL')" id="mg-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
-            <button onclick="setMatGroupFilter('RAW')" id="mg-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
-            <button onclick="setMatGroupFilter('SUB')" id="mg-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
+            <button onclick="event.stopPropagation();setMatGroupFilter('ALL')" id="mg-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
+            <button onclick="event.stopPropagation();setMatGroupFilter('RAW')" id="mg-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
+            <button onclick="event.stopPropagation();setMatGroupFilter('SUB')" id="mg-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
+            <i class="fas fa-chevron-down card-chevron text-gray-400 ml-2" id="card-matgroup-chevron"></i>
           </div>
         </div>
+        <div id="card-matgroup" class="card-body-collapsible">
         <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
           <table class="data-table text-xs">
             <thead class="sticky top-0 bg-white z-10">
@@ -435,14 +447,19 @@ export function mainPage(): string {
             </tfoot>
           </table>
         </div>
+        </div><!-- /card-matgroup -->
       </div>
 
       <!-- 3) 호기별 제품레벨2별 총생산량 합계 -->
       <div class="card overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between card-header-toggle" onclick="toggleCard('card-production')">
           <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-industry text-emerald-500 mr-1.5"></i>호기별 제품구분별 총생산량 합계</h3>
-          <span class="text-xs text-gray-400">제품 레벨4 기준 중복제거 합산</span>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-400">제품 레벨4 기준 중복제거 합산</span>
+            <i class="fas fa-chevron-down card-chevron text-gray-400 ml-2" id="card-production-chevron"></i>
+          </div>
         </div>
+        <div id="card-production" class="card-body-collapsible">
         <div class="overflow-x-auto">
           <table class="data-table">
             <thead>
@@ -462,14 +479,19 @@ export function mainPage(): string {
             </tfoot>
           </table>
         </div>
+        </div><!-- /card-production -->
       </div>
 
       <!-- 4) 생산량 분석 대시보드 -->
       <div class="card overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between card-header-toggle" onclick="toggleCard('card-prodanalysis')">
           <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-line text-teal-500 mr-1.5"></i>생산량 분석 (호기별 지종별)</h3>
-          <span class="text-xs text-gray-400">당월 / 전월 비교 · 총생산량, 생산수량, 폐품수량</span>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-400">당월 / 전월 비교 · 총생산량, 생산수량, 폐품수량</span>
+            <i class="fas fa-chevron-down card-chevron text-gray-400 ml-2" id="card-prodanalysis-chevron"></i>
+          </div>
         </div>
+        <div id="card-prodanalysis" class="card-body-collapsible">
         <div class="overflow-x-auto">
           <table class="data-table text-xs" id="prod-analysis-table">
             <thead class="sticky top-0 bg-white z-10">
@@ -495,14 +517,19 @@ export function mainPage(): string {
             <tfoot class="bg-slate-50 font-semibold sticky bottom-0" id="prod-analysis-foot"></tfoot>
           </table>
         </div>
+        </div><!-- /card-prodanalysis -->
       </div>
 
       <!-- 5) 믹스 효과 분석 대시보드 -->
       <div class="card overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between card-header-toggle" onclick="toggleCard('card-mixeffect')">
           <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-random text-purple-500 mr-1.5"></i>믹스 효과 분석 (호기 믹스 + 지종 믹스)</h3>
-          <span class="text-xs text-gray-400">단위: 원단위차이(원/톤), 수량차이(톤), 금액효과(천원)</span>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-400">단위: 원단위차이(원/톤), 수량차이(톤), 금액효과(천원)</span>
+            <i class="fas fa-chevron-down card-chevron text-gray-400 ml-2" id="card-mixeffect-chevron"></i>
+          </div>
         </div>
+        <div id="card-mixeffect" class="card-body-collapsible">
         <div class="overflow-x-auto">
           <table class="data-table text-xs" id="mix-effect-table">
             <thead class="sticky top-0 bg-white z-10">
@@ -527,6 +554,7 @@ export function mainPage(): string {
             <tbody id="mix-effect-body"></tbody>
           </table>
         </div>
+        </div><!-- /card-mixeffect -->
       </div>
     </div>
 
@@ -1702,6 +1730,16 @@ export function mainPage(): string {
     function toggleProfitDetail() {
       const section = document.getElementById('profit-detail-section');
       section.classList.toggle('hidden');
+    }
+
+    function toggleCard(cardId) {
+      var body = document.getElementById(cardId);
+      var chevron = document.getElementById(cardId + '-chevron');
+      if (!body) return;
+      body.classList.toggle('card-body-collapsed');
+      if (chevron) {
+        chevron.classList.toggle('card-chevron-collapsed');
+      }
     }
 
     function renderProfitSummary(data) {
