@@ -560,10 +560,16 @@ app.post('/api/upload/smart', async (c) => {
 app.get('/api/dashboard/material-cost-summary', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
+  const category = c.req.query('category') || '' // RAW, SUB
   
   let where = '1=1'
   const params: any[] = []
   if (ym) { where += ' AND calendar_ym = ?'; params.push(ym) }
+  if (category === 'RAW') {
+    where += " AND (material_group_major = '1100' OR material_group_major = '1200')"
+  } else if (category === 'SUB') {
+    where += " AND material_group_major != '1100' AND material_group_major != '1200'"
+  }
   
   const sql = `
     SELECT 

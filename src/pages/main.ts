@@ -263,7 +263,12 @@ export function mainPage(): string {
       <div class="card overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-layer-group text-indigo-500 mr-1.5"></i>호기별 제품구분별 자재그룹 재료비 요약</h3>
-          <span class="text-xs text-gray-400">실적배부수량 x 실적단가</span>
+          <div class="flex items-center gap-2">
+            <button onclick="setMatCostFilter('ALL')" id="mc-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
+            <button onclick="setMatCostFilter('RAW')" id="mc-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
+            <button onclick="setMatCostFilter('SUB')" id="mc-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
+            <span class="text-xs text-gray-400 ml-2">실적배부수량 x 실적단가</span>
+          </div>
         </div>
         <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
           <table class="data-table text-xs">
@@ -933,13 +938,29 @@ export function mainPage(): string {
       renderUnitChart(); renderEffectChart(); renderUnitSummaryTable(); renderTopImpact();
     }
 
+    let matCostCategoryFilter = 'ALL';
+
     async function loadDashboardSummary(ym) {
       const [matCost, prodSummary] = await Promise.all([
-        fetch('/api/dashboard/material-cost-summary?ym=' + ym).then(r => r.json()),
+        fetch('/api/dashboard/material-cost-summary?ym=' + ym + (matCostCategoryFilter !== 'ALL' ? '&category=' + matCostCategoryFilter : '')).then(r => r.json()),
         fetch('/api/dashboard/production-summary?ym=' + ym).then(r => r.json())
       ]);
       renderMatCostSummary(matCost);
       renderProductionSummary(prodSummary);
+    }
+
+    function setMatCostFilter(filter) {
+      matCostCategoryFilter = filter;
+      ['all','raw','sub'].forEach(f => {
+        const btn = document.getElementById('mc-filter-' + f);
+        if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(f === filter.toLowerCase() ? 'pill-tab-active' : 'pill-tab-inactive'); }
+      });
+      const year = document.getElementById('analysisYear').value;
+      const month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      const ym = year + month;
+      fetch('/api/dashboard/material-cost-summary?ym=' + ym + (filter !== 'ALL' ? '&category=' + filter : ''))
+        .then(r => r.json())
+        .then(data => renderMatCostSummary(data));
     }
 
     function renderMatCostSummary(data) {
