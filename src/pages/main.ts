@@ -72,7 +72,7 @@ export function mainPage(): string {
 <body class="bg-slate-50 min-h-screen">
   <!-- Header -->
   <header class="gradient-header text-white">
-    <div class="max-w-[1400px] mx-auto px-6 py-5">
+    <div class="max-w-[1800px] mx-auto px-6 py-5">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
           <div class="w-10 h-10 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
@@ -92,11 +92,11 @@ export function mainPage(): string {
 
   <!-- Navigation -->
   <nav class="bg-white border-b border-gray-100 sticky top-0 z-40">
-    <div class="max-w-[1400px] mx-auto px-6 py-3">
+    <div class="max-w-[1800px] mx-auto px-6 py-3">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <button onclick="switchTab('dashboard')" id="tab-dashboard" class="pill-tab pill-tab-active">
-            <i class="fas fa-chart-line mr-1.5"></i>통합 분석
+            <i class="fas fa-chart-line mr-1.5"></i>사용현황에 따른 분석
           </button>
           <button onclick="switchTab('detail')" id="tab-detail" class="pill-tab pill-tab-inactive">
             <i class="fas fa-table mr-1.5"></i>상세 분석표
@@ -118,6 +118,9 @@ export function mainPage(): string {
           </button>
           <button onclick="switchTab('master')" id="tab-master" class="pill-tab pill-tab-inactive">
             <i class="fas fa-cog mr-1.5"></i>기준정보
+          </button>
+          <button onclick="switchTab('forecast')" id="tab-forecast" class="pill-tab pill-tab-inactive">
+            <i class="fas fa-chart-area mr-1.5"></i>전월 대비 예상 실적
           </button>
         </div>
         <!-- Filters -->
@@ -149,7 +152,7 @@ export function mainPage(): string {
   </nav>
 
   <!-- Content -->
-  <main class="max-w-[1400px] mx-auto px-6 py-6">
+  <main class="max-w-[1800px] mx-auto px-6 py-6">
     <!-- Dashboard Tab -->
     <div id="content-dashboard" class="fade-in space-y-5">
       <!-- Summary Cards -->
@@ -1285,6 +1288,23 @@ export function mainPage(): string {
         <div id="products-bom-container" class="space-y-4"></div>
       </div>
     </div>
+
+    <!-- Forecast Tab (전월 대비 예상 실적) -->
+    <div id="content-forecast" class="hidden fade-in">
+      <div class="card overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-area text-sage-500 mr-1.5"></i>전월 대비 예상 실적</h3>
+          <span class="text-xs text-gray-400">전월 실적 기반 예상치 분석</span>
+        </div>
+        <div class="px-6 py-12 text-center">
+          <div class="w-16 h-16 mx-auto mb-4 bg-sage-50 rounded-2xl flex items-center justify-center">
+            <i class="fas fa-chart-area text-sage-400 text-2xl"></i>
+          </div>
+          <p class="text-gray-500 text-sm">준비 중인 기능입니다.</p>
+          <p class="text-gray-400 text-xs mt-1">전월 실적 대비 예상 실적 분석 내용이 추가될 예정입니다.</p>
+        </div>
+      </div>
+    </div>
   </main>
 
   <script>
@@ -1298,7 +1318,7 @@ export function mainPage(): string {
     });
 
     function switchTab(tab) {
-      ['dashboard','detail','upload','dataview','input','master','simulation','bom'].forEach(t => {
+      ['dashboard','detail','upload','dataview','input','master','simulation','bom','forecast'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.add('pill-tab-inactive'); }
