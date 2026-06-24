@@ -16,7 +16,9 @@ export function mainPage(): string {
         extend: {
           fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
           colors: {
-            primary: { 50:'#eef2ff', 100:'#e0e7ff', 200:'#c7d2fe', 300:'#a5b4fc', 400:'#818cf8', 500:'#6366f1', 600:'#4f46e5', 700:'#4338ca', 800:'#3730a3', 900:'#312e81' },
+            primary: { 50:'#f0f7f4', 100:'#dbeee4', 200:'#A3C5D4', 300:'#A2C695', 400:'#739D79', 500:'#5A7C8E', 600:'#4B6C61', 700:'#3d5850', 800:'#2f4540', 900:'#243530' },
+            sage: { 50:'#f4f9f0', 100:'#DCF8A8', 200:'#c5e89a', 300:'#A2C695', 400:'#739D79', 500:'#4B6C61', 600:'#3d5850', 700:'#2f4540', 800:'#243530', 900:'#1a2820' },
+            steel: { 50:'#f2f7fa', 100:'#e1eef4', 200:'#A3C5D4', 300:'#7eaabb', 400:'#5A7C8E', 500:'#4a6a7a', 600:'#3c5563', 700:'#2e424d', 800:'#213038', 900:'#172028' },
             slate: { 750: '#293548' }
           }
         }
@@ -26,20 +28,20 @@ export function mainPage(): string {
   <style>
     body { font-family: 'Inter', system-ui, sans-serif; }
     .pill-tab { padding: 7px 16px; border-radius: 9999px; font-size: 13px; font-weight: 500; transition: all 0.15s; cursor: pointer; border: 1px solid transparent; }
-    .pill-tab-active { background: #4f46e5; color: white; border-color: #4f46e5; box-shadow: 0 2px 8px rgba(79,70,229,0.3); }
+    .pill-tab-active { background: #4B6C61; color: white; border-color: #4B6C61; box-shadow: 0 2px 8px rgba(75,108,97,0.3); }
     .pill-tab-inactive { background: white; color: #4b5563; border-color: #e5e7eb; }
-    .pill-tab-inactive:hover { background: #f9fafb; border-color: #d1d5db; }
+    .pill-tab-inactive:hover { background: #f0f7f4; border-color: #A2C695; }
     .card { background: white; border-radius: 16px; border: 1px solid #f1f5f9; box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02); }
     .card-header-toggle { cursor: pointer; user-select: none; transition: background 0.15s; }
-    .card-header-toggle:hover { background: #f8fafc; }
+    .card-header-toggle:hover { background: #f4f9f0; }
     .card-body-collapsible { transition: max-height 0.3s ease, opacity 0.2s ease; overflow: hidden; }
     .card-body-collapsed { max-height: 0 !important; opacity: 0; overflow: hidden; }
     .card-chevron { transition: transform 0.3s ease; display: inline-block; }
     .card-chevron-collapsed { transform: rotate(-90deg); }
     .positive { color: #dc2626; }
     .negative { color: #2563eb; }
-    .btn-primary { background: #4f46e5; color: white; padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 500; transition: all 0.15s; border: none; cursor: pointer; }
-    .btn-primary:hover { background: #4338ca; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79,70,229,0.3); }
+    .btn-primary { background: #5A7C8E; color: white; padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 500; transition: all 0.15s; border: none; cursor: pointer; }
+    .btn-primary:hover { background: #4B6C61; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(90,124,142,0.3); }
     .btn-delete { background: #fef2f2; color: #dc2626; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 500; border: none; cursor: pointer; transition: all 0.15s; }
     .btn-delete:hover { background: #fee2e2; }
     .data-table { width: 100%; font-size: 13px; border-collapse: collapse; }
@@ -51,14 +53,14 @@ export function mainPage(): string {
     .fade-in { animation: fadeIn 0.25s ease-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
     .unit-chip { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; }
-    .unit-chip-pm2 { background: #dbeafe; color: #1d4ed8; }
-    .unit-chip-pm3 { background: #e9d5ff; color: #7c3aed; }
+    .unit-chip-pm2 { background: #e1eef4; color: #3c5563; }
+    .unit-chip-pm3 { background: #dbeee4; color: #3d5850; }
     .unit-chip-chem { background: #fef3c7; color: #b45309; }
     .unit-chip-tissue { background: #d1fae5; color: #047857; }
     .summary-card { padding: 20px; border-radius: 14px; border: 1px solid #f1f5f9; transition: all 0.2s; background: white; }
     .summary-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); transform: translateY(-2px); }
     .chart-container { height: 200px; position: relative; }
-    .gradient-header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
+    .gradient-header { background: linear-gradient(135deg, #4B6C61 0%, #5A7C8E 100%); }
     .stat-value { font-variant-numeric: tabular-nums; }
     select, input[type="number"], input[type="text"] { font-size: 13px; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -268,7 +270,7 @@ export function mainPage(): string {
       <!-- 재료비 총괄 (호기별 지종별) + 원재료 손익 통합 카드 -->
       <div class="card overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between card-header-toggle" onclick="toggleCard('card-overview')">
-          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-bar text-blue-600 mr-1.5"></i>재료비 총괄 (호기별 지종별)</h3>
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-bar text-steel-400 mr-1.5"></i>재료비 총괄 (호기별 지종별)</h3>
           <div class="flex items-center gap-2">
             <button onclick="event.stopPropagation();setOverviewFilter('ALL')" id="ov-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
             <button onclick="event.stopPropagation();setOverviewFilter('RAW')" id="ov-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
@@ -277,11 +279,11 @@ export function mainPage(): string {
           </div>
         </div>
         <div id="card-overview" class="card-body-collapsible card-body-collapsed">
-        <div class="px-5 py-3 bg-gradient-to-r from-indigo-50/50 to-transparent border-b border-slate-100 flex items-center justify-between">
+        <div class="px-5 py-3 bg-gradient-to-r from-sage-50/50 to-transparent border-b border-slate-100 flex items-center justify-between">
           <div class="flex items-center gap-4">
             <div class="flex items-center gap-2">
-              <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                <i class="fas fa-coins text-indigo-600 text-xs"></i>
+              <div class="w-8 h-8 rounded-lg bg-sage-100 flex items-center justify-center">
+                <i class="fas fa-coins text-sage-600 text-xs"></i>
               </div>
               <div>
                 <div class="text-[10px] text-gray-500 leading-tight"><span id="profit-label">원/부자재 손익</span> <span class="text-gray-400">(전월원단위-당월원단위)×생산량÷1,000</span></div>
@@ -292,7 +294,7 @@ export function mainPage(): string {
               </div>
             </div>
           </div>
-          <button onclick="toggleProfitDetail()" class="px-3 py-1.5 text-xs bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition font-medium border border-indigo-200">
+          <button onclick="toggleProfitDetail()" class="px-3 py-1.5 text-xs bg-sage-50 text-sage-700 rounded-lg hover:bg-sage-100 transition font-medium border border-sage-200">
             <i class="fas fa-search-plus mr-1"></i>상세보기
           </button>
         </div>
@@ -300,7 +302,7 @@ export function mainPage(): string {
         <!-- 손익 상세 테이블 (숨김 상태) -->
         <div id="profit-detail-section" class="hidden border-b border-slate-100">
           <div class="px-5 py-2.5 bg-slate-50 flex items-center justify-between">
-            <h4 class="text-xs font-semibold text-gray-600" id="profit-detail-title"><i class="fas fa-list-alt text-indigo-400 mr-1"></i>호기별 지종별 원/부자재 손익 상세</h4>
+            <h4 class="text-xs font-semibold text-gray-600" id="profit-detail-title"><i class="fas fa-list-alt text-sage-400 mr-1"></i>호기별 지종별 원/부자재 손익 상세</h4>
             <span class="text-xs text-gray-400">단위: 천원</span>
           </div>
           <div class="overflow-x-auto max-h-[360px] overflow-y-auto">
@@ -329,29 +331,29 @@ export function mainPage(): string {
               <tr>
                 <th rowspan="2" class="!py-2 text-center border-r border-slate-200">호기</th>
                 <th rowspan="2" class="!py-2 text-center border-r border-slate-200">지종</th>
-                <th colspan="6" class="!py-1 text-center bg-blue-50 border-b border-slate-200">당월</th>
+                <th colspan="6" class="!py-1 text-center bg-steel-50 border-b border-slate-200">당월</th>
                 <th colspan="6" class="!py-1 text-center bg-amber-50 border-b border-slate-200">전월</th>
-                <th colspan="6" class="!py-1 text-center bg-green-50 border-b border-slate-200">예상</th>
+                <th colspan="6" class="!py-1 text-center bg-sage-50 border-b border-slate-200">예상</th>
               </tr>
               <tr>
-                <th class="!py-1.5 text-right bg-blue-50">재료비(원)</th>
-                <th class="!py-1.5 text-right bg-blue-50">생산량(톤)</th>
-                <th class="!py-1.5 text-right bg-blue-50">호기비중(%)</th>
-                <th class="!py-1.5 text-right bg-blue-50">원단위</th>
-                <th class="!py-1.5 text-right bg-blue-50">재료비(억원)</th>
-                <th class="!py-1.5 text-right bg-blue-50 border-r border-slate-200">전체비중(%)</th>
+                <th class="!py-1.5 text-right bg-steel-50">재료비(원)</th>
+                <th class="!py-1.5 text-right bg-steel-50">생산량(톤)</th>
+                <th class="!py-1.5 text-right bg-steel-50">호기비중(%)</th>
+                <th class="!py-1.5 text-right bg-steel-50">원단위</th>
+                <th class="!py-1.5 text-right bg-steel-50">재료비(억원)</th>
+                <th class="!py-1.5 text-right bg-steel-50 border-r border-slate-200">전체비중(%)</th>
                 <th class="!py-1.5 text-right bg-amber-50">재료비(원)</th>
                 <th class="!py-1.5 text-right bg-amber-50">생산량(톤)</th>
                 <th class="!py-1.5 text-right bg-amber-50">호기비중(%)</th>
                 <th class="!py-1.5 text-right bg-amber-50">원단위</th>
                 <th class="!py-1.5 text-right bg-amber-50">재료비(억원)</th>
                 <th class="!py-1.5 text-right bg-amber-50 border-r border-slate-200">전체비중(%)</th>
-                <th class="!py-1.5 text-right bg-green-50">재료비(원)</th>
-                <th class="!py-1.5 text-right bg-green-50">생산량(톤)</th>
-                <th class="!py-1.5 text-right bg-green-50">호기비중(%)</th>
-                <th class="!py-1.5 text-right bg-green-50">원단위</th>
-                <th class="!py-1.5 text-right bg-green-50">재료비(억원)</th>
-                <th class="!py-1.5 text-right bg-green-50">전체비중(%)</th>
+                <th class="!py-1.5 text-right bg-sage-50">재료비(원)</th>
+                <th class="!py-1.5 text-right bg-sage-50">생산량(톤)</th>
+                <th class="!py-1.5 text-right bg-sage-50">호기비중(%)</th>
+                <th class="!py-1.5 text-right bg-sage-50">원단위</th>
+                <th class="!py-1.5 text-right bg-sage-50">재료비(억원)</th>
+                <th class="!py-1.5 text-right bg-sage-50">전체비중(%)</th>
               </tr>
             </thead>
             <tbody id="dash-overview-body"></tbody>
@@ -364,7 +366,7 @@ export function mainPage(): string {
       <!-- 1) 호기별 > 제품레벨2 > 자재그룹명별 재료비 요약 -->
       <div class="card overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between card-header-toggle" onclick="toggleCard('card-matcost')">
-          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-layer-group text-indigo-500 mr-1.5"></i>호기별 제품구분별 자재그룹 재료비 요약</h3>
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-layer-group text-sage-500 mr-1.5"></i>호기별 제품구분별 자재그룹 재료비 요약</h3>
           <div class="flex items-center gap-2">
             <button onclick="event.stopPropagation();setMatCostFilter('ALL')" id="mc-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
             <button onclick="event.stopPropagation();setMatCostFilter('RAW')" id="mc-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
@@ -409,7 +411,7 @@ export function mainPage(): string {
       <!-- 2) 호기별 > 자재그룹(대분류)명 > 제품구분별 재료비 요약 -->
       <div class="card overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between card-header-toggle" onclick="toggleCard('card-matgroup')">
-          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-cubes text-violet-500 mr-1.5"></i>호기별 자재그룹(대분류)별 제품구분 재료비</h3>
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-cubes text-sage-400 mr-1.5"></i>호기별 자재그룹(대분류)별 제품구분 재료비</h3>
           <div class="flex items-center gap-2">
             <button onclick="event.stopPropagation();setMatGroupFilter('ALL')" id="mg-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
             <button onclick="event.stopPropagation();setMatGroupFilter('RAW')" id="mg-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
@@ -453,7 +455,7 @@ export function mainPage(): string {
       <!-- 3) 호기별 제품레벨2별 총생산량 합계 -->
       <div class="card overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between card-header-toggle" onclick="toggleCard('card-production')">
-          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-industry text-emerald-500 mr-1.5"></i>호기별 제품구분별 총생산량 합계</h3>
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-industry text-sage-300 mr-1.5"></i>호기별 제품구분별 총생산량 합계</h3>
           <div class="flex items-center gap-2">
             <span class="text-xs text-gray-400">제품 레벨4 기준 중복제거 합산</span>
             <i class="fas fa-chevron-down card-chevron card-chevron-collapsed text-gray-400 ml-2" id="card-production-chevron"></i>
@@ -485,7 +487,7 @@ export function mainPage(): string {
       <!-- 4) 생산량 분석 대시보드 -->
       <div class="card overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between card-header-toggle" onclick="toggleCard('card-prodanalysis')">
-          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-line text-teal-500 mr-1.5"></i>생산량 분석 (호기별 지종별)</h3>
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-line text-steel-400 mr-1.5"></i>생산량 분석 (호기별 지종별)</h3>
           <div class="flex items-center gap-2">
             <span class="text-xs text-gray-400">당월 / 전월 비교 · 총생산량, 생산수량, 폐품수량</span>
             <i class="fas fa-chevron-down card-chevron card-chevron-collapsed text-gray-400 ml-2" id="card-prodanalysis-chevron"></i>
@@ -497,20 +499,20 @@ export function mainPage(): string {
             <thead class="sticky top-0 bg-white z-10">
               <tr>
                 <th rowspan="2" class="!py-2 text-center border-r border-slate-200">행 레이블</th>
-                <th colspan="3" class="!py-1 text-center bg-blue-50 border-b border-slate-200">당월</th>
+                <th colspan="3" class="!py-1 text-center bg-steel-50 border-b border-slate-200">당월</th>
                 <th colspan="3" class="!py-1 text-center bg-amber-50 border-b border-slate-200">전월</th>
-                <th colspan="3" class="!py-1 text-center bg-green-50 border-b border-slate-200">증감</th>
+                <th colspan="3" class="!py-1 text-center bg-sage-50 border-b border-slate-200">증감</th>
               </tr>
               <tr>
-                <th class="!py-1.5 text-right bg-blue-50">총생산량</th>
-                <th class="!py-1.5 text-right bg-blue-50">생산수량</th>
-                <th class="!py-1.5 text-right bg-blue-50 border-r border-slate-200">폐품수량</th>
+                <th class="!py-1.5 text-right bg-steel-50">총생산량</th>
+                <th class="!py-1.5 text-right bg-steel-50">생산수량</th>
+                <th class="!py-1.5 text-right bg-steel-50 border-r border-slate-200">폐품수량</th>
                 <th class="!py-1.5 text-right bg-amber-50">총생산량</th>
                 <th class="!py-1.5 text-right bg-amber-50">생산수량</th>
                 <th class="!py-1.5 text-right bg-amber-50 border-r border-slate-200">폐품수량</th>
-                <th class="!py-1.5 text-right bg-green-50">총생산량</th>
-                <th class="!py-1.5 text-right bg-green-50">생산수량</th>
-                <th class="!py-1.5 text-right bg-green-50">폐품수량</th>
+                <th class="!py-1.5 text-right bg-sage-50">총생산량</th>
+                <th class="!py-1.5 text-right bg-sage-50">생산수량</th>
+                <th class="!py-1.5 text-right bg-sage-50">폐품수량</th>
               </tr>
             </thead>
             <tbody id="prod-analysis-body"></tbody>
@@ -523,7 +525,7 @@ export function mainPage(): string {
       <!-- 5) 믹스 효과 분석 대시보드 -->
       <div class="card overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between card-header-toggle" onclick="toggleCard('card-mixeffect')">
-          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-random text-purple-500 mr-1.5"></i>믹스 효과 분석 (호기 믹스 + 지종 믹스)</h3>
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-random text-sage-500 mr-1.5"></i>믹스 효과 분석 (호기 믹스 + 지종 믹스)</h3>
           <div class="flex items-center gap-2">
             <span class="text-xs text-gray-400">단위: 원단위차이(원/톤), 수량차이(톤), 금액효과(천원)</span>
             <i class="fas fa-chevron-down card-chevron card-chevron-collapsed text-gray-400 ml-2" id="card-mixeffect-chevron"></i>
@@ -535,20 +537,20 @@ export function mainPage(): string {
             <thead class="sticky top-0 bg-white z-10">
               <tr>
                 <th rowspan="2" class="!py-2 text-center border-r border-slate-200 w-24">구분</th>
-                <th colspan="3" class="!py-1 text-center bg-indigo-50 border-b border-slate-200">당월(전월 2호기 미생산)</th>
-                <th colspan="3" class="!py-1 text-center bg-blue-50 border-b border-slate-200">당월</th>
-                <th colspan="3" class="!py-1 text-center bg-green-50 border-b border-slate-200">예상</th>
+                <th colspan="3" class="!py-1 text-center bg-sage-50 border-b border-slate-200">당월(전월 2호기 미생산)</th>
+                <th colspan="3" class="!py-1 text-center bg-steel-50 border-b border-slate-200">당월</th>
+                <th colspan="3" class="!py-1 text-center bg-sage-50 border-b border-slate-200">예상</th>
               </tr>
               <tr>
-                <th class="!py-1.5 text-right bg-indigo-50 w-20">원단위차이</th>
-                <th class="!py-1.5 text-right bg-indigo-50 w-20">수량차이</th>
-                <th class="!py-1.5 text-right bg-indigo-50 w-20 border-r border-slate-200">금액효과</th>
-                <th class="!py-1.5 text-right bg-blue-50 w-20">원단위차이</th>
-                <th class="!py-1.5 text-right bg-blue-50 w-20">수량차이</th>
-                <th class="!py-1.5 text-right bg-blue-50 w-20 border-r border-slate-200">금액효과</th>
-                <th class="!py-1.5 text-right bg-green-50 w-20">원단위차이</th>
-                <th class="!py-1.5 text-right bg-green-50 w-20">수량차이</th>
-                <th class="!py-1.5 text-right bg-green-50 w-20">금액효과</th>
+                <th class="!py-1.5 text-right bg-sage-50 w-20">원단위차이</th>
+                <th class="!py-1.5 text-right bg-sage-50 w-20">수량차이</th>
+                <th class="!py-1.5 text-right bg-sage-50 w-20 border-r border-slate-200">금액효과</th>
+                <th class="!py-1.5 text-right bg-steel-50 w-20">원단위차이</th>
+                <th class="!py-1.5 text-right bg-steel-50 w-20">수량차이</th>
+                <th class="!py-1.5 text-right bg-steel-50 w-20 border-r border-slate-200">금액효과</th>
+                <th class="!py-1.5 text-right bg-sage-50 w-20">원단위차이</th>
+                <th class="!py-1.5 text-right bg-sage-50 w-20">수량차이</th>
+                <th class="!py-1.5 text-right bg-sage-50 w-20">금액효과</th>
               </tr>
             </thead>
             <tbody id="mix-effect-body"></tbody>
@@ -622,7 +624,7 @@ export function mainPage(): string {
         </div>
 
         <div id="upload-preview" class="hidden mt-6">
-          <div class="flex items-center justify-between mb-4 p-4 bg-green-50 rounded-xl border border-green-200">
+          <div class="flex items-center justify-between mb-4 p-4 bg-sage-50 rounded-xl border border-green-200">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                 <i class="fas fa-file-excel text-green-600"></i>
@@ -650,10 +652,10 @@ export function mainPage(): string {
         <div class="mt-6 p-5 bg-slate-50 rounded-xl">
           <h4 class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3">지원 형식</h4>
           
-          <div class="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+          <div class="mb-4 p-4 bg-sage-50 border border-sage-200 rounded-xl">
             <div class="flex items-center gap-2 mb-2">
-              <span class="inline-flex items-center px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs font-bold">SAP 형식</span>
-              <span class="text-xs text-purple-600 font-medium">자동 감지</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded bg-sage-100 text-sage-700 text-xs font-bold">SAP 형식</span>
+              <span class="text-xs text-sage-600 font-medium">자동 감지</span>
             </div>
             <p class="text-xs text-gray-600 mb-2">SAP에서 추출한 원재료 DB 파일을 그대로 업로드하면 자동으로 인식합니다.</p>
             <div class="text-xs text-gray-500 space-y-1">
@@ -662,10 +664,10 @@ export function mainPage(): string {
             </div>
           </div>
           
-          <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+          <div class="p-4 bg-sage-50 border border-sage-200 rounded-xl">
             <div class="flex items-center gap-2 mb-2">
-              <span class="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-bold">기본 형식</span>
-              <span class="text-xs text-blue-600 font-medium">'양식 다운로드' 참고</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded bg-steel-50 text-steel-400 text-xs font-bold">기본 형식</span>
+              <span class="text-xs text-steel-400 font-medium">'양식 다운로드' 참고</span>
             </div>
             <div class="overflow-x-auto">
               <table class="text-xs w-full">
@@ -731,7 +733,7 @@ export function mainPage(): string {
             </select>
             <input type="text" id="dv-search" placeholder="자재명 검색..." class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs w-32" onkeyup="if(event.key==='Enter')loadDataView()">
             <button onclick="loadDataView()" class="btn-primary text-xs !py-1.5 !px-3"><i class="fas fa-search mr-1"></i>조회</button>
-            <button onclick="exportDataViewCSV()" class="bg-green-50 text-green-700 border border-green-200 rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-green-100 transition">
+            <button onclick="exportDataViewCSV()" class="bg-sage-50 text-green-700 border border-green-200 rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-green-100 transition">
               <i class="fas fa-download mr-1"></i>CSV
             </button>
           </div>
@@ -743,17 +745,17 @@ export function mainPage(): string {
             <p class="text-[10px] text-gray-400 mb-0.5">총 레코드</p>
             <p class="text-lg font-bold text-gray-800 stat-value" id="dv-total-count">-</p>
           </div>
-          <div class="bg-blue-50 rounded-xl p-3 text-center">
+          <div class="bg-steel-50 rounded-xl p-3 text-center">
             <p class="text-[10px] text-gray-400 mb-0.5">총 출고수량</p>
-            <p class="text-lg font-bold text-blue-700 stat-value" id="dv-total-qty">-</p>
+            <p class="text-lg font-bold text-steel-400 stat-value" id="dv-total-qty">-</p>
           </div>
-          <div class="bg-purple-50 rounded-xl p-3 text-center">
+          <div class="bg-sage-50 rounded-xl p-3 text-center">
             <p class="text-[10px] text-gray-400 mb-0.5">총 출고금액</p>
-            <p class="text-lg font-bold text-purple-700 stat-value" id="dv-total-cost">-</p>
+            <p class="text-lg font-bold text-sage-700 stat-value" id="dv-total-cost">-</p>
           </div>
-          <div class="bg-emerald-50 rounded-xl p-3 text-center">
+          <div class="bg-steel-50 rounded-xl p-3 text-center">
             <p class="text-[10px] text-gray-400 mb-0.5">자재 종류</p>
-            <p class="text-lg font-bold text-emerald-700 stat-value" id="dv-mat-count">-</p>
+            <p class="text-lg font-bold text-steel-500 stat-value" id="dv-mat-count">-</p>
           </div>
         </div>
 
@@ -968,7 +970,7 @@ export function mainPage(): string {
       <div class="card p-6 mt-5">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-database text-indigo-500 mr-1.5"></i>매핑 INDEX 기준정보</h3>
+            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-database text-sage-500 mr-1.5"></i>매핑 INDEX 기준정보</h3>
             <p class="text-xs text-gray-400 mt-0.5">제지/화장지 제품분류 및 원부재료 분류 매핑 기준을 관리합니다.</p>
           </div>
         </div>
@@ -1023,7 +1025,7 @@ export function mainPage(): string {
           <div class="flex items-center justify-between mb-3">
             <span class="text-xs text-gray-500">제품 계층구조레벨3 / 지종코드 / 지종 / 지종(세부)</span>
             <div class="flex gap-2">
-              <button onclick="addMasterRow('paper-products')" class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-100"><i class="fas fa-plus mr-1"></i>행 추가</button>
+              <button onclick="addMasterRow('paper-products')" class="text-xs bg-sage-50 text-sage-700 px-3 py-1.5 rounded-lg hover:bg-sage-100"><i class="fas fa-plus mr-1"></i>행 추가</button>
               <button onclick="clearMasterTable('paper-products')" class="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100"><i class="fas fa-trash mr-1"></i>전체 삭제</button>
             </div>
           </div>
@@ -1049,7 +1051,7 @@ export function mainPage(): string {
           <div class="flex items-center justify-between mb-3">
             <span class="text-xs text-gray-500">분류1 / 자재분류 / 자재(소분류) / 자재코드 / 자재명 / 자재그룹</span>
             <div class="flex gap-2">
-              <button onclick="addMasterRow('paper-raw')" class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-100"><i class="fas fa-plus mr-1"></i>행 추가</button>
+              <button onclick="addMasterRow('paper-raw')" class="text-xs bg-sage-50 text-sage-700 px-3 py-1.5 rounded-lg hover:bg-sage-100"><i class="fas fa-plus mr-1"></i>행 추가</button>
               <button onclick="clearMasterTable('paper-raw')" class="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100"><i class="fas fa-trash mr-1"></i>전체 삭제</button>
             </div>
           </div>
@@ -1077,7 +1079,7 @@ export function mainPage(): string {
           <div class="flex items-center justify-between mb-3">
             <span class="text-xs text-gray-500">자재코드 / 자재명 / 자재그룹</span>
             <div class="flex gap-2">
-              <button onclick="addMasterRow('paper-sub')" class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-100"><i class="fas fa-plus mr-1"></i>행 추가</button>
+              <button onclick="addMasterRow('paper-sub')" class="text-xs bg-sage-50 text-sage-700 px-3 py-1.5 rounded-lg hover:bg-sage-100"><i class="fas fa-plus mr-1"></i>행 추가</button>
               <button onclick="clearMasterTable('paper-sub')" class="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100"><i class="fas fa-trash mr-1"></i>전체 삭제</button>
             </div>
           </div>
@@ -1102,7 +1104,7 @@ export function mainPage(): string {
           <div class="flex items-center justify-between mb-3">
             <span class="text-xs text-gray-500">분류 / 제품명</span>
             <div class="flex gap-2">
-              <button onclick="addMasterRow('tissue-products')" class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-100"><i class="fas fa-plus mr-1"></i>행 추가</button>
+              <button onclick="addMasterRow('tissue-products')" class="text-xs bg-sage-50 text-sage-700 px-3 py-1.5 rounded-lg hover:bg-sage-100"><i class="fas fa-plus mr-1"></i>행 추가</button>
               <button onclick="clearMasterTable('tissue-products')" class="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100"><i class="fas fa-trash mr-1"></i>전체 삭제</button>
             </div>
           </div>
@@ -1126,7 +1128,7 @@ export function mainPage(): string {
           <div class="flex items-center justify-between mb-3">
             <span class="text-xs text-gray-500">분류 / 자재코드 / 재료명</span>
             <div class="flex gap-2">
-              <button onclick="addMasterRow('tissue-raw')" class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-100"><i class="fas fa-plus mr-1"></i>행 추가</button>
+              <button onclick="addMasterRow('tissue-raw')" class="text-xs bg-sage-50 text-sage-700 px-3 py-1.5 rounded-lg hover:bg-sage-100"><i class="fas fa-plus mr-1"></i>행 추가</button>
               <button onclick="clearMasterTable('tissue-raw')" class="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100"><i class="fas fa-trash mr-1"></i>전체 삭제</button>
             </div>
           </div>
@@ -1193,7 +1195,7 @@ export function mainPage(): string {
             <p id="sim-cost-diff" class="text-lg font-bold mt-2 stat-value">-</p>
           </div>
           <div class="summary-card" style="border-color:#bfdbfe; background:linear-gradient(135deg,#eff6ff,#dbeafe)">
-            <p class="text-[10px] font-medium text-blue-500 uppercase">수량효과</p>
+            <p class="text-[10px] font-medium text-steel-400 uppercase">수량효과</p>
             <p id="sim-qty-effect" class="text-lg font-bold mt-2 stat-value">-</p>
           </div>
           <div class="summary-card" style="border-color:#fde68a; background:linear-gradient(135deg,#fffbeb,#fef3c7)">
@@ -1371,13 +1373,13 @@ export function mainPage(): string {
           ? '<span class="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-medium">\uc644\ub8cc</span>'
           : '<span class="px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-[10px] font-medium">\ubbf8\ub9e4\ud551</span>';
         var categoryBadge = d.category === 'RAW'
-          ? '<span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px]">\uc6d0\uc7ac\ub8cc</span>'
+          ? '<span class="px-1.5 py-0.5 bg-steel-50 text-steel-400 rounded text-[10px]">\uc6d0\uc7ac\ub8cc</span>'
           : '<span class="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px]">\ubd80\uc7ac\ub8cc</span>';
         var groupCell = d.mapped_group
-          ? '<span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-[10px] font-medium">' + d.mapped_group + '</span>'
-          : '<button onclick="assignMaterialGroup(' + i + ')" class="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-[10px] hover:bg-indigo-50 hover:text-indigo-600 transition"><i class="fas fa-plus mr-0.5"></i>\ud560\ub2f9</button>';
+          ? '<span class="px-2 py-0.5 bg-sage-50 text-sage-700 rounded text-[10px] font-medium">' + d.mapped_group + '</span>'
+          : '<button onclick="assignMaterialGroup(' + i + ')" class="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-[10px] hover:bg-sage-50 hover:text-sage-600 transition"><i class="fas fa-plus mr-0.5"></i>\ud560\ub2f9</button>';
         var sourceCell = d.mapping_source || '<span class="text-gray-300">-</span>';
-        return '<tr class="hover:bg-blue-50/30' + (d.mapped_group ? '' : ' bg-red-50/20') + '">' +
+        return '<tr class="hover:bg-sage-50/30' + (d.mapped_group ? '' : ' bg-red-50/20') + '">' +
           '<td class="!py-1.5 text-gray-400">' + (i+1) + '</td>' +
           '<td class="!py-1.5 font-mono text-[11px]">' + d.material_code_short + '</td>' +
           '<td class="!py-1.5">' + d.material_name + '</td>' +
@@ -1425,7 +1427,7 @@ export function mainPage(): string {
       }
       if (tab === 'paper-products') {
         tbody.innerHTML = data.map((d, i) =>
-          '<tr class="hover:bg-blue-50/30">' +
+          '<tr class="hover:bg-sage-50/30">' +
           '<td class="!py-1.5 text-gray-400">'+(i+1)+'</td>' +
           '<td class="!py-1.5">'+d.product_hierarchy_level3+'</td>' +
           '<td class="!py-1.5 font-mono">'+d.grade_code+'</td>' +
@@ -1436,7 +1438,7 @@ export function mainPage(): string {
         ).join('');
       } else if (tab === 'paper-raw') {
         tbody.innerHTML = data.map((d, i) =>
-          '<tr class="hover:bg-blue-50/30">' +
+          '<tr class="hover:bg-sage-50/30">' +
           '<td class="!py-1.5 text-gray-400">'+(i+1)+'</td>' +
           '<td class="!py-1.5">'+(d.category1||'-')+'</td>' +
           '<td class="!py-1.5">'+d.material_class+'</td>' +
@@ -1449,7 +1451,7 @@ export function mainPage(): string {
         ).join('');
       } else if (tab === 'paper-sub') {
         tbody.innerHTML = data.map((d, i) =>
-          '<tr class="hover:bg-blue-50/30">' +
+          '<tr class="hover:bg-sage-50/30">' +
           '<td class="!py-1.5 text-gray-400">'+(i+1)+'</td>' +
           '<td class="!py-1.5 font-mono">'+d.material_code+'</td>' +
           '<td class="!py-1.5">'+d.material_name+'</td>' +
@@ -1459,16 +1461,16 @@ export function mainPage(): string {
         ).join('');
       } else if (tab === 'tissue-products') {
         tbody.innerHTML = data.map((d, i) =>
-          '<tr class="hover:bg-blue-50/30">' +
+          '<tr class="hover:bg-sage-50/30">' +
           '<td class="!py-1.5 text-gray-400">'+(i+1)+'</td>' +
-          '<td class="!py-1.5"><span class="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px]">'+d.category+'</span></td>' +
+          '<td class="!py-1.5"><span class="px-1.5 py-0.5 bg-sage-50 text-sage-600 rounded text-[10px]">'+d.category+'</span></td>' +
           '<td class="!py-1.5">'+d.product_name+'</td>' +
           '<td class="!py-1.5"><button onclick="deleteMasterRow(&quot;tissue-products&quot;,'+d.id+')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>' +
           '</tr>'
         ).join('');
       } else if (tab === 'tissue-raw') {
         tbody.innerHTML = data.map((d, i) =>
-          '<tr class="hover:bg-blue-50/30">' +
+          '<tr class="hover:bg-sage-50/30">' +
           '<td class="!py-1.5 text-gray-400">'+(i+1)+'</td>' +
           '<td class="!py-1.5"><span class="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px]">'+d.category+'</span></td>' +
           '<td class="!py-1.5 font-mono">'+d.material_code+'</td>' +
@@ -1671,7 +1673,7 @@ export function mainPage(): string {
         const curTotalWeight = grandCurCost > 0 ? (curCost / grandCurCost * 100) : 0;
         const prevTotalWeight = grandPrevCost > 0 ? (prevCost / grandPrevCost * 100) : 0;
 
-        rows.push('<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-blue-50/30">' +
+        rows.push('<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-sage-50/30">' +
           '<td class="!py-1.5 border-r border-slate-200"><span class="unit-chip '+chipClass+'">'+(d.machine_code||'')+'</span></td>' +
           '<td class="!py-1.5 border-r border-slate-200">'+(d.product_level2_name||'-')+'</td>' +
           // 당월
@@ -1753,7 +1755,7 @@ export function mainPage(): string {
       var labelEl = document.getElementById('profit-label');
       if (labelEl) labelEl.textContent = profitLabel;
       var titleEl = document.getElementById('profit-detail-title');
-      if (titleEl) titleEl.innerHTML = '<i class="fas fa-list-alt text-indigo-400 mr-1"></i>\ud638\uae30\ubcc4 \uc9c0\uc885\ubcc4 ' + profitLabel + ' \uc0c1\uc138';
+      if (titleEl) titleEl.innerHTML = '<i class="fas fa-list-alt text-sage-400 mr-1"></i>\ud638\uae30\ubcc4 \uc9c0\uc885\ubcc4 ' + profitLabel + ' \uc0c1\uc138';
       var colHeader = document.getElementById('profit-detail-col-header');
       if (colHeader) colHeader.textContent = profitLabel + '(\ucc9c\uc6d0)';
 
@@ -1780,13 +1782,13 @@ export function mainPage(): string {
         const n = Math.round(Number(v) || 0);
         if (n === 0) return '<td class="!py-1.5 text-right font-mono text-gray-400">-</td>';
         if (n < 0) return '<td class="!py-1.5 text-right font-mono text-red-600">' + String.fromCharCode(9651) + Math.abs(n).toLocaleString() + '</td>';
-        return '<td class="!py-1.5 text-right font-mono text-blue-700">' + n.toLocaleString() + '</td>';
+        return '<td class="!py-1.5 text-right font-mono text-steel-400">' + n.toLocaleString() + '</td>';
       };
       const profitCell = (v) => {
         const n = Math.round(Number(v) || 0);
         if (n === 0) return '<td class="!py-1.5 text-right font-mono text-gray-400 font-semibold">-</td>';
         if (n < 0) return '<td class="!py-1.5 text-right font-mono text-red-600 font-semibold">' + String.fromCharCode(9651) + Math.abs(n).toLocaleString() + '</td>';
-        return '<td class="!py-1.5 text-right font-mono text-blue-700 font-semibold">' + n.toLocaleString() + '</td>';
+        return '<td class="!py-1.5 text-right font-mono text-steel-400 font-semibold">' + n.toLocaleString() + '</td>';
       };
 
       let grandProfit = 0;
@@ -1797,7 +1799,7 @@ export function mainPage(): string {
       const subtotalRow = (mc) => {
         const chipClass = mc === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
         const n = Math.round(mProfit);
-        const cls = n < 0 ? 'text-red-600' : (n > 0 ? 'text-blue-700' : 'text-gray-400');
+        const cls = n < 0 ? 'text-red-600' : (n > 0 ? 'text-steel-400' : 'text-gray-400');
         const val = n === 0 ? '-' : (n < 0 ? String.fromCharCode(9651) + Math.abs(n).toLocaleString() : n.toLocaleString());
         return '<tr class="bg-slate-100 font-semibold border-b border-slate-300">' +
           '<td class="!py-1.5"><span class="unit-chip '+chipClass+'">'+mc+'</span></td>' +
@@ -1833,7 +1835,7 @@ export function mainPage(): string {
         prevMachine = d.machine_code;
         const chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
 
-        rows.push('<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-blue-50/30">' +
+        rows.push('<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-sage-50/30">' +
           '<td class="!py-1.5"><span class="unit-chip '+chipClass+'">'+(d.machine_code||'')+'</span></td>' +
           '<td class="!py-1.5">'+(d.product_level2_name||'-')+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+(prevUnit ? fmt(Math.round(prevUnit)) : '-')+'</td>' +
@@ -1848,7 +1850,7 @@ export function mainPage(): string {
 
       // 총합계 tfoot
       const gn = Math.round(grandProfit);
-      const gCls = gn < 0 ? 'text-red-600' : (gn > 0 ? 'text-blue-700' : 'text-gray-400');
+      const gCls = gn < 0 ? 'text-red-600' : (gn > 0 ? 'text-steel-400' : 'text-gray-400');
       const gVal = gn === 0 ? '-' : (gn < 0 ? String.fromCharCode(9651) + Math.abs(gn).toLocaleString() : gn.toLocaleString());
       tfoot.innerHTML = '<tr>' +
         '<td colspan="5" class="!py-2 text-center font-bold">\ucd1d\ud569\uacc4</td>' +
@@ -1858,7 +1860,7 @@ export function mainPage(): string {
 
       // 상단 카드 값 업데이트
       profitEl.textContent = gn === 0 ? '-' : (gn < 0 ? String.fromCharCode(9651) + Math.abs(gn).toLocaleString() : gn.toLocaleString());
-      profitEl.className = 'text-2xl font-bold ' + (gn < 0 ? 'text-red-600' : (gn > 0 ? 'text-blue-700' : 'text-gray-800'));
+      profitEl.className = 'text-2xl font-bold ' + (gn < 0 ? 'text-red-600' : (gn > 0 ? 'text-steel-400' : 'text-gray-800'));
     }
 
     function setMatCostFilter(filter) {
@@ -1927,7 +1929,7 @@ export function mainPage(): string {
         const machineChanged = d.machine_code !== prevMachine;
         prevMachine = d.machine_code;
         const chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
-        rows.push('<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-blue-50/30">' +
+        rows.push('<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-sage-50/30">' +
           '<td class="!py-1.5"><span class="unit-chip ' + chipClass + '">' + (d.machine_code||'') + '</span></td>' +
           '<td class="!py-1.5">' + (d.product_level2_name||'-') + '</td>' +
           '<td class="!py-1.5">' + (d.material_group_name||'-') + '</td>' +
@@ -1970,7 +1972,7 @@ export function mainPage(): string {
         const machineChanged = d.machine_code !== prevMachine;
         prevMachine = d.machine_code;
         const chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
-        return '<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-blue-50/30">' +
+        return '<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-sage-50/30">' +
           '<td><span class="unit-chip ' + chipClass + '">' + (d.machine_code||'') + '</span></td>' +
           '<td>' + (d.machine_name||'-') + '</td>' +
           '<td>' + (d.product_level2_name||'-') + '</td>' +
@@ -1993,7 +1995,7 @@ export function mainPage(): string {
       var fmtDiff = function(v) {
         var n = Number(v) || 0;
         if (n === 0) return '<span class="text-gray-400">-</span>';
-        if (n > 0) return '<span class="text-blue-600">+' + Math.round(n).toLocaleString() + '</span>';
+        if (n > 0) return '<span class="text-steel-400">+' + Math.round(n).toLocaleString() + '</span>';
         return '<span class="text-red-600">' + delta + Math.round(Math.abs(n)).toLocaleString() + '</span>';
       };
 
@@ -2029,7 +2031,7 @@ export function mainPage(): string {
           '</tr>';
         // 상세 행
         machineRows.forEach(function(r) {
-          html += '<tr class="hover:bg-blue-50/30">' +
+          html += '<tr class="hover:bg-sage-50/30">' +
             '<td class="!py-1.5 pl-8 text-gray-600">' + r.product_level2_name + '</td>' +
             '<td class="!py-1.5 text-right font-mono">' + fmt(r.cur_total_production) + '</td>' +
             '<td class="!py-1.5 text-right font-mono">' + fmt(r.cur_production_qty) + '</td>' +
@@ -2072,7 +2074,7 @@ export function mainPage(): string {
         var n = Number(v) || 0;
         if (Math.abs(n) < 0.05) return '<span class="text-gray-400"> - </span>';
         if (n < 0) return '<span class="text-red-600">' + delta + Math.abs(n).toFixed(1) + '</span>';
-        return '<span class="text-blue-700">' + n.toFixed(1) + '</span>';
+        return '<span class="text-steel-400">' + n.toFixed(1) + '</span>';
       };
 
       var s1 = data.scenario1;
@@ -2081,8 +2083,8 @@ export function mainPage(): string {
       var html = '';
 
       // 호기 믹스 헤더행
-      html += '<tr class="bg-purple-50/50 border-t-2 border-purple-200">' +
-        '<td class="!py-2 font-bold text-purple-800"><i class="fas fa-exchange-alt mr-1 text-purple-500"></i>\ud638\uae30 \ubbf9\uc2a4</td>' +
+      html += '<tr class="bg-sage-50/50 border-t-2 border-sage-200">' +
+        '<td class="!py-2 font-bold text-sage-700"><i class="fas fa-exchange-alt mr-1 text-sage-400"></i>\ud638\uae30 \ubbf9\uc2a4</td>' +
         '<td class="!py-2 text-right font-mono">' + fmtV(s1.machineMix[0]?.col1) + '</td>' +
         '<td class="!py-2 text-right font-mono">' + fmtV(s1.machineMix[0]?.col2) + '</td>' +
         '<td class="!py-2 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(s1.machineMix[0]?.col3) + '</td>' +
@@ -2096,7 +2098,7 @@ export function mainPage(): string {
 
       // 호기 믹스 PM3행 (시나리오2에만)
       if (s2.machineMix.length > 1) {
-        html += '<tr class="bg-purple-50/30">' +
+        html += '<tr class="bg-sage-50/30">' +
           '<td class="!py-1.5 pl-6 text-gray-500 text-[11px]"></td>' +
           '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
           '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
@@ -2111,8 +2113,8 @@ export function mainPage(): string {
       }
 
       // 지종 믹스 헤더행
-      html += '<tr class="bg-teal-50/50 border-t-2 border-teal-200">' +
-        '<td class="!py-2 font-bold text-teal-800"><i class="fas fa-sitemap mr-1 text-teal-500"></i>\uc9c0\uc885 \ubbf9\uc2a4</td>' +
+      html += '<tr class="bg-steel-50/50 border-t-2 border-steel-200">' +
+        '<td class="!py-2 font-bold text-steel-500"><i class="fas fa-sitemap mr-1 text-steel-400"></i>\uc9c0\uc885 \ubbf9\uc2a4</td>' +
         '<td colspan="3" class="!py-2 border-r border-slate-200"></td>' +
         '<td colspan="3" class="!py-2 border-r border-slate-200"></td>' +
         '<td colspan="3" class="!py-2"></td>' +
@@ -2125,7 +2127,7 @@ export function mainPage(): string {
       pm2Types.forEach(function(pt, i) {
         var r1 = s1pm2[i] || { col1:0, col2:0, col3:0 };
         var r2 = s2pm2[i] || { col1:0, col2:0, col3:0 };
-        html += '<tr class="hover:bg-blue-50/30">' +
+        html += '<tr class="hover:bg-sage-50/30">' +
           '<td class="!py-1.5 pl-4 text-[11px]"><span class="text-gray-400 mr-1">PM2</span>' + pt + '</td>' +
           '<td class="!py-1.5 text-right font-mono">' + fmtV(r1.col1) + '</td>' +
           '<td class="!py-1.5 text-right font-mono">' + fmtV(r1.col2) + '</td>' +
@@ -2159,7 +2161,7 @@ export function mainPage(): string {
       pm3Types.forEach(function(pt, i) {
         var r1 = s1pm3[i] || { col1:0, col2:0, col3:0 };
         var r2 = s2pm3[i] || { col1:0, col2:0, col3:0 };
-        html += '<tr class="hover:bg-blue-50/30">' +
+        html += '<tr class="hover:bg-sage-50/30">' +
           '<td class="!py-1.5 pl-4 text-[11px]"><span class="text-gray-400 mr-1">PM3</span>' + pt + '</td>' +
           '<td class="!py-1.5 text-right font-mono">' + fmtV(r1.col1) + '</td>' +
           '<td class="!py-1.5 text-right font-mono">' + fmtV(r1.col2) + '</td>' +
@@ -2236,7 +2238,7 @@ export function mainPage(): string {
         const groupChanged = groupKey !== prevGroup;
         prevGroup = groupKey;
         const chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
-        return '<tr class="' + (groupChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-blue-50/30">' +
+        return '<tr class="' + (groupChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-sage-50/30">' +
           '<td class="!py-1.5"><span class="unit-chip ' + chipClass + '">' + (d.machine_code||'') + '</span></td>' +
           '<td class="!py-1.5">' + (d.material_group_major_name||'-') + '</td>' +
           '<td class="!py-1.5">' + (d.product_level2_name||'-') + '</td>' +
@@ -2317,7 +2319,7 @@ export function mainPage(): string {
           <td class="text-right \${u.total_qty_effect>0?'positive':'negative'}">\${formatSignedWon(u.total_qty_effect)}</td>
           <td class="text-right \${u.total_price_effect>0?'positive':'negative'}">\${formatSignedWon(u.total_price_effect)}</td>
           <td class="text-right font-semibold \${u.cost_diff>0?'positive':'negative'}">\${formatSignedWon(u.cost_diff)}</td>
-          <td class="text-right"><span class="text-xs px-2 py-0.5 rounded-full font-medium \${u.cost_diff>0?'bg-red-50 text-red-600':'bg-blue-50 text-blue-600'}">\${pct!=='-'?(u.cost_diff>0?'+':'')+pct+'%':'-'}</span></td>
+          <td class="text-right"><span class="text-xs px-2 py-0.5 rounded-full font-medium \${u.cost_diff>0?'bg-red-50 text-red-600':'bg-steel-50 text-steel-400'}">\${pct!=='-'?(u.cost_diff>0?'+':'')+pct+'%':'-'}</span></td>
         </tr>\`;
       }).join('');
     }
@@ -2329,14 +2331,14 @@ export function mainPage(): string {
       tb.innerHTML = sorted.map((i,idx) => \`<tr>
         <td class="font-bold text-gray-300">\${idx+1}</td>
         <td><span class="unit-chip \${getCC(i.unit_code)}">\${i.unit_name}</span></td>
-        <td><span class="text-[10px] px-1.5 py-0.5 rounded font-medium \${i.category==='RAW'?'bg-blue-50 text-blue-600':'bg-emerald-50 text-emerald-600'}">\${i.category==='RAW'?'원자재':'부자재'}</span></td>
+        <td><span class="text-[10px] px-1.5 py-0.5 rounded font-medium \${i.category==='RAW'?'bg-steel-50 text-steel-400':'bg-sage-50 text-sage-600'}">\${i.category==='RAW'?'원자재':'부자재'}</span></td>
         <td class="font-medium">\${i.material_name}</td>
         <td class="text-right text-gray-500">\${formatWon(i.prev_total_cost)}</td>
         <td class="text-right">\${formatWon(i.cur_total_cost)}</td>
         <td class="text-right \${i.qty_effect>0?'positive':'negative'}">\${formatSignedWon(i.qty_effect)}</td>
         <td class="text-right \${i.price_effect>0?'positive':'negative'}">\${formatSignedWon(i.price_effect)}</td>
         <td class="text-right font-semibold \${i.cost_diff>0?'positive':'negative'}">\${formatSignedWon(i.cost_diff)}</td>
-        <td class="text-right"><span class="text-xs \${i.cost_diff>0?'text-red-500':'text-blue-500'}">\${i.cost_change_pct!=null?(i.cost_diff>0?'+':'')+i.cost_change_pct+'%':'-'}</span></td>
+        <td class="text-right"><span class="text-xs \${i.cost_diff>0?'text-red-500':'text-steel-400'}">\${i.cost_change_pct!=null?(i.cost_diff>0?'+':'')+i.cost_change_pct+'%':'-'}</span></td>
       </tr>\`).join('');
     }
 
@@ -2345,7 +2347,7 @@ export function mainPage(): string {
       if (!analysisData?.items?.length) { tb.innerHTML='<tr><td colspan="16" class="text-center py-8 text-gray-400">데이터 없음</td></tr>'; return; }
       tb.innerHTML = analysisData.items.map(i => \`<tr>
         <td><span class="unit-chip \${getCC(i.unit_code)}">\${i.unit_name}</span></td>
-        <td><span class="text-[10px] px-1.5 py-0.5 rounded \${i.category==='RAW'?'bg-blue-50 text-blue-600':'bg-emerald-50 text-emerald-600'}">\${i.category==='RAW'?'원':'부'}</span></td>
+        <td><span class="text-[10px] px-1.5 py-0.5 rounded \${i.category==='RAW'?'bg-steel-50 text-steel-400':'bg-sage-50 text-sage-600'}">\${i.category==='RAW'?'원':'부'}</span></td>
         <td class="text-gray-400 font-mono text-[11px]">\${i.material_code}</td>
         <td class="font-medium">\${i.material_name}</td>
         <td class="text-gray-400 text-xs">\${i.unit_of_measure}</td>
@@ -2536,7 +2538,7 @@ export function mainPage(): string {
           document.getElementById('upload-area').classList.add('hidden');
           document.getElementById('upload-preview').classList.remove('hidden');
           document.getElementById('upload-filename').textContent = file.name;
-          document.getElementById('upload-info').innerHTML = '<span class="inline-flex items-center px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs font-medium mr-2">SAP 형식 감지</span>' + parsed.rows.length + '행 (유효 데이터) | 원본 ' + parsed.rawRows.length + '행 전체 저장';
+          document.getElementById('upload-info').innerHTML = '<span class="inline-flex items-center px-2 py-0.5 rounded bg-sage-100 text-sage-700 text-xs font-medium mr-2">SAP 형식 감지</span>' + parsed.rows.length + '행 (유효 데이터) | 원본 ' + parsed.rawRows.length + '행 전체 저장';
           document.getElementById('upload-count').textContent = parsed.rows.length;
           
           // SAP preview table
@@ -2551,7 +2553,7 @@ export function mainPage(): string {
           document.getElementById('upload-area').classList.add('hidden');
           document.getElementById('upload-preview').classList.remove('hidden');
           document.getElementById('upload-filename').textContent = file.name;
-          document.getElementById('upload-info').innerHTML = '<span class="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-medium mr-2">기본 형식</span>' + json.length + '행';
+          document.getElementById('upload-info').innerHTML = '<span class="inline-flex items-center px-2 py-0.5 rounded bg-steel-50 text-steel-400 text-xs font-medium mr-2">기본 형식</span>' + json.length + '행';
           document.getElementById('upload-count').textContent = json.length;
           const h = Object.keys(json[0]);
           document.getElementById('preview-head').innerHTML = '<tr>'+h.map(x=>'<th class="text-xs">'+x+'</th>').join('')+'</tr>';
@@ -2723,7 +2725,7 @@ export function mainPage(): string {
             <span class="text-xs font-mono text-gray-400">\${u.unit_code}</span>
             <span class="text-xs text-gray-400">\${u.description||''}</span>
           </div>
-          <span class="text-[10px] px-2 py-0.5 bg-green-50 text-green-600 rounded-full font-medium">활성</span>
+          <span class="text-[10px] px-2 py-0.5 bg-sage-50 text-green-600 rounded-full font-medium">활성</span>
         </div>
       \`).join('');
     }
@@ -2732,7 +2734,7 @@ export function mainPage(): string {
       document.getElementById('materials-list').innerHTML = mats.map(m=>\`
         <div class="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
           <div class="flex items-center gap-3">
-            <span class="text-[10px] px-2 py-0.5 rounded font-medium \${m.category==='RAW'?'bg-blue-50 text-blue-600':'bg-emerald-50 text-emerald-600'}">\${m.category==='RAW'?'원자재':'부자재'}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded font-medium \${m.category==='RAW'?'bg-steel-50 text-steel-400':'bg-sage-50 text-sage-600'}">\${m.category==='RAW'?'원자재':'부자재'}</span>
             <span class="text-sm font-medium text-gray-700">\${m.material_name}</span>
             <span class="text-xs font-mono text-gray-400">\${m.material_code}</span>
           </div>
@@ -2832,14 +2834,14 @@ export function mainPage(): string {
           <td class="text-right font-medium">\${formatWon(p.total_sim_cost)}</td>
           <td class="text-right text-gray-500">\${formatWon(p.total_prev_cost)}</td>
           <td class="text-right font-semibold \${p.cost_diff>0?'positive':'negative'}">\${formatSignedWon(p.cost_diff)}</td>
-          <td class="text-right"><span class="text-xs px-2 py-0.5 rounded-full \${p.cost_diff>0?'bg-red-50 text-red-600':'bg-blue-50 text-blue-600'}">\${pct!=='-'?(p.cost_diff>0?'+':'')+pct+'%':'-'}</span></td>
+          <td class="text-right"><span class="text-xs px-2 py-0.5 rounded-full \${p.cost_diff>0?'bg-red-50 text-red-600':'bg-steel-50 text-steel-400'}">\${pct!=='-'?(p.cost_diff>0?'+':'')+pct+'%':'-'}</span></td>
         </tr>\`;
       }).join('');
 
       // Detail table
       document.getElementById('sim-detail-body').innerHTML = simResultData.details.map(d => \`<tr>
         <td class="text-xs text-gray-500">\${d.product_name}</td>
-        <td><span class="text-[10px] px-1.5 py-0.5 rounded \${d.category==='RAW'?'bg-blue-50 text-blue-600':'bg-emerald-50 text-emerald-600'}">\${d.category==='RAW'?'원':'부'}</span></td>
+        <td><span class="text-[10px] px-1.5 py-0.5 rounded \${d.category==='RAW'?'bg-steel-50 text-steel-400':'bg-sage-50 text-sage-600'}">\${d.category==='RAW'?'원':'부'}</span></td>
         <td class="font-medium text-xs">\${d.material_name}</td>
         <td class="text-right text-gray-500 text-xs">\${d.unit_consumption}</td>
         <td class="text-right">\${fmt(d.sim_usage_qty)}</td>
@@ -2938,7 +2940,7 @@ export function mainPage(): string {
             </div>
           </div>
           \${pBom.length ? '<table class="data-table"><thead><tr><th>구분</th><th>자재코드</th><th>자재명</th><th class="text-right">원단위</th><th>단위</th><th>비고</th><th class="text-center w-16">삭제</th></tr></thead><tbody>' + pBom.map(b=>\`<tr>
-            <td><span class="text-[10px] px-1.5 py-0.5 rounded \${b.category==='RAW'?'bg-blue-50 text-blue-600':'bg-emerald-50 text-emerald-600'}">\${b.category==='RAW'?'원자재':'부자재'}</span></td>
+            <td><span class="text-[10px] px-1.5 py-0.5 rounded \${b.category==='RAW'?'bg-steel-50 text-steel-400':'bg-sage-50 text-sage-600'}">\${b.category==='RAW'?'원자재':'부자재'}</span></td>
             <td class="font-mono text-xs text-gray-400">\${b.material_code}</td>
             <td class="font-medium">\${b.material_name}</td>
             <td class="text-right font-semibold text-primary-600">\${b.unit_consumption}</td>
@@ -3021,7 +3023,7 @@ export function mainPage(): string {
         tbody.innerHTML = dvPageData.map((d, idx) => {
           const rowNum = start + idx + 1;
           const chipClass = (d.machine_code||'') === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
-          return '<tr class="hover:bg-blue-50/30">' +
+          return '<tr class="hover:bg-sage-50/30">' +
             '<td class="!px-2 text-gray-400">' + rowNum + '</td>' +
             '<td class="!px-2">' + (d.calendar_ym||'') + '</td>' +
             '<td class="!px-2">' + (d.process_code||'') + '</td>' +
