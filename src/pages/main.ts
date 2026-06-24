@@ -258,6 +258,66 @@ export function mainPage(): string {
           </table>
         </div>
       </div>
+
+      <!-- 1) 호기별 > 제품레벨2 > 자재그룹명별 재료비 요약 -->
+      <div class="card overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-layer-group text-indigo-500 mr-1.5"></i>호기별 제품구분별 자재그룹 재료비 요약</h3>
+          <span class="text-xs text-gray-400">실적배부수량 x 실적단가</span>
+        </div>
+        <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
+          <table class="data-table text-xs">
+            <thead class="sticky top-0 bg-white z-10">
+              <tr>
+                <th class="!py-2">호기</th>
+                <th class="!py-2">제품구분(레벨2)</th>
+                <th class="!py-2">자재그룹명</th>
+                <th class="!py-2 text-right">실적배부수량</th>
+                <th class="!py-2 text-right">평균단가</th>
+                <th class="!py-2 text-right">재료비(원)</th>
+                <th class="!py-2 text-right">건수</th>
+              </tr>
+            </thead>
+            <tbody id="dash-matcost-body"></tbody>
+            <tfoot class="bg-slate-50 font-semibold sticky bottom-0">
+              <tr>
+                <td colspan="3" class="!py-2 text-center">합계</td>
+                <td class="!py-2 text-right" id="dash-matcost-total-qty">-</td>
+                <td class="!py-2 text-right">-</td>
+                <td class="!py-2 text-right" id="dash-matcost-total-cost">-</td>
+                <td class="!py-2 text-right" id="dash-matcost-total-rows">-</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2) 호기별 제품레벨2별 총생산량 합계 -->
+      <div class="card overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-industry text-emerald-500 mr-1.5"></i>호기별 제품구분별 총생산량 합계</h3>
+          <span class="text-xs text-gray-400">제품 레벨4 기준 중복제거 합산</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>호기</th>
+                <th>호기명</th>
+                <th>제품구분(레벨2)</th>
+                <th class="text-right">총생산량</th>
+              </tr>
+            </thead>
+            <tbody id="dash-production-body"></tbody>
+            <tfoot class="bg-slate-50 font-semibold">
+              <tr>
+                <td colspan="3" class="text-center">합계</td>
+                <td class="text-right" id="dash-production-total">-</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- Detail Tab -->
@@ -849,6 +909,7 @@ export function mainPage(): string {
     async function loadAnalysis() {
       const year = document.getElementById('analysisYear').value;
       const month = document.getElementById('analysisMonth').value;
+      const ym = year + month.padStart(2, '0');
       const params = new URLSearchParams({ year, month });
       if (currentUnitFilter) params.set('unit_id', currentUnitFilter);
       const [comp, summary] = await Promise.all([
@@ -858,6 +919,7 @@ export function mainPage(): string {
       analysisData = comp; unitSummaryData = summary;
       document.getElementById('period-label').textContent = comp.summary?.period ? comp.summary.period.previous + ' vs ' + comp.summary.period.current : '';
       renderDashboard(); renderDetailTable();
+      loadDashboardSummary(ym);
     }
 
     function renderDashboard() {
@@ -869,6 +931,71 @@ export function mainPage(): string {
       setVC('s-price', s.total_price_effect);
       setVC('s-total', s.total_cost_diff);
       renderUnitChart(); renderEffectChart(); renderUnitSummaryTable(); renderTopImpact();
+    }
+
+    async function loadDashboardSummary(ym) {
+      const [matCost, prodSummary] = await Promise.all([
+        fetch('/api/dashboard/material-cost-summary?ym=' + ym).then(r => r.json()),
+        fetch('/api/dashboard/production-summary?ym=' + ym).then(r => r.json())
+      ]);
+      renderMatCostSummary(matCost);
+      renderProductionSummary(prodSummary);
+    }
+
+    function renderMatCostSummary(data) {
+      const tbody = document.getElementById('dash-matcost-body');
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 py-8">데이터가 없습니다.</td></tr>';
+        return;
+      }
+      const fmt = (v) => v != null ? Math.round(Number(v)).toLocaleString() : '-';
+      const fmtDec = (v) => v != null ? Number(v).toLocaleString(undefined, {maximumFractionDigits:1}) : '-';
+      let totalQty = 0, totalCost = 0, totalRows = 0;
+      let prevMachine = '';
+      tbody.innerHTML = data.map(d => {
+        totalQty += Number(d.total_alloc_qty) || 0;
+        totalCost += Number(d.material_cost) || 0;
+        totalRows += Number(d.row_count) || 0;
+        const machineChanged = d.machine_code !== prevMachine;
+        prevMachine = d.machine_code;
+        const chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        return '<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-blue-50/30">' +
+          '<td class="!py-1.5"><span class="unit-chip ' + chipClass + '">' + (d.machine_code||'') + '</span></td>' +
+          '<td class="!py-1.5">' + (d.product_level2_name||'-') + '</td>' +
+          '<td class="!py-1.5">' + (d.material_group_name||'-') + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmt(d.total_alloc_qty) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmtDec(d.avg_unit_price) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono font-semibold">' + fmt(d.material_cost) + '</td>' +
+          '<td class="!py-1.5 text-right text-gray-400">' + (d.row_count||'') + '</td>' +
+          '</tr>';
+      }).join('');
+      document.getElementById('dash-matcost-total-qty').textContent = fmt(totalQty);
+      document.getElementById('dash-matcost-total-cost').textContent = fmt(totalCost);
+      document.getElementById('dash-matcost-total-rows').textContent = fmt(totalRows);
+    }
+
+    function renderProductionSummary(data) {
+      const tbody = document.getElementById('dash-production-body');
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-gray-400 py-8">데이터가 없습니다.</td></tr>';
+        return;
+      }
+      const fmt = (v) => v != null ? Math.round(Number(v)).toLocaleString() : '-';
+      let grandTotal = 0;
+      let prevMachine = '';
+      tbody.innerHTML = data.map(d => {
+        grandTotal += Number(d.total_production) || 0;
+        const machineChanged = d.machine_code !== prevMachine;
+        prevMachine = d.machine_code;
+        const chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        return '<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-blue-50/30">' +
+          '<td><span class="unit-chip ' + chipClass + '">' + (d.machine_code||'') + '</span></td>' +
+          '<td>' + (d.machine_name||'-') + '</td>' +
+          '<td>' + (d.product_level2_name||'-') + '</td>' +
+          '<td class="text-right font-mono font-semibold">' + fmt(d.total_production) + '</td>' +
+          '</tr>';
+      }).join('');
+      document.getElementById('dash-production-total').textContent = fmt(grandTotal);
     }
 
     function setVC(id, v) {

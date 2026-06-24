@@ -553,6 +553,78 @@ app.post('/api/upload/smart', async (c) => {
   }
 })
 
+// ============ 대시보드 요약 API ============
+
+// 1) 호기별 > 제품레벨2명 > 자재그룹명별 재료비 요약
+// 재료비 = 실적배부수량(actual_alloc_qty) * 실적단가(actual_unit_price)
+app.get('/api/dashboard/material-cost-summary', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym') || ''
+  
+  let where = '1=1'
+  const params: any[] = []
+  if (ym) { where += ' AND calendar_ym = ?'; params.push(ym) }
+  
+  const sql = `
+    SELECT 
+      machine_code,
+      machine_name,
+      product_level2_name,
+      material_group_name,
+      SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as material_cost,
+      SUM(CAST(actual_alloc_qty AS REAL)) as total_alloc_qty,
+      AVG(CAST(actual_unit_price AS REAL)) as avg_unit_price,
+      COUNT(*) as row_count
+    FROM raw_records
+    WHERE ${where}
+      AND calendar_ym != 'CALMONTH'
+      AND CAST(actual_alloc_qty AS REAL) != 0
+    GROUP BY machine_code, product_level2_name, material_group_name
+    ORDER BY machine_code, product_level2_name, material_cost DESC
+  `
+  
+  const result = await db.prepare(sql).bind(...params).all()
+  return c.json(result.results)
+})
+
+// 2) 호기별 > 제품레벨2명별 총생산량 합계
+app.get('/api/dashboard/production-summary', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym') || ''
+  
+  let where = '1=1'
+  const params: any[] = []
+  if (ym) { where += ' AND calendar_ym = ?'; params.push(ym) }
+  
+  // 총생산량은 제품별로 중복될 수 있으므로, 동일 호기+제품레벨2+자재 조합에서 대표값 사용
+  // total_production은 제품 단위 생산량이므로 DISTINCT한 제품별로 합산
+  const sql = `
+    SELECT 
+      machine_code,
+      machine_name,
+      product_level2_name,
+      SUM(total_prod) as total_production
+    FROM (
+      SELECT 
+        machine_code,
+        machine_name,
+        product_level2_name,
+        product_level4,
+        MAX(CAST(total_production AS REAL)) as total_prod
+      FROM raw_records
+      WHERE ${where}
+        AND calendar_ym != 'CALMONTH'
+        AND CAST(total_production AS REAL) > 0
+      GROUP BY machine_code, product_level2_name, product_level4
+    )
+    GROUP BY machine_code, product_level2_name
+    ORDER BY machine_code, total_production DESC
+  `
+  
+  const result = await db.prepare(sql).bind(...params).all()
+  return c.json(result.results)
+})
+
 // ============ Raw Records (원본 데이터) 조회 API ============
 
 // 원본 데이터 조회 (필터링, 페이징)
