@@ -273,10 +273,10 @@ export function mainPage(): string {
             <button onclick="event.stopPropagation();setOverviewFilter('ALL')" id="ov-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
             <button onclick="event.stopPropagation();setOverviewFilter('RAW')" id="ov-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
             <button onclick="event.stopPropagation();setOverviewFilter('SUB')" id="ov-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
-            <i class="fas fa-chevron-down card-chevron text-gray-400 ml-2" id="card-overview-chevron"></i>
+            <i class="fas fa-chevron-down card-chevron card-chevron-collapsed text-gray-400 ml-2" id="card-overview-chevron"></i>
           </div>
         </div>
-        <div id="card-overview" class="card-body-collapsible">
+        <div id="card-overview" class="card-body-collapsible card-body-collapsed">
         <div class="px-5 py-3 bg-gradient-to-r from-indigo-50/50 to-transparent border-b border-slate-100 flex items-center justify-between">
           <div class="flex items-center gap-4">
             <div class="flex items-center gap-2">
@@ -370,10 +370,10 @@ export function mainPage(): string {
             <button onclick="event.stopPropagation();setMatCostFilter('RAW')" id="mc-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
             <button onclick="event.stopPropagation();setMatCostFilter('SUB')" id="mc-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
             <span class="text-xs text-gray-400 ml-2">실적배부수량 x 실적단가</span>
-            <i class="fas fa-chevron-down card-chevron text-gray-400 ml-2" id="card-matcost-chevron"></i>
+            <i class="fas fa-chevron-down card-chevron card-chevron-collapsed text-gray-400 ml-2" id="card-matcost-chevron"></i>
           </div>
         </div>
-        <div id="card-matcost" class="card-body-collapsible">
+        <div id="card-matcost" class="card-body-collapsible card-body-collapsed">
         <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
           <table class="data-table text-xs">
             <thead class="sticky top-0 bg-white z-10">
@@ -414,10 +414,10 @@ export function mainPage(): string {
             <button onclick="event.stopPropagation();setMatGroupFilter('ALL')" id="mg-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
             <button onclick="event.stopPropagation();setMatGroupFilter('RAW')" id="mg-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
             <button onclick="event.stopPropagation();setMatGroupFilter('SUB')" id="mg-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
-            <i class="fas fa-chevron-down card-chevron text-gray-400 ml-2" id="card-matgroup-chevron"></i>
+            <i class="fas fa-chevron-down card-chevron card-chevron-collapsed text-gray-400 ml-2" id="card-matgroup-chevron"></i>
           </div>
         </div>
-        <div id="card-matgroup" class="card-body-collapsible">
+        <div id="card-matgroup" class="card-body-collapsible card-body-collapsed">
         <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
           <table class="data-table text-xs">
             <thead class="sticky top-0 bg-white z-10">
@@ -456,10 +456,10 @@ export function mainPage(): string {
           <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-industry text-emerald-500 mr-1.5"></i>호기별 제품구분별 총생산량 합계</h3>
           <div class="flex items-center gap-2">
             <span class="text-xs text-gray-400">제품 레벨4 기준 중복제거 합산</span>
-            <i class="fas fa-chevron-down card-chevron text-gray-400 ml-2" id="card-production-chevron"></i>
+            <i class="fas fa-chevron-down card-chevron card-chevron-collapsed text-gray-400 ml-2" id="card-production-chevron"></i>
           </div>
         </div>
-        <div id="card-production" class="card-body-collapsible">
+        <div id="card-production" class="card-body-collapsible card-body-collapsed">
         <div class="overflow-x-auto">
           <table class="data-table">
             <thead>
@@ -488,10 +488,10 @@ export function mainPage(): string {
           <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-line text-teal-500 mr-1.5"></i>생산량 분석 (호기별 지종별)</h3>
           <div class="flex items-center gap-2">
             <span class="text-xs text-gray-400">당월 / 전월 비교 · 총생산량, 생산수량, 폐품수량</span>
-            <i class="fas fa-chevron-down card-chevron text-gray-400 ml-2" id="card-prodanalysis-chevron"></i>
+            <i class="fas fa-chevron-down card-chevron card-chevron-collapsed text-gray-400 ml-2" id="card-prodanalysis-chevron"></i>
           </div>
         </div>
-        <div id="card-prodanalysis" class="card-body-collapsible">
+        <div id="card-prodanalysis" class="card-body-collapsible card-body-collapsed">
         <div class="overflow-x-auto">
           <table class="data-table text-xs" id="prod-analysis-table">
             <thead class="sticky top-0 bg-white z-10">
@@ -526,10 +526,10 @@ export function mainPage(): string {
           <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-random text-purple-500 mr-1.5"></i>믹스 효과 분석 (호기 믹스 + 지종 믹스)</h3>
           <div class="flex items-center gap-2">
             <span class="text-xs text-gray-400">단위: 원단위차이(원/톤), 수량차이(톤), 금액효과(천원)</span>
-            <i class="fas fa-chevron-down card-chevron text-gray-400 ml-2" id="card-mixeffect-chevron"></i>
+            <i class="fas fa-chevron-down card-chevron card-chevron-collapsed text-gray-400 ml-2" id="card-mixeffect-chevron"></i>
           </div>
         </div>
-        <div id="card-mixeffect" class="card-body-collapsible">
+        <div id="card-mixeffect" class="card-body-collapsible card-body-collapsed">
         <div class="overflow-x-auto">
           <table class="data-table text-xs" id="mix-effect-table">
             <thead class="sticky top-0 bg-white z-10">
