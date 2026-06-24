@@ -463,6 +463,39 @@ export function mainPage(): string {
           </table>
         </div>
       </div>
+
+      <!-- 4) 생산량 분석 대시보드 -->
+      <div class="card overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-line text-teal-500 mr-1.5"></i>생산량 분석 (호기별 지종별)</h3>
+          <span class="text-xs text-gray-400">당월 / 전월 비교 · 총생산량, 생산수량, 폐품수량</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="data-table text-xs" id="prod-analysis-table">
+            <thead class="sticky top-0 bg-white z-10">
+              <tr>
+                <th rowspan="2" class="!py-2 text-center border-r border-slate-200">행 레이블</th>
+                <th colspan="3" class="!py-1 text-center bg-blue-50 border-b border-slate-200">당월</th>
+                <th colspan="3" class="!py-1 text-center bg-amber-50 border-b border-slate-200">전월</th>
+                <th colspan="3" class="!py-1 text-center bg-green-50 border-b border-slate-200">증감</th>
+              </tr>
+              <tr>
+                <th class="!py-1.5 text-right bg-blue-50">총생산량</th>
+                <th class="!py-1.5 text-right bg-blue-50">생산수량</th>
+                <th class="!py-1.5 text-right bg-blue-50 border-r border-slate-200">폐품수량</th>
+                <th class="!py-1.5 text-right bg-amber-50">총생산량</th>
+                <th class="!py-1.5 text-right bg-amber-50">생산수량</th>
+                <th class="!py-1.5 text-right bg-amber-50 border-r border-slate-200">폐품수량</th>
+                <th class="!py-1.5 text-right bg-green-50">총생산량</th>
+                <th class="!py-1.5 text-right bg-green-50">생산수량</th>
+                <th class="!py-1.5 text-right bg-green-50">폐품수량</th>
+              </tr>
+            </thead>
+            <tbody id="prod-analysis-body"></tbody>
+            <tfoot class="bg-slate-50 font-semibold sticky bottom-0" id="prod-analysis-foot"></tfoot>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- Detail Tab -->
@@ -1452,17 +1485,19 @@ export function mainPage(): string {
     let overviewCategoryFilter = 'ALL';
 
     async function loadDashboardSummary(ym) {
-      const [matCost, prodSummary, matGroup, overview] = await Promise.all([
+      const [matCost, prodSummary, matGroup, overview, prodAnalysis] = await Promise.all([
         fetch('/api/dashboard/material-cost-summary?ym=' + ym + (matCostCategoryFilter !== 'ALL' ? '&category=' + matCostCategoryFilter : '')).then(r => r.json()),
         fetch('/api/dashboard/production-summary?ym=' + ym).then(r => r.json()),
         fetch('/api/dashboard/material-by-group?ym=' + ym + (matGroupCategoryFilter !== 'ALL' ? '&category=' + matGroupCategoryFilter : '')).then(r => r.json()),
-        fetch('/api/dashboard/material-overview?ym=' + ym + (overviewCategoryFilter !== 'ALL' ? '&category=' + overviewCategoryFilter : '')).then(r => r.json())
+        fetch('/api/dashboard/material-overview?ym=' + ym + (overviewCategoryFilter !== 'ALL' ? '&category=' + overviewCategoryFilter : '')).then(r => r.json()),
+        fetch('/api/dashboard/production-analysis?ym=' + ym).then(r => r.json())
       ]);
       renderOverview(overview);
       renderProfitSummary(overview);
       renderMatCostSummary(matCost);
       renderProductionSummary(prodSummary);
       renderMatGroupSummary(matGroup);
+      renderProductionAnalysis(prodAnalysis);
     }
 
     function setOverviewFilter(filter) {
@@ -1859,6 +1894,87 @@ export function mainPage(): string {
           '</tr>';
       }).join('');
       document.getElementById('dash-production-total').textContent = fmt(grandTotal);
+    }
+
+    function renderProductionAnalysis(data) {
+      const tbody = document.getElementById('prod-analysis-body');
+      const tfoot = document.getElementById('prod-analysis-foot');
+      if (!data || !data.rows || data.rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-gray-400 py-8">\ub370\uc774\ud130\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.</td></tr>';
+        tfoot.innerHTML = '';
+        return;
+      }
+      var fmt = function(v) { return v != null ? Math.round(Number(v)).toLocaleString() : '-'; };
+      var delta = String.fromCharCode(9651);
+      var fmtDiff = function(v) {
+        var n = Number(v) || 0;
+        if (n === 0) return '<span class="text-gray-400">-</span>';
+        if (n > 0) return '<span class="text-blue-600">+' + Math.round(n).toLocaleString() + '</span>';
+        return '<span class="text-red-600">' + delta + Math.round(Math.abs(n)).toLocaleString() + '</span>';
+      };
+
+      // 호기별로 그룹핑하여 소계행 포함
+      var rows = data.rows;
+      var subtotals = data.subtotals || [];
+      var subMap = {};
+      subtotals.forEach(function(s) { subMap[s.machine_code] = s; });
+
+      // 호기 순서 결정
+      var machineOrder = [];
+      var seen = {};
+      rows.forEach(function(r) {
+        if (!seen[r.machine_code]) { machineOrder.push(r.machine_code); seen[r.machine_code] = true; }
+      });
+
+      var html = '';
+      machineOrder.forEach(function(mc) {
+        var machineRows = rows.filter(function(r) { return r.machine_code === mc; });
+        var sub = subMap[mc] || {};
+        // 호기 소계 행 (볼드)
+        html += '<tr class="bg-slate-50 font-semibold border-t-2 border-slate-300">' +
+          '<td class="!py-2"><span class="unit-chip ' + (mc === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3') + '">' + mc + '</span></td>' +
+          '<td class="!py-2 text-right font-mono">' + fmt(sub.cur_total_production) + '</td>' +
+          '<td class="!py-2 text-right font-mono">' + fmt(sub.cur_production_qty) + '</td>' +
+          '<td class="!py-2 text-right font-mono border-r border-slate-200">' + fmt(sub.cur_waste_qty) + '</td>' +
+          '<td class="!py-2 text-right font-mono">' + fmt(sub.prev_total_production) + '</td>' +
+          '<td class="!py-2 text-right font-mono">' + fmt(sub.prev_production_qty) + '</td>' +
+          '<td class="!py-2 text-right font-mono border-r border-slate-200">' + fmt(sub.prev_waste_qty) + '</td>' +
+          '<td class="!py-2 text-right font-mono">' + fmtDiff((sub.cur_total_production||0) - (sub.prev_total_production||0)) + '</td>' +
+          '<td class="!py-2 text-right font-mono">' + fmtDiff((sub.cur_production_qty||0) - (sub.prev_production_qty||0)) + '</td>' +
+          '<td class="!py-2 text-right font-mono">' + fmtDiff((sub.cur_waste_qty||0) - (sub.prev_waste_qty||0)) + '</td>' +
+          '</tr>';
+        // 상세 행
+        machineRows.forEach(function(r) {
+          html += '<tr class="hover:bg-blue-50/30">' +
+            '<td class="!py-1.5 pl-8 text-gray-600">' + r.product_level2_name + '</td>' +
+            '<td class="!py-1.5 text-right font-mono">' + fmt(r.cur_total_production) + '</td>' +
+            '<td class="!py-1.5 text-right font-mono">' + fmt(r.cur_production_qty) + '</td>' +
+            '<td class="!py-1.5 text-right font-mono border-r border-slate-200">' + fmt(r.cur_waste_qty) + '</td>' +
+            '<td class="!py-1.5 text-right font-mono">' + fmt(r.prev_total_production) + '</td>' +
+            '<td class="!py-1.5 text-right font-mono">' + fmt(r.prev_production_qty) + '</td>' +
+            '<td class="!py-1.5 text-right font-mono border-r border-slate-200">' + fmt(r.prev_waste_qty) + '</td>' +
+            '<td class="!py-1.5 text-right font-mono">' + fmtDiff(r.cur_total_production - r.prev_total_production) + '</td>' +
+            '<td class="!py-1.5 text-right font-mono">' + fmtDiff(r.cur_production_qty - r.prev_production_qty) + '</td>' +
+            '<td class="!py-1.5 text-right font-mono">' + fmtDiff(r.cur_waste_qty - r.prev_waste_qty) + '</td>' +
+            '</tr>';
+        });
+      });
+      tbody.innerHTML = html;
+
+      // 총합계 footer
+      var gt = data.grandTotal || {};
+      tfoot.innerHTML = '<tr class="border-t-2 border-slate-400">' +
+        '<td class="!py-2 text-center font-bold">\ucd1d\ud569\uacc4</td>' +
+        '<td class="!py-2 text-right font-mono">' + fmt(gt.cur_total_production) + '</td>' +
+        '<td class="!py-2 text-right font-mono">' + fmt(gt.cur_production_qty) + '</td>' +
+        '<td class="!py-2 text-right font-mono border-r border-slate-200">' + fmt(gt.cur_waste_qty) + '</td>' +
+        '<td class="!py-2 text-right font-mono">' + fmt(gt.prev_total_production) + '</td>' +
+        '<td class="!py-2 text-right font-mono">' + fmt(gt.prev_production_qty) + '</td>' +
+        '<td class="!py-2 text-right font-mono border-r border-slate-200">' + fmt(gt.prev_waste_qty) + '</td>' +
+        '<td class="!py-2 text-right font-mono">' + fmtDiff((gt.cur_total_production||0) - (gt.prev_total_production||0)) + '</td>' +
+        '<td class="!py-2 text-right font-mono">' + fmtDiff((gt.cur_production_qty||0) - (gt.prev_production_qty||0)) + '</td>' +
+        '<td class="!py-2 text-right font-mono">' + fmtDiff((gt.cur_waste_qty||0) - (gt.prev_waste_qty||0)) + '</td>' +
+        '</tr>';
     }
 
     function setMatGroupFilter(filter) {

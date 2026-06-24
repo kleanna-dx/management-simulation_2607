@@ -897,6 +897,149 @@ app.get('/api/dashboard/production-summary', async (c) => {
   return c.json(result.results)
 })
 
+// 3) 생산량 분석 대시보드 (총생산량, 생산수량, 폐품수량 — 당월/전월)
+app.get('/api/dashboard/production-analysis', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym') || ''
+
+  // 전월 계산
+  let prevYm = ''
+  if (ym && ym.length === 6) {
+    let y = parseInt(ym.substring(0, 4))
+    let m = parseInt(ym.substring(4, 6))
+    m -= 1
+    if (m < 1) { m = 12; y -= 1 }
+    prevYm = `${y}${String(m).padStart(2, '0')}`
+  }
+
+  // 생산량 SQL: product_level4별로 중복 제거 후 호기+지종별 합산
+  const prodSql = `
+    SELECT 
+      machine_code,
+      product_level2_name,
+      SUM(total_prod) as total_production,
+      SUM(prod_qty) as production_qty,
+      SUM(waste) as waste_qty
+    FROM (
+      SELECT 
+        machine_code,
+        CASE 
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC\uc800\ud3c9\ub7c9'
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC\uace0\ud3c9\ub7c9'
+          ELSE product_level2_name
+        END as product_level2_name,
+        product_level4,
+        MAX(CAST(total_production AS REAL)) as total_prod,
+        MAX(CAST(production_qty AS REAL)) as prod_qty,
+        MAX(CAST(waste_qty AS REAL)) as waste
+      FROM raw_records
+      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+        AND CAST(total_production AS REAL) > 0
+      GROUP BY machine_code, 
+        CASE 
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC\uc800\ud3c9\ub7c9'
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC\uace0\ud3c9\ub7c9'
+          ELSE product_level2_name
+        END,
+        product_level4
+    )
+    GROUP BY machine_code, product_level2_name
+    ORDER BY machine_code, total_production DESC
+  `
+
+  const curResult = await db.prepare(prodSql).bind(ym).all()
+  const curData = (curResult.results || []) as any[]
+
+  let prevData: any[] = []
+  if (prevYm) {
+    const prevResult = await db.prepare(prodSql).bind(prevYm).all()
+    prevData = (prevResult.results || []) as any[]
+  }
+
+  // 전월 데이터 맵 생성
+  const prevMap: Record<string, any> = {}
+  for (const p of prevData) {
+    prevMap[`${p.machine_code}|${p.product_level2_name}`] = p
+  }
+
+  // 호기별 소계 계산
+  const machineMap: Record<string, { cur_total: number; cur_prod: number; cur_waste: number; prev_total: number; prev_prod: number; prev_waste: number }> = {}
+
+  const rows = curData.map((cur: any) => {
+    const key = `${cur.machine_code}|${cur.product_level2_name}`
+    const prev = prevMap[key] || { total_production: 0, production_qty: 0, waste_qty: 0 }
+
+    if (!machineMap[cur.machine_code]) {
+      machineMap[cur.machine_code] = { cur_total: 0, cur_prod: 0, cur_waste: 0, prev_total: 0, prev_prod: 0, prev_waste: 0 }
+    }
+    machineMap[cur.machine_code].cur_total += cur.total_production || 0
+    machineMap[cur.machine_code].cur_prod += cur.production_qty || 0
+    machineMap[cur.machine_code].cur_waste += cur.waste_qty || 0
+    machineMap[cur.machine_code].prev_total += prev.total_production || 0
+    machineMap[cur.machine_code].prev_prod += prev.production_qty || 0
+    machineMap[cur.machine_code].prev_waste += prev.waste_qty || 0
+
+    // 전월에만 있는 건 삭제 (key 제거)
+    delete prevMap[key]
+
+    return {
+      machine_code: cur.machine_code,
+      product_level2_name: cur.product_level2_name,
+      cur_total_production: cur.total_production || 0,
+      cur_production_qty: cur.production_qty || 0,
+      cur_waste_qty: cur.waste_qty || 0,
+      prev_total_production: prev.total_production || 0,
+      prev_production_qty: prev.production_qty || 0,
+      prev_waste_qty: prev.waste_qty || 0
+    }
+  })
+
+  // 전월에만 있는 항목 추가
+  for (const [key, prev] of Object.entries(prevMap)) {
+    const [mc, pl2] = key.split('|')
+    if (!machineMap[mc]) {
+      machineMap[mc] = { cur_total: 0, cur_prod: 0, cur_waste: 0, prev_total: 0, prev_prod: 0, prev_waste: 0 }
+    }
+    machineMap[mc].prev_total += (prev as any).total_production || 0
+    machineMap[mc].prev_prod += (prev as any).production_qty || 0
+    machineMap[mc].prev_waste += (prev as any).waste_qty || 0
+
+    rows.push({
+      machine_code: mc,
+      product_level2_name: pl2,
+      cur_total_production: 0,
+      cur_production_qty: 0,
+      cur_waste_qty: 0,
+      prev_total_production: (prev as any).total_production || 0,
+      prev_production_qty: (prev as any).production_qty || 0,
+      prev_waste_qty: (prev as any).waste_qty || 0
+    })
+  }
+
+  // 호기별 소계
+  const subtotals = Object.entries(machineMap).map(([mc, v]) => ({
+    machine_code: mc,
+    cur_total_production: v.cur_total,
+    cur_production_qty: v.cur_prod,
+    cur_waste_qty: v.cur_waste,
+    prev_total_production: v.prev_total,
+    prev_production_qty: v.prev_prod,
+    prev_waste_qty: v.prev_waste
+  }))
+
+  // 총합계
+  const grandTotal = {
+    cur_total_production: subtotals.reduce((s, r) => s + r.cur_total_production, 0),
+    cur_production_qty: subtotals.reduce((s, r) => s + r.cur_production_qty, 0),
+    cur_waste_qty: subtotals.reduce((s, r) => s + r.cur_waste_qty, 0),
+    prev_total_production: subtotals.reduce((s, r) => s + r.prev_total_production, 0),
+    prev_production_qty: subtotals.reduce((s, r) => s + r.prev_production_qty, 0),
+    prev_waste_qty: subtotals.reduce((s, r) => s + r.prev_waste_qty, 0)
+  }
+
+  return c.json({ rows, subtotals, grandTotal, ym, prevYm })
+})
+
 // ============ Raw Records (원본 데이터) 조회 API ============
 
 // 원본 데이터 조회 (필터링, 페이징)
