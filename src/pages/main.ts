@@ -259,7 +259,49 @@ export function mainPage(): string {
         </div>
       </div>
 
-      <!-- 0) 재료비 총괄 Overview: 호기별 지종별 (당월/전월/예상) -->
+      <!-- 0) 원재료 손익 카드 + 재료비 총괄 Overview -->
+      <div class="card overflow-hidden mb-4">
+        <div class="px-5 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div>
+              <div class="text-xs text-gray-500 mb-1">원재료 손익 <span class="text-gray-400">(전월원단위 - 당월원단위) × 생산량(당월) ÷ 1,000</span></div>
+              <div class="flex items-center gap-2">
+                <span id="overview-profit-value" class="text-2xl font-bold text-gray-800">-</span>
+                <span class="text-sm text-gray-500">천원</span>
+              </div>
+            </div>
+          </div>
+          <button onclick="toggleProfitDetail()" class="px-3 py-1.5 text-xs bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition font-medium">
+            <i class="fas fa-search-plus mr-1"></i>상세보기
+          </button>
+        </div>
+        <!-- 원재료 손익 상세 테이블 (숨김 상태) -->
+        <div id="profit-detail-section" class="hidden border-t border-slate-100">
+          <div class="px-5 py-3 bg-slate-50 flex items-center justify-between">
+            <h4 class="text-xs font-semibold text-gray-600"><i class="fas fa-list-alt text-indigo-400 mr-1"></i>호기별 지종별 원재료 손익 상세</h4>
+            <span class="text-xs text-gray-400">단위: 천원</span>
+          </div>
+          <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+            <table class="data-table text-xs">
+              <thead class="sticky top-0 bg-white z-10">
+                <tr>
+                  <th class="!py-2">호기</th>
+                  <th class="!py-2">지종</th>
+                  <th class="!py-2 text-right">전월 원단위</th>
+                  <th class="!py-2 text-right">당월 원단위</th>
+                  <th class="!py-2 text-right">원단위 차이</th>
+                  <th class="!py-2 text-right">생산량(당월)</th>
+                  <th class="!py-2 text-right">원재료 손익(천원)</th>
+                </tr>
+              </thead>
+              <tbody id="profit-detail-body"></tbody>
+              <tfoot class="bg-slate-50 font-semibold sticky bottom-0" id="profit-detail-foot"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 재료비 총괄 테이블 -->
       <div class="card overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-bar text-blue-600 mr-1.5"></i>재료비 총괄 (호기별 지종별)</h3>
@@ -1041,6 +1083,7 @@ export function mainPage(): string {
         fetch('/api/dashboard/material-overview?ym=' + ym + (overviewCategoryFilter !== 'ALL' ? '&category=' + overviewCategoryFilter : '')).then(r => r.json())
       ]);
       renderOverview(overview);
+      renderProfitSummary(overview);
       renderMatCostSummary(matCost);
       renderProductionSummary(prodSummary);
       renderMatGroupSummary(matGroup);
@@ -1057,7 +1100,7 @@ export function mainPage(): string {
       const ym = year + month;
       fetch('/api/dashboard/material-overview?ym=' + ym + (filter !== 'ALL' ? '&category=' + filter : ''))
         .then(r => r.json())
-        .then(data => renderOverview(data));
+        .then(data => { renderOverview(data); renderProfitSummary(data); });
     }
 
     function renderOverview(data) {
@@ -1209,6 +1252,118 @@ export function mainPage(): string {
         '<td class="!py-2 text-right font-mono text-gray-300">-</td>' +
         '<td class="!py-2 text-right font-mono text-gray-300">-</td>' +
         '</tr>';
+    }
+
+    function toggleProfitDetail() {
+      const section = document.getElementById('profit-detail-section');
+      section.classList.toggle('hidden');
+    }
+
+    function renderProfitSummary(data) {
+      // 원재료 손익 = (전월원단위 - 당월원단위) * 생산량(당월) / 1000
+      // 원단위 = 재료비 / 생산량
+      const profitEl = document.getElementById('overview-profit-value');
+      const tbody = document.getElementById('profit-detail-body');
+      const tfoot = document.getElementById('profit-detail-foot');
+
+      if (!data || data.length === 0) {
+        profitEl.textContent = '-';
+        profitEl.className = 'text-2xl font-bold text-gray-800';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 py-6">\ub370\uc774\ud130\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.</td></tr>';
+        tfoot.innerHTML = '';
+        return;
+      }
+
+      const fmt = (v) => v != null ? Math.round(Number(v)).toLocaleString() : '-';
+      const diffFmt = (v) => {
+        const n = Math.round(Number(v) || 0);
+        if (n === 0) return '-';
+        if (n < 0) return String.fromCharCode(9651) + Math.abs(n).toLocaleString();
+        return n.toLocaleString();
+      };
+      const diffCell = (v) => {
+        const n = Math.round(Number(v) || 0);
+        if (n === 0) return '<td class="!py-1.5 text-right font-mono text-gray-400">-</td>';
+        if (n < 0) return '<td class="!py-1.5 text-right font-mono text-red-600">' + String.fromCharCode(9651) + Math.abs(n).toLocaleString() + '</td>';
+        return '<td class="!py-1.5 text-right font-mono text-blue-700">' + n.toLocaleString() + '</td>';
+      };
+      const profitCell = (v) => {
+        const n = Math.round(Number(v) || 0);
+        if (n === 0) return '<td class="!py-1.5 text-right font-mono text-gray-400 font-semibold">-</td>';
+        if (n < 0) return '<td class="!py-1.5 text-right font-mono text-red-600 font-semibold">' + String.fromCharCode(9651) + Math.abs(n).toLocaleString() + '</td>';
+        return '<td class="!py-1.5 text-right font-mono text-blue-700 font-semibold">' + n.toLocaleString() + '</td>';
+      };
+
+      let grandProfit = 0;
+      let prevMachine = '';
+      let mProfit = 0, mPrevUnit = 0, mCurUnit = 0, mProd = 0, mCost = 0, mPrevCost = 0;
+      const rows = [];
+
+      const subtotalRow = (mc) => {
+        const chipClass = mc === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        const n = Math.round(mProfit);
+        const cls = n < 0 ? 'text-red-600' : (n > 0 ? 'text-blue-700' : 'text-gray-400');
+        const val = n === 0 ? '-' : (n < 0 ? String.fromCharCode(9651) + Math.abs(n).toLocaleString() : n.toLocaleString());
+        return '<tr class="bg-slate-100 font-semibold border-b border-slate-300">' +
+          '<td class="!py-1.5"><span class="unit-chip '+chipClass+'">'+mc+'</span></td>' +
+          '<td class="!py-1.5">\uc18c\uacc4</td>' +
+          '<td class="!py-1.5 text-right font-mono">-</td>' +
+          '<td class="!py-1.5 text-right font-mono">-</td>' +
+          '<td class="!py-1.5 text-right font-mono">-</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+fmt(mProd)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono '+cls+' font-semibold">'+val+'</td>' +
+          '</tr>';
+      };
+
+      data.forEach(d => {
+        const curCost = Number(d.cur_material_cost) || 0;
+        const curProd = Number(d.cur_production) || 0;
+        const prevCost = Number(d.prev_material_cost) || 0;
+        const prevProd = Number(d.prev_production) || 0;
+
+        const curUnit = curProd > 0 ? curCost / curProd : 0;
+        const prevUnit = prevProd > 0 ? prevCost / prevProd : 0;
+        // 원재료 손익 = (전월원단위 - 당월원단위) * 생산량(당월) / 1000
+        const profit = (prevUnit - curUnit) * curProd / 1000;
+
+        if (prevMachine && d.machine_code !== prevMachine) {
+          rows.push(subtotalRow(prevMachine));
+          mProfit = 0; mProd = 0;
+        }
+        mProfit += profit;
+        mProd += curProd;
+        grandProfit += profit;
+
+        const machineChanged = d.machine_code !== prevMachine;
+        prevMachine = d.machine_code;
+        const chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+
+        rows.push('<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-blue-50/30">' +
+          '<td class="!py-1.5"><span class="unit-chip '+chipClass+'">'+(d.machine_code||'')+'</span></td>' +
+          '<td class="!py-1.5">'+(d.product_level2_name||'-')+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+(prevUnit ? fmt(Math.round(prevUnit)) : '-')+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+fmt(Math.round(curUnit))+'</td>' +
+          diffCell(Math.round(prevUnit - curUnit)) +
+          '<td class="!py-1.5 text-right font-mono">'+fmt(curProd)+'</td>' +
+          profitCell(profit) +
+          '</tr>');
+      });
+      if (prevMachine) rows.push(subtotalRow(prevMachine));
+      tbody.innerHTML = rows.join('');
+
+      // 총합계 tfoot
+      const gn = Math.round(grandProfit);
+      const gCls = gn < 0 ? 'text-red-600' : (gn > 0 ? 'text-blue-700' : 'text-gray-400');
+      const gVal = gn === 0 ? '-' : (gn < 0 ? String.fromCharCode(9651) + Math.abs(gn).toLocaleString() : gn.toLocaleString());
+      tfoot.innerHTML = '<tr>' +
+        '<td colspan="5" class="!py-2 text-center font-bold">\ucd1d\ud569\uacc4</td>' +
+        '<td class="!py-2 text-right font-mono">-</td>' +
+        '<td class="!py-2 text-right font-mono '+gCls+' font-bold">'+gVal+'</td>' +
+        '</tr>';
+
+      // 상단 카드 값 업데이트
+      profitEl.textContent = gn === 0 ? '-' : (gn < 0 ? String.fromCharCode(9651) + Math.abs(gn).toLocaleString() : gn.toLocaleString());
+      profitEl.className = 'text-2xl font-bold ' + (gn < 0 ? 'text-red-600' : (gn > 0 ? 'text-blue-700' : 'text-gray-800'));
     }
 
     function setMatCostFilter(filter) {
