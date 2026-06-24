@@ -583,7 +583,11 @@ app.get('/api/dashboard/material-cost-summary', async (c) => {
     SELECT 
       machine_code,
       machine_name,
-      product_level2_name,
+      CASE 
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+        ELSE product_level2_name
+      END as product_level2_name,
       material_group_name,
       SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as material_cost,
       SUM(CAST(actual_alloc_qty AS REAL)) as total_alloc_qty,
@@ -595,7 +599,13 @@ app.get('/api/dashboard/material-cost-summary', async (c) => {
     WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
       AND CAST(actual_alloc_qty AS REAL) != 0
       ${catFilter}
-    GROUP BY machine_code, product_level2_name, material_group_name
+    GROUP BY machine_code, 
+      CASE 
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+        ELSE product_level2_name
+      END,
+      material_group_name
     ORDER BY machine_code, product_level2_name, material_cost DESC
   `
   
@@ -651,14 +661,24 @@ app.get('/api/dashboard/production-summary', async (c) => {
       SELECT 
         machine_code,
         machine_name,
-        product_level2_name,
+        CASE 
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+          ELSE product_level2_name
+        END as product_level2_name,
         product_level4,
         MAX(CAST(total_production AS REAL)) as total_prod
       FROM raw_records
       WHERE ${where}
         AND calendar_ym != 'CALMONTH'
         AND CAST(total_production AS REAL) > 0
-      GROUP BY machine_code, product_level2_name, product_level4
+      GROUP BY machine_code, 
+        CASE 
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+          ELSE product_level2_name
+        END,
+        product_level4
     )
     GROUP BY machine_code, product_level2_name
     ORDER BY machine_code, total_production DESC
