@@ -1044,6 +1044,7 @@ app.get('/api/dashboard/production-analysis', async (c) => {
 app.get('/api/dashboard/mix-effect', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
+  const category = c.req.query('category') || 'ALL' // RAW, SUB, ALL
 
   // 전월 계산
   let prevYm = ''
@@ -1055,7 +1056,16 @@ app.get('/api/dashboard/mix-effect', async (c) => {
     prevYm = `${y}${String(m).padStart(2, '0')}`
   }
 
-  // 재료비 SQL (원재료만: 1100+1200)
+  // 카테고리 조건
+  let categoryFilter = ''
+  if (category === 'RAW') {
+    categoryFilter = "AND (material_group_major = '1100' OR material_group_major = '1200')"
+  } else if (category === 'SUB') {
+    categoryFilter = "AND material_group_major != '1100' AND material_group_major != '1200'"
+  }
+  // ALL이면 필터 없음
+
+  // 재료비 SQL
   const costSql = `
     SELECT 
       machine_code,
@@ -1068,7 +1078,7 @@ app.get('/api/dashboard/mix-effect', async (c) => {
     FROM raw_records
     WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
       AND CAST(actual_alloc_qty AS REAL) != 0
-      AND (material_group_major = '1100' OR material_group_major = '1200')
+      ${categoryFilter}
     GROUP BY machine_code, 
       CASE 
         WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'

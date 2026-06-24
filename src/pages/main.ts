@@ -527,7 +527,10 @@ export function mainPage(): string {
         <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between card-header-toggle" onclick="toggleCard('card-mixeffect')">
           <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-random text-sage-500 mr-1.5"></i>믹스 효과 분석 (호기 믹스 + 지종 믹스)</h3>
           <div class="flex items-center gap-2">
-            <span class="text-xs text-gray-400">단위: 원단위차이(원/톤), 수량차이(톤), 금액효과(천원)</span>
+            <button onclick="event.stopPropagation();setMixEffectFilter('ALL')" id="mix-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
+            <button onclick="event.stopPropagation();setMixEffectFilter('RAW')" id="mix-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
+            <button onclick="event.stopPropagation();setMixEffectFilter('SUB')" id="mix-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
+            <span class="text-xs text-gray-400 ml-2">단위: 원단위차이(원/톤), 수량차이(톤), 금액효과(천원)</span>
             <i class="fas fa-chevron-down card-chevron card-chevron-collapsed text-gray-400 ml-2" id="card-mixeffect-chevron"></i>
           </div>
         </div>
@@ -1545,6 +1548,7 @@ export function mainPage(): string {
     let matCostCategoryFilter = 'ALL';
     let matGroupCategoryFilter = 'ALL';
     let overviewCategoryFilter = 'ALL';
+    let mixEffectCategoryFilter = 'ALL';
 
     async function loadDashboardSummary(ym) {
       const [matCost, prodSummary, matGroup, overview, prodAnalysis, mixEffect] = await Promise.all([
@@ -1553,7 +1557,7 @@ export function mainPage(): string {
         fetch('/api/dashboard/material-by-group?ym=' + ym + (matGroupCategoryFilter !== 'ALL' ? '&category=' + matGroupCategoryFilter : '')).then(r => r.json()),
         fetch('/api/dashboard/material-overview?ym=' + ym + (overviewCategoryFilter !== 'ALL' ? '&category=' + overviewCategoryFilter : '')).then(r => r.json()),
         fetch('/api/dashboard/production-analysis?ym=' + ym).then(r => r.json()),
-        fetch('/api/dashboard/mix-effect?ym=' + ym).then(r => r.json())
+        fetch('/api/dashboard/mix-effect?ym=' + ym + (mixEffectCategoryFilter !== 'ALL' ? '&category=' + mixEffectCategoryFilter : '')).then(r => r.json())
       ]);
       renderOverview(overview);
       renderProfitSummary(overview);
@@ -2203,6 +2207,20 @@ export function mainPage(): string {
       fetch('/api/dashboard/material-by-group?ym=' + ym + (filter !== 'ALL' ? '&category=' + filter : ''))
         .then(r => r.json())
         .then(data => renderMatGroupSummary(data));
+    }
+
+    function setMixEffectFilter(filter) {
+      mixEffectCategoryFilter = filter;
+      ['all','raw','sub'].forEach(f => {
+        var btn = document.getElementById('mix-filter-' + f);
+        if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(f === filter.toLowerCase() ? 'pill-tab-active' : 'pill-tab-inactive'); }
+      });
+      var year = document.getElementById('analysisYear').value;
+      var month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      var ym = year + month;
+      fetch('/api/dashboard/mix-effect?ym=' + ym + (filter !== 'ALL' ? '&category=' + filter : ''))
+        .then(function(r) { return r.json(); })
+        .then(function(data) { renderMixEffect(data); });
     }
 
     function renderMatGroupSummary(data) {
