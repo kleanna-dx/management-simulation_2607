@@ -441,9 +441,9 @@ app.post('/api/upload/smart', async (c) => {
   for (const row of rows) {
     const matCode = row.mat_code
     if (!matCode || matMap.has(matCode)) continue
-    // 카테고리 분류: 펄프/고지 → RAW, 약품/기타 → SUB
-    const desc = (row.mat_group_desc || '').toLowerCase()
-    const category = (desc.includes('펄프') || desc.includes('고지')) ? 'RAW' : 'SUB'
+    // 카테고리 분류: 자재그룹(대분류) 1100, 1200 → RAW(원재료), 그 외 → SUB(부재료)
+    const majorCode = (row.mat_group_major || '').trim()
+    const category = (majorCode === '1100' || majorCode === '1200') ? 'RAW' : 'SUB'
     newMaterials.push({ code: matCode, name: row.mat_name || matCode, category, unit: (row.unit || 'KG').toUpperCase() })
     matMap.set(matCode, -1) // placeholder
   }
@@ -571,9 +571,9 @@ app.get('/api/raw-records', async (c) => {
   if (ym) { where += ' AND calendar_ym = ?'; params.push(ym) }
   if (machine) { where += ' AND machine_code = ?'; params.push(machine) }
   if (category === 'RAW') { 
-    where += " AND (material_group_name LIKE '%펄프%' OR material_group_name LIKE '%고지%')"
+    where += " AND (material_group_major = '1100' OR material_group_major = '1200')"
   } else if (category === 'SUB') {
-    where += " AND material_group_name NOT LIKE '%펄프%' AND material_group_name NOT LIKE '%고지%'"
+    where += " AND material_group_major != '1100' AND material_group_major != '1200'"
   }
   if (search) { where += ' AND (material_name LIKE ? OR material_group_name LIKE ?)'; params.push(`%${search}%`, `%${search}%`) }
 

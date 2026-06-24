@@ -1068,6 +1068,7 @@ export function mainPage(): string {
           period: period,
           machine: machine,
           mat_group_code: get(colMap.matGroupCode),
+          mat_group_major: get(colMap.matGroupMajor),
           mat_group_desc: get(colMap.matGroupMajorName) || get(colMap.matGroupName) || '',
           product_type: get(colMap.productTypeName) || get(colMap.productTypeCode) || '',
           product_level1: get(colMap.productLevel1),
