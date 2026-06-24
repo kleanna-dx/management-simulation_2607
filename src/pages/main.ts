@@ -974,12 +974,18 @@ export function mainPage(): string {
         return;
       }
       const fmt = (v) => v != null ? Math.round(Number(v)).toLocaleString() : '-';
+      // #,##0 ;[빨강]△#,##0 ; -
+      const diffFmt = (v) => {
+        const n = Math.round(Number(v) || 0);
+        if (n === 0) return '-';
+        if (n < 0) return String.fromCharCode(9651) + Math.abs(n).toLocaleString();
+        return n.toLocaleString();
+      };
       const diffCell = (v) => {
-        const n = Number(v) || 0;
+        const n = Math.round(Number(v) || 0);
         if (n === 0) return '<td class="!py-1.5 text-right font-mono text-gray-400">-</td>';
-        const cls = n > 0 ? 'text-red-600' : 'text-blue-600';
-        const sign = n > 0 ? '+' : '';
-        return '<td class="!py-1.5 text-right font-mono ' + cls + '">' + sign + Math.round(n).toLocaleString() + '</td>';
+        if (n < 0) return '<td class="!py-1.5 text-right font-mono text-red-600">' + String.fromCharCode(9651) + Math.abs(n).toLocaleString() + '</td>';
+        return '<td class="!py-1.5 text-right font-mono">' + n.toLocaleString() + '</td>';
       };
       let totalCur = 0, totalPrev = 0, totalUsage = 0, totalPrice = 0, totalRows = 0;
       let prevMachine = '';
@@ -1013,14 +1019,14 @@ export function mainPage(): string {
       document.getElementById('dash-matcost-total-prev').textContent = fmt(totalPrev);
       const totalDiff = totalCur - totalPrev;
       const diffEl = document.getElementById('dash-matcost-total-diff');
-      diffEl.textContent = (totalDiff > 0 ? '+' : '') + fmt(totalDiff);
-      diffEl.className = '!py-2 text-right ' + (totalDiff > 0 ? 'text-red-600' : totalDiff < 0 ? 'text-blue-600' : '');
+      diffEl.textContent = diffFmt(totalDiff);
+      diffEl.className = '!py-2 text-right font-mono ' + (totalDiff < 0 ? 'text-red-600' : '');
       const usageEl = document.getElementById('dash-matcost-total-usage');
-      usageEl.textContent = (totalUsage > 0 ? '+' : '') + fmt(totalUsage);
-      usageEl.className = '!py-2 text-right ' + (totalUsage > 0 ? 'text-red-600' : totalUsage < 0 ? 'text-blue-600' : '');
+      usageEl.textContent = diffFmt(totalUsage);
+      usageEl.className = '!py-2 text-right font-mono ' + (totalUsage < 0 ? 'text-red-600' : '');
       const priceEl = document.getElementById('dash-matcost-total-price');
-      priceEl.textContent = (totalPrice > 0 ? '+' : '') + fmt(totalPrice);
-      priceEl.className = '!py-2 text-right ' + (totalPrice > 0 ? 'text-red-600' : totalPrice < 0 ? 'text-blue-600' : '');
+      priceEl.textContent = diffFmt(totalPrice);
+      priceEl.className = '!py-2 text-right font-mono ' + (totalPrice < 0 ? 'text-red-600' : '');
       document.getElementById('dash-matcost-total-rows').textContent = fmt(totalRows);
     }
 
