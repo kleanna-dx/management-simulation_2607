@@ -3140,9 +3140,12 @@ export function mainPage(): string {
         return;
       }
 
-      // 지종별 합산 (호기 구분 없이)
+      // 호기 필터 적용
+      var filtered = fcMachineFilter ? data.filter(function(d){return d.machine_code === fcMachineFilter;}) : data;
+
+      // 지종별 합산
       var typeMap = {};
-      data.forEach(function(d) {
+      filtered.forEach(function(d) {
         var key = d.product_type;
         if (!typeMap[key]) { typeMap[key] = { total: 0, prod: 0, waste: 0 }; }
         typeMap[key].total += (Number(d.total_production) || 0) / 1000;
