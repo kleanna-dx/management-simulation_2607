@@ -541,7 +541,7 @@ app.get('/api/forecast/material-detail', async (c) => {
     machineFilter = ` AND machine_code = '${machine}'`
   }
 
-  // 자재별 집계: material_group_name(소분류) 포함
+  // 자재별 집계: material_group_name(소분류) 포함, actual_alloc_qty(실적배부수량) 기준
   const matSql = `
     SELECT 
       machine_code,
@@ -549,10 +549,8 @@ app.get('/api/forecast/material-detail', async (c) => {
       material_group_name,
       material_code,
       material_name,
-      SUM(CAST(issue_qty AS REAL)) as usage_qty,
-      SUM(CAST(issue_amount AS REAL)) as total_cost,
-      SUM(CAST(production_qty AS REAL)) as prod_qty_sum,
-      COUNT(DISTINCT product_level4) as product_count
+      SUM(CAST(actual_alloc_qty AS REAL)) as usage_qty,
+      SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as total_cost
     FROM raw_records
     WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
       ${machineFilter}
