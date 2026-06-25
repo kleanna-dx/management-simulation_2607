@@ -621,6 +621,89 @@ app.get('/api/forecast/material-detail', async (c) => {
   return c.json({ rows, production: prodMap })
 })
 
+// 3) 자재코드 × 지종별 원단위 (사용량 보정용)
+app.get('/api/forecast/unit-by-product', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym') || ''
+  const machine = c.req.query('machine') || ''
+
+  let machineFilter = ''
+  if (machine) {
+    machineFilter = ` AND machine_code = '${machine}'`
+  }
+
+  // 지종별-자재별 배부수량과 생산량으로 원단위 계산
+  const sql = `
+    SELECT 
+      material_code,
+      material_name,
+      CASE 
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
+        ELSE product_level2_name
+      END as product_type,
+      SUM(CAST(actual_alloc_qty AS REAL)) as alloc_qty,
+      SUM(CAST(production_qty AS REAL)) as prod_qty
+    FROM raw_records
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+      ${machineFilter}
+      AND CAST(actual_alloc_qty AS REAL) != 0
+    GROUP BY material_code, material_name,
+      CASE 
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
+        ELSE product_level2_name
+      END
+    ORDER BY material_code, product_type
+  `
+
+  const result = await db.prepare(sql).bind(ym).all()
+
+  // 지종별 실제 생산량(톤) 조회 (원단위 계산의 분모)
+  const prodSql = `
+    SELECT 
+      CASE 
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
+        ELSE product_level2_name
+      END as product_type,
+      SUM(prod_qty) as production
+    FROM (
+      SELECT product_level2_name, product_level4,
+        MAX(CAST(production_qty AS REAL)) as prod_qty
+      FROM raw_records
+      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+        AND CAST(production_qty AS REAL) > 0
+        ${machineFilter}
+      GROUP BY product_level2_name, product_level4
+    )
+    GROUP BY product_type
+  `
+  const prodResult = await db.prepare(prodSql).bind(ym).all()
+
+  // 지종별 생산량 맵 (kg)
+  const prodMap: Record<string, number> = {}
+  for (const p of prodResult.results as any[]) {
+    prodMap[p.product_type] = Number(p.production) || 0
+  }
+
+  // 결과: { material_code: { product_type: unit_consumption(kg/톤) } }
+  const unitMap: Record<string, Record<string, number>> = {}
+  for (const r of result.results as any[]) {
+    const mc = r.material_code
+    const pt = r.product_type
+    const allocQty = Number(r.alloc_qty) || 0
+    const prodKg = prodMap[pt] || 0
+    const prodTon = prodKg / 1000
+    const uc = prodTon > 0 ? allocQty / prodTon : 0
+
+    if (!unitMap[mc]) unitMap[mc] = {}
+    unitMap[mc][pt] = Math.round(uc * 100) / 100
+  }
+
+  return c.json({ unitMap, productionTon: Object.fromEntries(Object.entries(prodMap).map(([k, v]) => [k, Math.round(v / 1000 * 100) / 100])) })
+})
+
 // ============ SAP 엑셀 스마트 업로드 API ============
 
 // SAP 형식 엑셀 파싱 결과를 DB에 일괄 등록 (집계용 monthly_records + 원본 raw_records)

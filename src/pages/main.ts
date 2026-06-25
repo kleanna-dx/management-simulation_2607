@@ -3118,6 +3118,7 @@ export function mainPage(): string {
     let fcMachineFilter = 'PM2';
     let fcCurData = null;  // 당월 자재 상세
     let fcCurProd = null;  // 당월 생산량
+    let fcUnitByProduct = null;  // 자재코드 × 지종별 원단위
     let fcNextInputs = {}; // 차월 사용자 입력값 저장
 
     function setFcMachineFilter(mc) {
@@ -3155,10 +3156,12 @@ export function mainPage(): string {
       try {
         var results = await Promise.all([
           fetch('/api/forecast/production?ym=' + ym).then(function(r){return r.json();}),
-          fetch('/api/forecast/material-detail?ym=' + ym + mcParam).then(function(r){return r.json();})
+          fetch('/api/forecast/material-detail?ym=' + ym + mcParam).then(function(r){return r.json();}),
+          fetch('/api/forecast/unit-by-product?ym=' + ym + mcParam).then(function(r){return r.json();})
         ]);
         fcCurProd = results[0];
         fcCurData = results[1];
+        fcUnitByProduct = results[2];
         renderFcProduction();
         renderFcDetail();
       } catch(e) { console.error('Forecast load error:', e); }
@@ -3359,11 +3362,17 @@ export function mainPage(): string {
       var rows = fcCurData.rows;
       var prodTon = (fcCurData.production && fcCurData.production[fcMachineFilter]) ? fcCurData.production[fcMachineFilter] / 1000 : 0;
 
-      // 차월 예상 생산량
+      // 차월 지종별 생산량 수집
+      var nextProdByType = {};
       var nextProdInputs = document.querySelectorAll('.fc-next-prod');
       var nextProdTon = 0;
-      nextProdInputs.forEach(function(inp) { nextProdTon += Number(inp.value) || 0; });
-      if (nextProdTon === 0) nextProdTon = prodTon;  // 미입력시 당월과 동일
+      nextProdInputs.forEach(function(inp) {
+        var t = inp.getAttribute('data-type');
+        var v = Number(inp.value) || 0;
+        if (t) nextProdByType[t] = v;
+        nextProdTon += v;
+      });
+      if (nextProdTon === 0) nextProdTon = prodTon;
 
       var grandDiffUsage = 0, grandDiffPrice = 0, grandDiffTotal = 0;
 
@@ -3374,10 +3383,26 @@ export function mainPage(): string {
         var curUC = r.unit_consumption;
         var curPrice = r.unit_price;
 
-        // 차월 원단위 = 당월 원단위 (기본값, 나중에 사용자 수정 가능)
-        var nextUC = curUC;
-        // 차월 사용량 = 차월원단위 × 차월생산량(톤)
-        var nextUsage = nextUC * nextProdTon;
+        // 차월 사용량 계산: 지종별 원단위 기반 보정
+        var nextUsage = 0;
+        var hasUnitData = false;
+        if (fcUnitByProduct && fcUnitByProduct.unitMap && fcUnitByProduct.unitMap[r.material_code]) {
+          var ucByType = fcUnitByProduct.unitMap[r.material_code];
+          hasUnitData = true;
+          // 각 지종별: 원단위(kg/톤) × 차월 지종생산량(톤)
+          for (var pt in ucByType) {
+            var typeUC = ucByType[pt];  // kg/톤
+            var typeProd = nextProdByType[pt] || 0;  // 톤
+            nextUsage += typeUC * typeProd;
+          }
+        }
+        // 지종별 원단위 데이터가 없으면 단순 비례 (총량 원단위 × 차월 총생산량)
+        if (!hasUnitData || nextUsage === 0) {
+          nextUsage = curUC * nextProdTon;
+        }
+
+        // 차월 원단위 = 차월사용량 / 차월총생산량
+        var nextUC = nextProdTon > 0 ? nextUsage / nextProdTon : 0;
 
         // 차월 사용단가 (사용자 입력값 우선)
         var priceInput = document.querySelector('[data-row="' + idx + '"][data-field="next_unit_price"]');
@@ -3399,9 +3424,9 @@ export function mainPage(): string {
         if (nctEl) nctEl.textContent = nextCostPerTon > 0 ? Math.round(nextCostPerTon).toLocaleString() : '-';
 
         // 손익효과 계산
-        // 사용량차이 = (당월원단위 - 차월원단위) × 차월생산량 × 당월사용단가
-        var diffUsage = (curUC - nextUC) * nextProdTon * curPrice;
-        // 단가차이 = (당월사용단가 - 차월사용단가) × 차월사용량
+        // 사용량차이(원) = (당월사용량 - 차월사용량) × 당월사용단가 → 양수=절감
+        var diffUsage = (curUsage - nextUsage) * curPrice;
+        // 단가차이(원) = (당월사용단가 - 차월사용단가) × 차월사용량 → 양수=절감
         var diffPrice = (curPrice - nextPrice) * nextUsage;
         // 재료비종합
         var diffTotal = diffUsage + diffPrice;
