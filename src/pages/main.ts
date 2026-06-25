@@ -1428,18 +1428,18 @@ export function mainPage(): string {
       }
       if (tab === 'paper-products') {
         tbody.innerHTML = data.map((d, i) =>
-          '<tr class="hover:bg-sage-50/30">' +
+          '<tr class="hover:bg-sage-50/30" id="master-row-paper-products-'+d.id+'">' +
           '<td class="!py-1.5 text-gray-400">'+(i+1)+'</td>' +
           '<td class="!py-1.5">'+d.product_hierarchy_level3+'</td>' +
           '<td class="!py-1.5 font-mono">'+d.grade_code+'</td>' +
           '<td class="!py-1.5 font-semibold">'+d.grade_name+'</td>' +
           '<td class="!py-1.5 text-gray-600">'+(d.grade_detail||'-')+'</td>' +
-          '<td class="!py-1.5"><button onclick="deleteMasterRow(&quot;paper-products&quot;,'+d.id+')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>' +
+          '<td class="!py-1.5"><button onclick="editMasterRow(&quot;paper-products&quot;,'+d.id+')" class="text-blue-400 hover:text-blue-600 mr-2"><i class="fas fa-pen text-[10px]"></i></button><button onclick="deleteMasterRow(&quot;paper-products&quot;,'+d.id+')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>' +
           '</tr>'
         ).join('');
       } else if (tab === 'paper-raw') {
         tbody.innerHTML = data.map((d, i) =>
-          '<tr class="hover:bg-sage-50/30">' +
+          '<tr class="hover:bg-sage-50/30" id="master-row-paper-raw-'+d.id+'">' +
           '<td class="!py-1.5 text-gray-400">'+(i+1)+'</td>' +
           '<td class="!py-1.5">'+(d.category1||'-')+'</td>' +
           '<td class="!py-1.5">'+d.material_class+'</td>' +
@@ -1447,38 +1447,117 @@ export function mainPage(): string {
           '<td class="!py-1.5 font-mono">'+d.material_code+'</td>' +
           '<td class="!py-1.5">'+d.material_name+'</td>' +
           '<td class="!py-1.5"><span class="px-1.5 py-0.5 bg-slate-100 rounded text-[10px]">'+d.material_group+'</span></td>' +
-          '<td class="!py-1.5"><button onclick="deleteMasterRow(&quot;paper-raw&quot;,'+d.id+')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>' +
+          '<td class="!py-1.5"><button onclick="editMasterRow(&quot;paper-raw&quot;,'+d.id+')" class="text-blue-400 hover:text-blue-600 mr-2"><i class="fas fa-pen text-[10px]"></i></button><button onclick="deleteMasterRow(&quot;paper-raw&quot;,'+d.id+')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>' +
           '</tr>'
         ).join('');
       } else if (tab === 'paper-sub') {
         tbody.innerHTML = data.map((d, i) =>
-          '<tr class="hover:bg-sage-50/30">' +
+          '<tr class="hover:bg-sage-50/30" id="master-row-paper-sub-'+d.id+'">' +
           '<td class="!py-1.5 text-gray-400">'+(i+1)+'</td>' +
           '<td class="!py-1.5 font-mono">'+d.material_code+'</td>' +
           '<td class="!py-1.5">'+d.material_name+'</td>' +
           '<td class="!py-1.5"><span class="px-1.5 py-0.5 bg-slate-100 rounded text-[10px]">'+d.material_group+'</span></td>' +
-          '<td class="!py-1.5"><button onclick="deleteMasterRow(&quot;paper-sub&quot;,'+d.id+')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>' +
+          '<td class="!py-1.5"><button onclick="editMasterRow(&quot;paper-sub&quot;,'+d.id+')" class="text-blue-400 hover:text-blue-600 mr-2"><i class="fas fa-pen text-[10px]"></i></button><button onclick="deleteMasterRow(&quot;paper-sub&quot;,'+d.id+')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>' +
           '</tr>'
         ).join('');
       } else if (tab === 'tissue-products') {
         tbody.innerHTML = data.map((d, i) =>
-          '<tr class="hover:bg-sage-50/30">' +
+          '<tr class="hover:bg-sage-50/30" id="master-row-tissue-products-'+d.id+'">' +
           '<td class="!py-1.5 text-gray-400">'+(i+1)+'</td>' +
           '<td class="!py-1.5"><span class="px-1.5 py-0.5 bg-sage-50 text-sage-600 rounded text-[10px]">'+d.category+'</span></td>' +
           '<td class="!py-1.5">'+d.product_name+'</td>' +
-          '<td class="!py-1.5"><button onclick="deleteMasterRow(&quot;tissue-products&quot;,'+d.id+')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>' +
+          '<td class="!py-1.5"><button onclick="editMasterRow(&quot;tissue-products&quot;,'+d.id+')" class="text-blue-400 hover:text-blue-600 mr-2"><i class="fas fa-pen text-[10px]"></i></button><button onclick="deleteMasterRow(&quot;tissue-products&quot;,'+d.id+')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>' +
           '</tr>'
         ).join('');
       } else if (tab === 'tissue-raw') {
         tbody.innerHTML = data.map((d, i) =>
-          '<tr class="hover:bg-sage-50/30">' +
+          '<tr class="hover:bg-sage-50/30" id="master-row-tissue-raw-'+d.id+'">' +
           '<td class="!py-1.5 text-gray-400">'+(i+1)+'</td>' +
           '<td class="!py-1.5"><span class="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px]">'+d.category+'</span></td>' +
           '<td class="!py-1.5 font-mono">'+d.material_code+'</td>' +
           '<td class="!py-1.5">'+d.material_name+'</td>' +
-          '<td class="!py-1.5"><button onclick="deleteMasterRow(&quot;tissue-raw&quot;,'+d.id+')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>' +
+          '<td class="!py-1.5"><button onclick="editMasterRow(&quot;tissue-raw&quot;,'+d.id+')" class="text-blue-400 hover:text-blue-600 mr-2"><i class="fas fa-pen text-[10px]"></i></button><button onclick="deleteMasterRow(&quot;tissue-raw&quot;,'+d.id+')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>' +
           '</tr>'
         ).join('');
+      }
+    }
+
+    // 기준정보 마스터 인라인 수정
+    var masterEditCache = {};
+    async function editMasterRow(tab, id) {
+      // 현재 데이터 가져오기
+      const allData = await fetch('/api/master/' + tab).then(r => r.json());
+      const row = allData.find(function(d) { return d.id === id; });
+      if (!row) { alert('데이터를 찾을 수 없습니다.'); return; }
+      masterEditCache = row;
+
+      var tr = document.getElementById('master-row-' + tab + '-' + id);
+      if (!tr) return;
+
+      var inp = function(val, name, w) {
+        return '<input type="text" value="' + (val||'').replace(/"/g,'&quot;') + '" data-field="' + name + '" class="border border-blue-300 rounded px-1.5 py-0.5 text-xs focus:ring-1 focus:ring-blue-400 ' + (w||'w-full') + '">';
+      };
+      var btnSave = '<button onclick="saveMasterRow(&quot;'+tab+'&quot;,'+id+')" class="text-green-600 hover:text-green-800 mr-1"><i class="fas fa-check"></i></button>';
+      var btnCancel = '<button onclick="loadMasterIdx(&quot;'+tab+'&quot;)" class="text-gray-400 hover:text-gray-600"><i class="fas fa-undo"></i></button>';
+
+      if (tab === 'paper-products') {
+        tr.innerHTML =
+          '<td class="!py-1.5 text-gray-400">-</td>' +
+          '<td class="!py-1.5">' + inp(row.product_hierarchy_level3, 'product_hierarchy_level3') + '</td>' +
+          '<td class="!py-1.5">' + inp(row.grade_code, 'grade_code') + '</td>' +
+          '<td class="!py-1.5">' + inp(row.grade_name, 'grade_name') + '</td>' +
+          '<td class="!py-1.5">' + inp(row.grade_detail, 'grade_detail') + '</td>' +
+          '<td class="!py-1.5">' + btnSave + btnCancel + '</td>';
+      } else if (tab === 'paper-raw') {
+        tr.innerHTML =
+          '<td class="!py-1.5 text-gray-400">-</td>' +
+          '<td class="!py-1.5">' + inp(row.category1, 'category1') + '</td>' +
+          '<td class="!py-1.5">' + inp(row.material_class, 'material_class') + '</td>' +
+          '<td class="!py-1.5">' + inp(row.material_subclass, 'material_subclass') + '</td>' +
+          '<td class="!py-1.5">' + inp(row.material_code, 'material_code') + '</td>' +
+          '<td class="!py-1.5">' + inp(row.material_name, 'material_name') + '</td>' +
+          '<td class="!py-1.5">' + inp(row.material_group, 'material_group') + '</td>' +
+          '<td class="!py-1.5">' + btnSave + btnCancel + '</td>';
+      } else if (tab === 'paper-sub') {
+        tr.innerHTML =
+          '<td class="!py-1.5 text-gray-400">-</td>' +
+          '<td class="!py-1.5">' + inp(row.material_code, 'material_code') + '</td>' +
+          '<td class="!py-1.5">' + inp(row.material_name, 'material_name') + '</td>' +
+          '<td class="!py-1.5">' + inp(row.material_group, 'material_group') + '</td>' +
+          '<td class="!py-1.5">' + btnSave + btnCancel + '</td>';
+      } else if (tab === 'tissue-products') {
+        tr.innerHTML =
+          '<td class="!py-1.5 text-gray-400">-</td>' +
+          '<td class="!py-1.5">' + inp(row.category, 'category') + '</td>' +
+          '<td class="!py-1.5">' + inp(row.product_name, 'product_name') + '</td>' +
+          '<td class="!py-1.5">' + btnSave + btnCancel + '</td>';
+      } else if (tab === 'tissue-raw') {
+        tr.innerHTML =
+          '<td class="!py-1.5 text-gray-400">-</td>' +
+          '<td class="!py-1.5">' + inp(row.category, 'category') + '</td>' +
+          '<td class="!py-1.5">' + inp(row.material_code, 'material_code') + '</td>' +
+          '<td class="!py-1.5">' + inp(row.material_name, 'material_name') + '</td>' +
+          '<td class="!py-1.5">' + btnSave + btnCancel + '</td>';
+      }
+      tr.classList.add('bg-blue-50/50');
+    }
+
+    async function saveMasterRow(tab, id) {
+      var tr = document.getElementById('master-row-' + tab + '-' + id);
+      if (!tr) return;
+      var inputs = tr.querySelectorAll('input[data-field]');
+      var body = {};
+      inputs.forEach(function(inp) { body[inp.dataset.field] = inp.value; });
+
+      try {
+        await fetch('/api/master/' + tab + '/' + id, {
+          method: 'PUT',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(body)
+        });
+        loadMasterIdx(tab);
+      } catch(e) {
+        alert('수정 실패: ' + e.message);
       }
     }
 
