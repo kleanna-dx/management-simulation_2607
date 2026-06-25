@@ -1170,7 +1170,7 @@ export function mainPage(): string {
         <div class="flex items-center justify-between mb-5">
           <div>
             <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-flask text-primary-400 mr-1.5"></i>지종별 생산량 손익 시뮬레이션</h3>
-            <p class="text-xs text-gray-400 mt-1">생산량과 원단위를 직접 입력/변경하여 손익 변화를 실시간으로 시뮬레이션합니다.</p>
+            <p class="text-xs text-gray-400 mt-1">당월 실적을 기준으로 차월 생산량/원단위를 변경하여 손익 변화를 시뮬레이션합니다.</p>
           </div>
           <div class="flex items-center gap-3">
             <div class="flex items-center gap-1">
@@ -1189,10 +1189,10 @@ export function mainPage(): string {
             <i class="fas fa-info-circle text-blue-400 mt-0.5"></i>
             <div class="text-xs text-blue-700 space-y-1">
               <p class="font-medium">사용 방법</p>
-              <p>1. 기준 데이터를 로드하면 당월 실적이 자동으로 채워집니다.</p>
-              <p>2. <span class="font-semibold text-blue-900">시뮬 생산량(톤)</span> 또는 <span class="font-semibold text-blue-900">시뮬 원단위(원/kg)</span>를 직접 수정하세요.</p>
-              <p>3. 수정 즉시 손익이 자동 계산됩니다. (손익 = (기준원단위 - 시뮬원단위) × 시뮬생산량)</p>
-              <p>4. 행을 추가/삭제하여 새로운 지종 조합도 시뮬레이션할 수 있습니다.</p>
+              <p>1. 기준 데이터를 로드하면 <span class="font-semibold">당월 실적</span>이 기준값으로 설정됩니다.</p>
+              <p>2. <span class="font-semibold text-blue-900">차월 생산량(톤)</span> 또는 <span class="font-semibold text-blue-900">차월 원단위(원/kg)</span>를 계획에 맞게 수정하세요.</p>
+              <p>3. 수정 즉시 당월 대비 차월 손익이 자동 계산됩니다.</p>
+              <p>4. 손익(천원) = (기준원단위 - 시뮬원단위) × 시뮬생산량 | 양수 = 비용절감, 음수 = 비용증가</p>
             </div>
           </div>
         </div>
@@ -1202,15 +1202,15 @@ export function mainPage(): string {
           <div class="summary-card">
             <p class="text-[10px] font-medium text-gray-400 uppercase">기준 총재료비</p>
             <p id="sim-base-total" class="text-lg font-bold text-gray-900 mt-2 stat-value">-</p>
-            <p class="text-[10px] text-gray-400 mt-0.5">전월 실적</p>
+            <p class="text-[10px] text-gray-400 mt-0.5" id="sim-base-label">당월 실적</p>
           </div>
           <div class="summary-card">
             <p class="text-[10px] font-medium text-gray-400 uppercase">시뮬 총재료비</p>
             <p id="sim-new-total" class="text-lg font-bold text-gray-900 mt-2 stat-value">-</p>
-            <p class="text-[10px] text-gray-400 mt-0.5">변경 후 예상</p>
+            <p class="text-[10px] text-gray-400 mt-0.5" id="sim-target-label">차월 예상</p>
           </div>
           <div class="summary-card" style="border-color:#c7d2fe; background:linear-gradient(135deg,#eef2ff,#e0e7ff)">
-            <p class="text-[10px] font-medium text-primary-500 uppercase">총 손익(천원)</p>
+            <p class="text-[10px] font-medium text-primary-500 uppercase">당월 대비 손익(천원)</p>
             <p id="sim-profit-total" class="text-lg font-bold mt-2 stat-value">-</p>
             <p class="text-[10px] text-gray-400 mt-0.5">절감(+) / 증가(-)</p>
           </div>
@@ -1241,8 +1241,8 @@ export function mainPage(): string {
               <tr class="bg-slate-50">
                 <th rowspan="2" class="!border-r border-slate-200">호기</th>
                 <th rowspan="2" class="!border-r border-slate-200">지종</th>
-                <th colspan="3" class="text-center !border-b !border-r border-slate-200 bg-gray-50">기준 (전월 실적)</th>
-                <th colspan="3" class="text-center !border-b !border-r border-slate-200 bg-blue-50/50">시뮬레이션 입력</th>
+                <th colspan="3" class="text-center !border-b !border-r border-slate-200 bg-gray-50">기준 (당월 실적)</th>
+                <th colspan="3" class="text-center !border-b !border-r border-slate-200 bg-blue-50/50">시뮬레이션 (차월 계획)</th>
                 <th colspan="3" class="text-center !border-b border-slate-200 bg-green-50/50">손익 결과</th>
                 <th rowspan="2" class="text-center">삭제</th>
               </tr>
@@ -3070,6 +3070,16 @@ export function mainPage(): string {
       var year = document.getElementById('analysisYear').value;
       var month = document.getElementById('analysisMonth').value.padStart(2, '0');
       var ym = year + month;
+      // 시뮬레이션 대상월(차월) 계산
+      var simMonth = parseInt(month) + 1;
+      var simYear = parseInt(year);
+      if (simMonth > 12) { simMonth = 1; simYear++; }
+      var simYmLabel = simYear + '년 ' + simMonth + '월';
+      var simLabelEl = document.getElementById('sim-target-label');
+      if (simLabelEl) simLabelEl.textContent = simYmLabel + ' 예상';
+      var baseLabelEl = document.getElementById('sim-base-label');
+      if (baseLabelEl) baseLabelEl.textContent = year + '년 ' + parseInt(month) + '월 실적';
+
       var catParam = simCatFilter !== 'ALL' ? '&category=' + simCatFilter : '';
       try {
         var res = await fetch('/api/simulation/profit-base?ym=' + ym + catParam);
@@ -3082,14 +3092,15 @@ export function mainPage(): string {
     }
 
     function initSimRows() {
+      // 기준 = 당월(선택된 달) 실적, 시뮬 초기값 = 당월과 동일 (사용자가 차월 계획으로 변경)
       simRows = simBaseData.map(function(d, i) {
         return {
           id: i,
           machine_code: d.machine_code,
           product_level2_name: d.product_level2_name,
-          base_prod: d.prev_production_ton,
-          base_unit_cost: d.prev_unit_cost,
-          base_material_cost: d.prev_material_cost,
+          base_prod: d.cur_production_ton,
+          base_unit_cost: d.cur_unit_cost,
+          base_material_cost: d.cur_material_cost,
           sim_prod: d.cur_production_ton,
           sim_unit_cost: d.cur_unit_cost,
           is_new: false
