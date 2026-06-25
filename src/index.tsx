@@ -486,6 +486,148 @@ app.get('/api/simulation/profit-base', async (c) => {
   return c.json({ rows, ym, prevYm, category })
 })
 
+// ============ 전월 대비 예상 실적 API ============
+
+// 1) 지종별 생산량 & 폐품율
+app.get('/api/forecast/production', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym') || ''
+
+  const sql = `
+    SELECT 
+      machine_code,
+      CASE 
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
+        ELSE product_level2_name
+      END as product_type,
+      SUM(total_prod) as total_production,
+      SUM(prod_qty) as production_qty,
+      SUM(waste) as waste_qty
+    FROM (
+      SELECT 
+        machine_code,
+        product_level2_name,
+        product_level4,
+        MAX(CAST(total_production AS REAL)) as total_prod,
+        MAX(CAST(production_qty AS REAL)) as prod_qty,
+        MAX(CAST(waste_qty AS REAL)) as waste
+      FROM raw_records
+      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+        AND CAST(total_production AS REAL) > 0
+      GROUP BY machine_code, product_level2_name, product_level4
+    )
+    GROUP BY machine_code, 
+      CASE 
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
+        ELSE product_level2_name
+      END
+    ORDER BY machine_code, total_production DESC
+  `
+
+  const result = await db.prepare(sql).bind(ym).all()
+  return c.json(result.results)
+})
+
+// 2) 호기 > 원/부자재 > 자재코드별 사용량/원단위/단가/비용/톤당비용
+app.get('/api/forecast/material-detail', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym') || ''
+  const machine = c.req.query('machine') || ''  // PM2, PM3 or empty for all
+
+  let machineFilter = ''
+  if (machine) {
+    machineFilter = ` AND machine_code = '${machine}'`
+  }
+
+  // 자재별 집계
+  const matSql = `
+    SELECT 
+      machine_code,
+      CASE 
+        WHEN material_group_major = '1100' OR material_group_major = '1200' THEN 'RAW'
+        ELSE 'SUB'
+      END as mat_category,
+      material_code,
+      material_name,
+      material_group_major_name,
+      SUM(CAST(actual_alloc_qty AS REAL)) as usage_qty,
+      CASE WHEN SUM(CAST(actual_alloc_qty AS REAL)) != 0 
+        THEN SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) / SUM(CAST(actual_alloc_qty AS REAL))
+        ELSE 0
+      END as avg_unit_price,
+      SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as total_cost
+    FROM raw_records
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+      AND CAST(actual_alloc_qty AS REAL) != 0
+      ${machineFilter}
+    GROUP BY machine_code, 
+      CASE WHEN material_group_major = '1100' OR material_group_major = '1200' THEN 'RAW' ELSE 'SUB' END,
+      material_code, material_name, material_group_major_name
+    ORDER BY machine_code, mat_category, total_cost DESC
+  `
+
+  // 호기별 총생산량 (톤당비용 계산용)
+  const prodSql = `
+    SELECT 
+      machine_code,
+      SUM(total_prod) as production
+    FROM (
+      SELECT 
+        machine_code,
+        product_level4,
+        MAX(CAST(total_production AS REAL)) as total_prod
+      FROM raw_records
+      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+        AND CAST(total_production AS REAL) > 0
+        ${machineFilter}
+      GROUP BY machine_code, product_level4
+    )
+    GROUP BY machine_code
+  `
+
+  const [matResult, prodResult] = await Promise.all([
+    db.prepare(matSql).bind(ym).all(),
+    db.prepare(prodSql).bind(ym).all()
+  ])
+
+  // 호기별 생산량 맵
+  const prodMap: Record<string, number> = {}
+  for (const p of prodResult.results as any[]) {
+    prodMap[p.machine_code] = Number(p.production) || 0
+  }
+
+  // 결과 조합
+  const rows = (matResult.results as any[]).map(r => {
+    const production = prodMap[r.machine_code] || 0  // kg
+    const productionTon = production / 1000
+    const usageQty = Number(r.usage_qty) || 0
+    const avgUnitPrice = Number(r.avg_unit_price) || 0
+    const totalCost = Number(r.total_cost) || 0
+    // 원단위(kg/톤) = 사용량(kg) / 생산량(톤)
+    const unitConsumption = productionTon > 0 ? usageQty / productionTon : 0
+    // 톤당비용(원/톤) = 비용(원) / 생산량(톤)
+    const costPerTon = productionTon > 0 ? totalCost / productionTon : 0
+
+    return {
+      machine_code: r.machine_code,
+      mat_category: r.mat_category,
+      material_code: r.material_code,
+      material_name: r.material_name,
+      material_group_major_name: r.material_group_major_name,
+      usage_qty: usageQty,
+      unit_consumption: unitConsumption,
+      avg_unit_price: avgUnitPrice,
+      total_cost: totalCost,
+      cost_per_ton: costPerTon,
+      production_ton: productionTon
+    }
+  })
+
+  return c.json({ rows, production: prodMap })
+})
+
 // ============ SAP 엑셀 스마트 업로드 API ============
 
 // SAP 형식 엑셀 파싱 결과를 DB에 일괄 등록 (집계용 monthly_records + 원본 raw_records)

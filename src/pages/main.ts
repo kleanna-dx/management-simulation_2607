@@ -1274,18 +1274,67 @@ export function mainPage(): string {
     </div>
 
     <!-- Forecast Tab (전월 대비 예상 실적) -->
-    <div id="content-forecast" class="hidden fade-in">
+    <div id="content-forecast" class="hidden fade-in space-y-5">
+      <!-- Header -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-area text-sage-500 mr-1.5"></i>전월 대비 예상 실적</h3>
+          <div class="flex items-center gap-1">
+            <button onclick="setFcMachineFilter('')" id="fc-mc-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
+            <button onclick="setFcMachineFilter('PM2')" id="fc-mc-pm2" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">PM2</button>
+            <button onclick="setFcMachineFilter('PM3')" id="fc-mc-pm3" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">PM3</button>
+          </div>
+        </div>
+        <span class="text-xs text-gray-400" id="fc-period-label"></span>
+      </div>
+
+      <!-- 지종별 생산량 & 폐품율 -->
+      <div class="card overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-industry text-steel-400 mr-1.5"></i>지종별 생산량 및 폐품율</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>호기</th>
+                <th>지종</th>
+                <th class="text-right">총생산량(톤)</th>
+                <th class="text-right">생산량(톤)</th>
+                <th class="text-right">폐품량(톤)</th>
+                <th class="text-right">폐품율(%)</th>
+              </tr>
+            </thead>
+            <tbody id="fc-prod-body"></tbody>
+            <tfoot id="fc-prod-foot"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- 자재별 상세 테이블 -->
       <div class="card overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-area text-sage-500 mr-1.5"></i>전월 대비 예상 실적</h3>
-          <span class="text-xs text-gray-400">전월 실적 기반 예상치 분석</span>
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-cubes text-primary-400 mr-1.5"></i>호기별 원/부자재 상세</h3>
+          <span class="text-xs text-gray-400">호기 > 원/부자재 구분 > 자재코드별</span>
         </div>
-        <div class="px-6 py-12 text-center">
-          <div class="w-16 h-16 mx-auto mb-4 bg-sage-50 rounded-2xl flex items-center justify-center">
-            <i class="fas fa-chart-area text-sage-400 text-2xl"></i>
-          </div>
-          <p class="text-gray-500 text-sm">준비 중인 기능입니다.</p>
-          <p class="text-gray-400 text-xs mt-1">전월 실적 대비 예상 실적 분석 내용이 추가될 예정입니다.</p>
+        <div class="overflow-x-auto max-h-[600px]">
+          <table class="data-table">
+            <thead class="sticky top-0 bg-white z-10">
+              <tr>
+                <th>호기</th>
+                <th>구분</th>
+                <th>자재코드</th>
+                <th>자재명</th>
+                <th class="text-right">사용량(kg)</th>
+                <th class="text-right">원단위(kg/톤)</th>
+                <th class="text-right">사용단가(원/kg)</th>
+                <th class="text-right">비용(백만원)</th>
+                <th class="text-right">톤당비용(원/톤)</th>
+              </tr>
+            </thead>
+            <tbody id="fc-mat-body"></tbody>
+            <tfoot id="fc-mat-foot"></tfoot>
+          </table>
         </div>
       </div>
     </div>
@@ -1313,6 +1362,7 @@ export function mainPage(): string {
       if (tab === 'input') loadRecentRecords();
       if (tab === 'master') { loadUnitsList(); loadMaterialsList(); loadProductionList(); loadMasterIdx(currentMidxTab); }
       if (tab === 'simulation') { loadSimProfitBase(); }
+      if (tab === 'forecast') { loadForecast(); }
       if (tab === 'dataview') { initDataView(); }
     }
 
@@ -3049,6 +3099,148 @@ export function mainPage(): string {
       if(abs>=100000000) return s+(n/100000000).toFixed(1)+'억';
       if(abs>=10000) return s+Math.round(n/10000).toLocaleString('ko-KR')+'만원';
       return s+Math.round(n).toLocaleString('ko-KR')+'원';
+    }
+
+    // ============ FORECAST (전월 대비 예상 실적) ============
+    let fcMachineFilter = '';
+
+    function setFcMachineFilter(mc) {
+      fcMachineFilter = mc;
+      ['','PM2','PM3'].forEach(function(k) {
+        var key = k === '' ? 'all' : k.toLowerCase();
+        var btn = document.getElementById('fc-mc-' + key);
+        if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(key === (mc===''?'all':mc.toLowerCase()) ? 'pill-tab-active' : 'pill-tab-inactive'); }
+      });
+      loadForecast();
+    }
+
+    async function loadForecast() {
+      var year = document.getElementById('analysisYear').value;
+      var month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      var ym = year + month;
+      var labelEl = document.getElementById('fc-period-label');
+      if (labelEl) labelEl.textContent = year + '년 ' + parseInt(month) + '월 실적';
+
+      var mcParam = fcMachineFilter ? '&machine=' + fcMachineFilter : '';
+      try {
+        var [prodRes, matRes] = await Promise.all([
+          fetch('/api/forecast/production?ym=' + ym).then(function(r){return r.json();}),
+          fetch('/api/forecast/material-detail?ym=' + ym + mcParam).then(function(r){return r.json();})
+        ]);
+        renderFcProduction(prodRes);
+        renderFcMaterialDetail(matRes);
+      } catch(e) { console.error('Forecast load error:', e); }
+    }
+
+    function renderFcProduction(data) {
+      var tbody = document.getElementById('fc-prod-body');
+      var tfoot = document.getElementById('fc-prod-foot');
+      if (!tbody || !data || !data.length) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-6">데이터가 없습니다</td></tr>';
+        if (tfoot) tfoot.innerHTML = '';
+        return;
+      }
+
+      // 호기 필터 적용
+      var filtered = fcMachineFilter ? data.filter(function(d){return d.machine_code === fcMachineFilter;}) : data;
+
+      var html = '';
+      var prevMc = '';
+      var grandTotal = 0, grandProd = 0, grandWaste = 0;
+
+      filtered.forEach(function(d) {
+        var machineChanged = d.machine_code !== prevMc;
+        prevMc = d.machine_code;
+        var chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        var totalProd = (Number(d.total_production) || 0) / 1000;  // kg → ton
+        var prodQty = (Number(d.production_qty) || 0) / 1000;
+        var wasteQty = (Number(d.waste_qty) || 0) / 1000;
+        var wasteRate = totalProd > 0 ? (wasteQty / totalProd * 100) : 0;
+
+        grandTotal += totalProd;
+        grandProd += prodQty;
+        grandWaste += wasteQty;
+
+        html += '<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + '">'
+          + '<td class="!py-1.5"><span class="unit-chip ' + chipClass + '">' + d.machine_code + '</span></td>'
+          + '<td class="!py-1.5 font-medium">' + d.product_type + '</td>'
+          + '<td class="!py-1.5 text-right font-mono">' + totalProd.toFixed(1) + '</td>'
+          + '<td class="!py-1.5 text-right font-mono">' + prodQty.toFixed(1) + '</td>'
+          + '<td class="!py-1.5 text-right font-mono">' + wasteQty.toFixed(1) + '</td>'
+          + '<td class="!py-1.5 text-right font-mono ' + (wasteRate > 1 ? 'text-red-600' : 'text-gray-600') + '">' + wasteRate.toFixed(2) + '%</td>'
+          + '</tr>';
+      });
+      tbody.innerHTML = html;
+
+      var grandWasteRate = grandTotal > 0 ? (grandWaste / grandTotal * 100) : 0;
+      tfoot.innerHTML = '<tr class="bg-slate-100 font-semibold">'
+        + '<td colspan="2" class="!py-2 text-center font-bold">합계</td>'
+        + '<td class="!py-2 text-right font-mono">' + grandTotal.toFixed(1) + '</td>'
+        + '<td class="!py-2 text-right font-mono">' + grandProd.toFixed(1) + '</td>'
+        + '<td class="!py-2 text-right font-mono">' + grandWaste.toFixed(1) + '</td>'
+        + '<td class="!py-2 text-right font-mono">' + grandWasteRate.toFixed(2) + '%</td>'
+        + '</tr>';
+    }
+
+    function renderFcMaterialDetail(data) {
+      var tbody = document.getElementById('fc-mat-body');
+      var tfoot = document.getElementById('fc-mat-foot');
+      if (!tbody) return;
+      if (!data || !data.rows || !data.rows.length) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-gray-400 py-6">데이터가 없습니다</td></tr>';
+        if (tfoot) tfoot.innerHTML = '';
+        return;
+      }
+
+      var rows = data.rows;
+      var html = '';
+      var prevMc = '';
+      var prevCat = '';
+      var totalUsage = 0, totalCost = 0;
+
+      rows.forEach(function(r) {
+        var machineChanged = r.machine_code !== prevMc;
+        var catChanged = r.mat_category !== prevCat || machineChanged;
+        prevMc = r.machine_code;
+        prevCat = r.mat_category;
+
+        var chipClass = r.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        var catLabel = r.mat_category === 'RAW' ? '원재료' : '부재료';
+        var catBadge = r.mat_category === 'RAW' 
+          ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-steel-50 text-steel-400 font-medium">원</span>'
+          : '<span class="text-[10px] px-1.5 py-0.5 rounded bg-sage-50 text-sage-600 font-medium">부</span>';
+
+        totalUsage += r.usage_qty;
+        totalCost += r.total_cost;
+
+        html += '<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : (catChanged ? 'border-t border-slate-100' : '')) + ' hover:bg-slate-50/50">'
+          + '<td class="!py-1 text-xs"><span class="unit-chip ' + chipClass + '">' + r.machine_code + '</span></td>'
+          + '<td class="!py-1 text-xs">' + catBadge + '</td>'
+          + '<td class="!py-1 text-xs font-mono text-gray-500">' + r.material_code + '</td>'
+          + '<td class="!py-1 text-xs font-medium">' + r.material_name + '</td>'
+          + '<td class="!py-1 text-right font-mono text-xs">' + Math.round(r.usage_qty).toLocaleString() + '</td>'
+          + '<td class="!py-1 text-right font-mono text-xs">' + r.unit_consumption.toFixed(1) + '</td>'
+          + '<td class="!py-1 text-right font-mono text-xs">' + r.avg_unit_price.toFixed(1) + '</td>'
+          + '<td class="!py-1 text-right font-mono text-xs font-medium">' + (r.total_cost / 1000000).toFixed(1) + '</td>'
+          + '<td class="!py-1 text-right font-mono text-xs">' + Math.round(r.cost_per_ton).toLocaleString() + '</td>'
+          + '</tr>';
+      });
+      tbody.innerHTML = html;
+
+      // footer
+      if (tfoot) {
+        var totalProdTon = 0;
+        for (var k in data.production) { totalProdTon += data.production[k] / 1000; }
+        var grandCostPerTon = totalProdTon > 0 ? totalCost / totalProdTon : 0;
+        tfoot.innerHTML = '<tr class="bg-slate-100 font-semibold">'
+          + '<td colspan="4" class="!py-2 text-center font-bold">합계</td>'
+          + '<td class="!py-2 text-right font-mono">' + Math.round(totalUsage).toLocaleString() + '</td>'
+          + '<td class="!py-2 text-right font-mono">-</td>'
+          + '<td class="!py-2 text-right font-mono">-</td>'
+          + '<td class="!py-2 text-right font-mono font-medium">' + (totalCost / 1000000).toFixed(1) + '</td>'
+          + '<td class="!py-2 text-right font-mono">' + Math.round(grandCostPerTon).toLocaleString() + '</td>'
+          + '</tr>';
+      }
     }
 
     // ============ SIMULATION (지종별 생산량 손익) ============
