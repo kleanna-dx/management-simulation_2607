@@ -113,9 +113,7 @@ export function mainPage(): string {
           <button onclick="switchTab('simulation')" id="tab-simulation" class="pill-tab pill-tab-inactive">
             <i class="fas fa-flask mr-1.5"></i>시뮬레이션
           </button>
-          <button onclick="switchTab('bom')" id="tab-bom" class="pill-tab pill-tab-inactive">
-            <i class="fas fa-project-diagram mr-1.5"></i>제품-자재 매핑
-          </button>
+
           <button onclick="switchTab('master')" id="tab-master" class="pill-tab pill-tab-inactive">
             <i class="fas fa-cog mr-1.5"></i>기준정보
           </button>
@@ -1260,35 +1258,6 @@ export function mainPage(): string {
       </div>
     </div>
 
-    <!-- BOM Tab (제품-자재 매핑) -->
-    <div id="content-bom" class="hidden fade-in space-y-5">
-      <div class="card p-6">
-        <div class="flex items-center justify-between mb-5">
-          <div>
-            <h3 class="text-sm font-semibold text-gray-700">제품-자재 매핑 (BOM)</h3>
-            <p class="text-xs text-gray-400 mt-1">제품 1ton 생산에 필요한 원부자재 원단위를 관리합니다.</p>
-          </div>
-          <button onclick="document.getElementById('product-form').classList.toggle('hidden')" class="btn-primary text-xs !py-1.5 !px-3">
-            <i class="fas fa-plus mr-1"></i>제품 등록
-          </button>
-        </div>
-
-        <!-- Product Registration -->
-        <form id="product-form" class="hidden mb-5 p-4 bg-slate-50 rounded-xl">
-          <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-            <input type="text" id="new-prd-code" placeholder="제품코드" class="border border-gray-200 rounded-lg px-3 py-2 text-sm" required>
-            <input type="text" id="new-prd-name" placeholder="제품명" class="border border-gray-200 rounded-lg px-3 py-2 text-sm" required>
-            <select id="new-prd-unit" class="border border-gray-200 rounded-lg px-3 py-2 text-sm"></select>
-            <input type="text" id="new-prd-uom" placeholder="단위" value="ton" class="border border-gray-200 rounded-lg px-3 py-2 text-sm">
-            <button type="submit" class="btn-primary">등록</button>
-          </div>
-        </form>
-
-        <!-- Product List with BOM -->
-        <div id="products-bom-container" class="space-y-4"></div>
-      </div>
-    </div>
-
     <!-- Forecast Tab (전월 대비 예상 실적) -->
     <div id="content-forecast" class="hidden fade-in">
       <div class="card overflow-hidden">
@@ -1318,7 +1287,7 @@ export function mainPage(): string {
     });
 
     function switchTab(tab) {
-      ['dashboard','detail','upload','dataview','input','master','simulation','bom','forecast'].forEach(t => {
+      ['dashboard','detail','upload','dataview','input','master','simulation','forecast'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.add('pill-tab-inactive'); }
@@ -1329,7 +1298,6 @@ export function mainPage(): string {
       if (tab === 'input') loadRecentRecords();
       if (tab === 'master') { loadUnitsList(); loadMaterialsList(); loadProductionList(); loadMasterIdx(currentMidxTab); }
       if (tab === 'simulation') { loadSimProducts(); loadSimHistory(); }
-      if (tab === 'bom') { loadProductsBom(); }
       if (tab === 'dataview') { initDataView(); }
     }
 
@@ -1347,7 +1315,6 @@ export function mainPage(): string {
       document.getElementById('input-unit').innerHTML = u.map(x=>'<option value="'+x.id+'">'+x.unit_name+' ('+x.unit_code+')</option>').join('');
       document.getElementById('input-material').innerHTML = m.map(x=>'<option value="'+x.id+'">'+(x.category==='RAW'?'[원]':'[부]')+' '+x.material_name+'</option>').join('');
       document.getElementById('prod-unit').innerHTML = u.map(x=>'<option value="'+x.id+'">'+x.unit_name+'</option>').join('');
-      document.getElementById('new-prd-unit').innerHTML = u.map(x=>'<option value="'+x.id+'">'+x.unit_name+'</option>').join('');
     }
 
     // ============ 매핑 INDEX 기준정보 ============
@@ -3114,87 +3081,6 @@ export function mainPage(): string {
     async function loadSavedSim(id) {
       const data = await fetch('/api/simulations/'+id).then(r=>r.json());
       if (data.result_data) { simResultData = data.result_data; renderSimResults(); }
-    }
-
-    // ============ BOM (제품-자재 매핑) ============
-    document.getElementById('product-form').addEventListener('submit', async(e)=>{
-      e.preventDefault();
-      await fetch('/api/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        product_code:document.getElementById('new-prd-code').value,
-        product_name:document.getElementById('new-prd-name').value,
-        unit_id:+document.getElementById('new-prd-unit').value,
-        unit_of_measure:document.getElementById('new-prd-uom').value||'ton'
-      })});
-      alert('등록되었습니다!');
-      await loadMasterData();
-      loadProductsBom();
-    });
-
-    async function loadProductsBom() {
-      const [products, bom] = await Promise.all([fetch('/api/products').then(r=>r.json()), fetch('/api/bom').then(r=>r.json())]);
-      productsCache = products;
-      const container = document.getElementById('products-bom-container');
-
-      if (!products.length) {
-        container.innerHTML = '<div class="text-center py-12 text-gray-400"><i class="fas fa-box-open text-3xl mb-3"></i><p>등록된 제품이 없습니다.</p></div>';
-        return;
-      }
-
-      container.innerHTML = products.map(p => {
-        const pBom = bom.filter(b=>b.product_id===p.id);
-        return \`
-        <div class="border border-gray-200 rounded-xl overflow-hidden">
-          <div class="px-5 py-3 bg-slate-50 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <span class="unit-chip \${getCC(p.unit_code)}">\${p.unit_name}</span>
-              <span class="font-semibold text-gray-700 text-sm">\${p.product_name}</span>
-              <span class="text-xs text-gray-400 font-mono">\${p.product_code}</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-gray-400">\${pBom.length}개 자재</span>
-              <button onclick="toggleBomAdd(\${p.id})" class="text-xs text-primary-600 hover:text-primary-700 font-medium"><i class="fas fa-plus mr-1"></i>자재추가</button>
-            </div>
-          </div>
-          <div id="bom-add-\${p.id}" class="hidden px-5 py-3 bg-primary-50/50 border-b border-gray-200">
-            <div class="flex gap-2 items-center">
-              <select id="bom-mat-\${p.id}" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                \${materialsCache.map(m=>'<option value="'+m.id+'">'+(m.category==='RAW'?'[원]':'[부]')+' '+m.material_name+' ('+m.unit_of_measure+')</option>').join('')}
-              </select>
-              <input type="number" id="bom-uc-\${p.id}" step="0.001" placeholder="원단위" class="w-28 border border-gray-200 rounded-lg px-3 py-2 text-sm">
-              <input type="text" id="bom-note-\${p.id}" placeholder="비고" class="w-32 border border-gray-200 rounded-lg px-3 py-2 text-sm">
-              <button onclick="addBomItem(\${p.id})" class="btn-primary text-xs !py-2">등록</button>
-            </div>
-          </div>
-          \${pBom.length ? '<table class="data-table"><thead><tr><th>구분</th><th>자재코드</th><th>자재명</th><th class="text-right">원단위</th><th>단위</th><th>비고</th><th class="text-center w-16">삭제</th></tr></thead><tbody>' + pBom.map(b=>\`<tr>
-            <td><span class="text-[10px] px-1.5 py-0.5 rounded \${b.category==='RAW'?'bg-steel-50 text-steel-400':'bg-sage-50 text-sage-600'}">\${b.category==='RAW'?'원자재':'부자재'}</span></td>
-            <td class="font-mono text-xs text-gray-400">\${b.material_code}</td>
-            <td class="font-medium">\${b.material_name}</td>
-            <td class="text-right font-semibold text-primary-600">\${b.unit_consumption}</td>
-            <td class="text-gray-400 text-xs">\${b.unit_of_measure}/ton</td>
-            <td class="text-gray-400 text-xs">\${b.notes||''}</td>
-            <td class="text-center"><button onclick="deleteBom(\${b.id})" class="btn-delete text-[10px]">삭제</button></td>
-          </tr>\`).join('') + '</tbody></table>' : '<div class="p-6 text-center text-gray-400 text-sm">BOM이 등록되지 않았습니다.</div>'}
-        </div>\`;
-      }).join('');
-    }
-
-    function toggleBomAdd(productId) {
-      document.getElementById('bom-add-'+productId)?.classList.toggle('hidden');
-    }
-
-    async function addBomItem(productId) {
-      const matId = document.getElementById('bom-mat-'+productId).value;
-      const uc = parseFloat(document.getElementById('bom-uc-'+productId).value);
-      const note = document.getElementById('bom-note-'+productId).value;
-      if (!uc) { alert('원단위를 입력하세요.'); return; }
-      await fetch('/api/bom',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:productId,material_id:+matId,unit_consumption:uc,notes:note})});
-      loadProductsBom();
-    }
-
-    async function deleteBom(id) {
-      if (!confirm('삭제하시겠습니까?')) return;
-      await fetch('/api/bom/'+id,{method:'DELETE'});
-      loadProductsBom();
     }
 
     // ===== Data View (데이터 조회) - Raw Records 전체 컬럼 =====

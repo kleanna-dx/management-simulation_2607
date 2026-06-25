@@ -187,36 +187,6 @@ app.delete('/api/products/:id', async (c) => {
   return c.json({ success: true })
 })
 
-// ============ BOM API ============
-
-app.get('/api/bom', async (c) => {
-  const db = c.env.DB
-  const product_id = c.req.query('product_id')
-  let query = `SELECT b.*, p.product_code, p.product_name, p.unit_id, m.material_code, m.material_name, m.category, m.unit_of_measure
-    FROM bom b JOIN products p ON b.product_id = p.id JOIN materials m ON b.material_id = m.id WHERE 1=1`
-  if (product_id) query += ` AND b.product_id = ${product_id}`
-  query += ' ORDER BY p.product_code, m.category, m.material_code'
-  const results = await db.prepare(query).all()
-  return c.json(results.results)
-})
-
-app.post('/api/bom', async (c) => {
-  const db = c.env.DB
-  const { product_id, material_id, unit_consumption, notes } = await c.req.json()
-  const result = await db.prepare(`
-    INSERT INTO bom (product_id, material_id, unit_consumption, notes)
-    VALUES (?, ?, ?, ?)
-    ON CONFLICT(product_id, material_id) DO UPDATE SET unit_consumption = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
-  `).bind(product_id, material_id, unit_consumption, notes || '', unit_consumption, notes || '').run()
-  return c.json({ success: true, id: result.meta.last_row_id })
-})
-
-app.delete('/api/bom/:id', async (c) => {
-  const db = c.env.DB
-  await db.prepare('DELETE FROM bom WHERE id = ?').bind(c.req.param('id')).run()
-  return c.json({ success: true })
-})
-
 // ============ 시뮬레이션 API ============
 
 // 시뮬레이션 실행: 생산량 기반으로 원가 예측
