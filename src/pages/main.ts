@@ -26,7 +26,7 @@ export function mainPage(): string {
     }
   </script>
   <style>
-    body { font-family: 'Inter', system-ui, sans-serif; }
+    body { font-family: 'Malgun Gothic', '맑은 고딕', -apple-system, BlinkMacSystemFont, sans-serif; }
     .pill-tab { padding: 7px 16px; border-radius: 9999px; font-size: 13px; font-weight: 500; transition: all 0.15s; cursor: pointer; border: 1px solid transparent; }
     .pill-tab-active { background: #4B6C61; color: white; border-color: #4B6C61; box-shadow: 0 2px 8px rgba(75,108,97,0.3); }
     .pill-tab-inactive { background: white; color: #4b5563; border-color: #e5e7eb; }
