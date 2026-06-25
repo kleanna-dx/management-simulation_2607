@@ -2872,7 +2872,7 @@ export function mainPage(): string {
     // Utilities
     function getCC(c) { return c==='PM2'?'unit-chip-pm2':c==='PM3'?'unit-chip-pm3':c==='CHEM'?'unit-chip-chem':c==='TISSUE'?'unit-chip-tissue':'bg-gray-100 text-gray-600'; }
     function fmt(n) { return n==null?'-':Math.round(n).toLocaleString('ko-KR'); }
-    function fmtS(n) { if(n==null) return '-'; const v=Math.round(n); return (v>0?'+':'')+v.toLocaleString('ko-KR'); }
+    function fmtS(n) { if(n==null) return '-'; const v=Math.round(n); if(v>0) return '+'+v.toLocaleString('ko-KR'); if(v<0) return '\u25B3'+Math.abs(v).toLocaleString('ko-KR'); return '-'; }
     function formatWon(n) {
       if(n==null) return '-';
       const abs=Math.abs(n);
@@ -2882,10 +2882,17 @@ export function mainPage(): string {
     }
     function formatSignedWon(n) {
       if(n==null) return '-';
-      const s=n>0?'+':'', abs=Math.abs(n);
-      if(abs>=100000000) return s+(n/100000000).toFixed(1)+'억';
-      if(abs>=10000) return s+Math.round(n/10000).toLocaleString('ko-KR')+'만원';
-      return s+Math.round(n).toLocaleString('ko-KR')+'원';
+      const abs=Math.abs(n);
+      if(n>0) {
+        if(abs>=100000000) return '+'+(n/100000000).toFixed(1)+'\uc5b5';
+        if(abs>=10000) return '+'+Math.round(n/10000).toLocaleString('ko-KR')+'\ub9cc\uc6d0';
+        return '+'+Math.round(n).toLocaleString('ko-KR')+'\uc6d0';
+      } else if(n<0) {
+        if(abs>=100000000) return '\u25B3'+(abs/100000000).toFixed(1)+'\uc5b5';
+        if(abs>=10000) return '\u25B3'+Math.round(abs/10000).toLocaleString('ko-KR')+'\ub9cc\uc6d0';
+        return '\u25B3'+Math.round(abs).toLocaleString('ko-KR')+'\uc6d0';
+      }
+      return '-';
     }
 
     // ============ FORECAST (전월 대비 예상 실적) ============
@@ -3260,10 +3267,16 @@ export function mainPage(): string {
 
         function fmtDiff(v) {
           if (!v || Math.abs(v) < 1) return '-';
-          var sign = v > 0 ? '+' : '';
-          if (Math.abs(v) >= 1000000) return sign + (v/1000000).toFixed(1) + 'M';
-          if (Math.abs(v) >= 1000) return sign + Math.round(v/1000) + 'K';
-          return sign + Math.round(v);
+          if (v > 0) {
+            if (Math.abs(v) >= 1000000) return '+' + (v/1000000).toFixed(1) + 'M';
+            if (Math.abs(v) >= 1000) return '+' + Math.round(v/1000).toLocaleString() + 'K';
+            return '+' + Math.round(v).toLocaleString();
+          } else {
+            var abs = Math.abs(v);
+            if (abs >= 1000000) return '\u25B3' + (abs/1000000).toFixed(1) + 'M';
+            if (abs >= 1000) return '\u25B3' + Math.round(abs/1000).toLocaleString() + 'K';
+            return '\u25B3' + Math.round(abs).toLocaleString();
+          }
         }
         function diffColor(v) {
           if (!v || Math.abs(v) < 1) return '';
