@@ -3424,7 +3424,7 @@ export function mainPage(): string {
 
         // ======== Sheet 6: 생산량분석 (Production Analysis) ========
         var paHeaders = ['행레이블','당월_총생산량','당월_생산수량','당월_폐품수량','전월_총생산량','전월_생산수량','전월_폐품수량','증감_총생산량','증감_생산수량','증감_폐품수량'];
-        var paData = prodAnalysis || [];
+        var paData = (prodAnalysis && prodAnalysis.rows) ? prodAnalysis.rows : (Array.isArray(prodAnalysis) ? prodAnalysis : []);
         var paRows = paData.map(function(d, i) {
           var row = i + 2;
           return [
@@ -3455,16 +3455,30 @@ export function mainPage(): string {
         XLSX.utils.book_append_sheet(wb, wsPa, '생산량분석');
 
         // ======== Sheet 7: 믹스효과 (Mix Effect) ========
-        var mxHeaders = ['구분','당월(전월2호기미생산)_원단위차이','당월(전월2호기미생산)_수량차이','당월(전월2호기미생산)_금액효과','당월_원단위차이','당월_수량차이','당월_금액효과','예상_원단위차이','예상_수량차이','예상_금액효과'];
-        var mxData = mixEffect || [];
-        var mxRows = mxData.map(function(d) {
-          return [
-            d.label || d.category || '',
-            Number(d.prev_no_pm2_unit_diff)||0, Number(d.prev_no_pm2_qty_diff)||0, Number(d.prev_no_pm2_amount)||0,
-            Number(d.cur_unit_diff)||0, Number(d.cur_qty_diff)||0, Number(d.cur_amount)||0,
-            Number(d.est_unit_diff)||0, Number(d.est_qty_diff)||0, Number(d.est_amount)||0
-          ];
-        });
+        var mxHeaders = ['시나리오','구분','유형','원단위차이','수량차이','금액효과(천원)'];
+        var mxRows = [];
+        var scenarios = [
+          {key: 'scenario1', label: mixEffect && mixEffect.scenario1 ? (mixEffect.scenario1.label || '시나리오1') : '시나리오1'},
+          {key: 'scenario2', label: mixEffect && mixEffect.scenario2 ? (mixEffect.scenario2.label || '시나리오2') : '시나리오2'},
+          {key: 'scenario3', label: mixEffect && mixEffect.scenario3 ? (mixEffect.scenario3.label || '시나리오3') : '시나리오3'}
+        ];
+        if (mixEffect) {
+          scenarios.forEach(function(sc) {
+            var s = mixEffect[sc.key];
+            if (!s) return;
+            // 호기 믹스
+            (s.machineMix || []).forEach(function(m) {
+              mxRows.push([sc.label, '호기믹스', m.machine||'', Number(m.col1)||0, Number(m.col2)||0, Number(m.col3)||0]);
+            });
+            // 지종 믹스 (PM2, PM3)
+            var gm = s.gradeMix || {};
+            Object.keys(gm).forEach(function(machineKey) {
+              (gm[machineKey] || []).forEach(function(g) {
+                mxRows.push([sc.label, '지종믹스(' + machineKey + ')', g.product_type||'', Number(g.col1)||0, Number(g.col2)||0, Number(g.col3)||0]);
+              });
+            });
+          });
+        }
         var wsMx = XLSX.utils.aoa_to_sheet([mxHeaders].concat(mxRows));
         XLSX.utils.book_append_sheet(wb, wsMx, '믹스효과');
 
