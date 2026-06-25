@@ -1165,106 +1165,110 @@ export function mainPage(): string {
       </div>
     </div>
     <div id="content-simulation" class="hidden fade-in space-y-5">
+      <!-- Header & Controls -->
       <div class="card p-6">
         <div class="flex items-center justify-between mb-5">
           <div>
-            <h3 class="text-sm font-semibold text-gray-700">생산량 기반 원가 시뮬레이션</h3>
-            <p class="text-xs text-gray-400 mt-1">제품별 생산량을 입력하면 BOM 기반으로 원부자재 소요량과 예상 원가를 자동 산출합니다.</p>
+            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-flask text-primary-400 mr-1.5"></i>지종별 생산량 손익 시뮬레이션</h3>
+            <p class="text-xs text-gray-400 mt-1">생산량과 원단위를 직접 입력/변경하여 손익 변화를 실시간으로 시뮬레이션합니다.</p>
           </div>
-          <div class="flex items-center gap-2">
-            <span class="text-xs text-gray-400">단가 기준월:</span>
-            <select id="sim-base-year" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs">
-              <option value="2026">2026</option>
-            </select>
-            <select id="sim-base-month" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs">
-              <option value="6">6월</option>
-              <option value="5">5월</option>
-            </select>
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1">
+              <button onclick="setSimCatFilter('ALL')" id="sim-cat-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
+              <button onclick="setSimCatFilter('RAW')" id="sim-cat-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
+              <button onclick="setSimCatFilter('SUB')" id="sim-cat-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
+            </div>
+            <button onclick="loadSimProfitBase()" class="btn-primary text-xs !py-1.5"><i class="fas fa-sync mr-1"></i>기준 데이터 로드</button>
+            <button onclick="resetSimToBase()" class="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50"><i class="fas fa-undo mr-1"></i>초기화</button>
           </div>
         </div>
 
-        <!-- Product Plans Input -->
-        <div class="bg-slate-50 rounded-xl p-5 mb-5">
-          <div class="flex items-center justify-between mb-3">
-            <h4 class="text-xs font-semibold text-gray-600 uppercase tracking-wide">제품별 계획 생산량 (ton)</h4>
-            <button onclick="addSimProduct()" class="text-xs text-primary-600 hover:text-primary-700 font-medium"><i class="fas fa-plus mr-1"></i>제품 추가</button>
-          </div>
-          <div id="sim-plans" class="space-y-2"></div>
-          <div class="mt-4 flex gap-2">
-            <button onclick="runSimulation()" class="btn-primary"><i class="fas fa-play mr-1.5"></i>시뮬레이션 실행</button>
-            <button onclick="saveSimulation()" id="btn-save-sim" class="hidden px-4 py-2 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50"><i class="fas fa-save mr-1"></i>결과 저장</button>
+        <!-- Guide -->
+        <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5">
+          <div class="flex items-start gap-2">
+            <i class="fas fa-info-circle text-blue-400 mt-0.5"></i>
+            <div class="text-xs text-blue-700 space-y-1">
+              <p class="font-medium">사용 방법</p>
+              <p>1. 기준 데이터를 로드하면 당월 실적이 자동으로 채워집니다.</p>
+              <p>2. <span class="font-semibold text-blue-900">시뮬 생산량(톤)</span> 또는 <span class="font-semibold text-blue-900">시뮬 원단위(원/kg)</span>를 직접 수정하세요.</p>
+              <p>3. 수정 즉시 손익이 자동 계산됩니다. (손익 = (기준원단위 - 시뮬원단위) × 시뮬생산량)</p>
+              <p>4. 행을 추가/삭제하여 새로운 지종 조합도 시뮬레이션할 수 있습니다.</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Simulation Results -->
-      <div id="sim-results" class="hidden space-y-5">
-        <!-- Summary -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-5">
+          <div class="summary-card">
+            <p class="text-[10px] font-medium text-gray-400 uppercase">기준 총재료비</p>
+            <p id="sim-base-total" class="text-lg font-bold text-gray-900 mt-2 stat-value">-</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">전월 실적</p>
+          </div>
+          <div class="summary-card">
+            <p class="text-[10px] font-medium text-gray-400 uppercase">시뮬 총재료비</p>
+            <p id="sim-new-total" class="text-lg font-bold text-gray-900 mt-2 stat-value">-</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">변경 후 예상</p>
+          </div>
           <div class="summary-card" style="border-color:#c7d2fe; background:linear-gradient(135deg,#eef2ff,#e0e7ff)">
-            <p class="text-[10px] font-medium text-primary-500 uppercase">예상 총원가</p>
-            <p id="sim-total-cost" class="text-lg font-bold text-gray-900 mt-2 stat-value">-</p>
-          </div>
-          <div class="summary-card" style="border-color:#e2e8f0">
-            <p class="text-[10px] font-medium text-gray-400 uppercase">전월 대비</p>
-            <p id="sim-cost-diff" class="text-lg font-bold mt-2 stat-value">-</p>
+            <p class="text-[10px] font-medium text-primary-500 uppercase">총 손익(천원)</p>
+            <p id="sim-profit-total" class="text-lg font-bold mt-2 stat-value">-</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">절감(+) / 증가(-)</p>
           </div>
           <div class="summary-card" style="border-color:#bfdbfe; background:linear-gradient(135deg,#eff6ff,#dbeafe)">
-            <p class="text-[10px] font-medium text-steel-400 uppercase">수량효과</p>
-            <p id="sim-qty-effect" class="text-lg font-bold mt-2 stat-value">-</p>
+            <p class="text-[10px] font-medium text-steel-400 uppercase">생산량 효과(천원)</p>
+            <p id="sim-prod-effect" class="text-lg font-bold mt-2 stat-value">-</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">생산량 변동분</p>
           </div>
           <div class="summary-card" style="border-color:#fde68a; background:linear-gradient(135deg,#fffbeb,#fef3c7)">
-            <p class="text-[10px] font-medium text-amber-600 uppercase">단가효과</p>
-            <p id="sim-price-effect" class="text-lg font-bold mt-2 stat-value">-</p>
-          </div>
-        </div>
-
-        <!-- Product-level results -->
-        <div class="card overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-100">
-            <h3 class="text-sm font-semibold text-gray-700">제품별 시뮬레이션 결과</h3>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="data-table">
-              <thead><tr>
-                <th>호기</th><th>제품</th><th class="text-right">계획생산량</th>
-                <th class="text-right">예상원가</th><th class="text-right">전월원가</th>
-                <th class="text-right">차이</th><th class="text-right">증감률</th>
-              </tr></thead>
-              <tbody id="sim-product-body"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Material-level detail -->
-        <div class="card overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-100">
-            <h3 class="text-sm font-semibold text-gray-700">자재별 상세 (시뮬레이션 vs 전월)</h3>
-          </div>
-          <div class="overflow-x-auto max-h-[400px]">
-            <table class="data-table">
-              <thead><tr>
-                <th>제품</th><th>구분</th><th>자재명</th><th class="text-right">원단위</th>
-                <th class="text-right">예상소요량</th><th class="text-right">적용단가</th><th class="text-right">예상원가</th>
-                <th class="text-right">전월소요량</th><th class="text-right">전월원가</th>
-                <th class="text-right">수량효과</th><th class="text-right">단가효과</th><th class="text-right">차이</th>
-              </tr></thead>
-              <tbody id="sim-detail-body"></tbody>
-            </table>
+            <p class="text-[10px] font-medium text-amber-600 uppercase">원단위 효과(천원)</p>
+            <p id="sim-unit-effect" class="text-lg font-bold mt-2 stat-value">-</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">원단위 변동분</p>
           </div>
         </div>
       </div>
 
-      <!-- Simulation History -->
+      <!-- Simulation Table -->
       <div class="card overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100">
-          <h3 class="text-sm font-semibold text-gray-700">시뮬레이션 이력</h3>
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-table text-sage-400 mr-1.5"></i>시뮬레이션 입력 테이블</h3>
+          <div class="flex items-center gap-2">
+            <button onclick="addSimRow()" class="text-xs text-primary-600 hover:text-primary-700 font-medium"><i class="fas fa-plus mr-1"></i>행 추가</button>
+          </div>
         </div>
         <div class="overflow-x-auto">
-          <table class="data-table">
-            <thead><tr><th>이름</th><th>기준월</th><th>생성자</th><th>생성일시</th><th class="text-center">작업</th></tr></thead>
-            <tbody id="sim-history-body"></tbody>
+          <table class="data-table" id="sim-profit-table">
+            <thead>
+              <tr class="bg-slate-50">
+                <th rowspan="2" class="!border-r border-slate-200">호기</th>
+                <th rowspan="2" class="!border-r border-slate-200">지종</th>
+                <th colspan="3" class="text-center !border-b !border-r border-slate-200 bg-gray-50">기준 (전월 실적)</th>
+                <th colspan="3" class="text-center !border-b !border-r border-slate-200 bg-blue-50/50">시뮬레이션 입력</th>
+                <th colspan="3" class="text-center !border-b border-slate-200 bg-green-50/50">손익 결과</th>
+                <th rowspan="2" class="text-center">삭제</th>
+              </tr>
+              <tr class="bg-slate-50">
+                <th class="text-right text-[10px]">생산량(톤)</th>
+                <th class="text-right text-[10px]">원단위(원/kg)</th>
+                <th class="text-right text-[10px] !border-r border-slate-200">재료비(천원)</th>
+                <th class="text-right text-[10px] bg-blue-50/50">생산량(톤)</th>
+                <th class="text-right text-[10px] bg-blue-50/50">원단위(원/kg)</th>
+                <th class="text-right text-[10px] !border-r border-slate-200 bg-blue-50/50">재료비(천원)</th>
+                <th class="text-right text-[10px] bg-green-50/50">생산량효과</th>
+                <th class="text-right text-[10px] bg-green-50/50">원단위효과</th>
+                <th class="text-right text-[10px] bg-green-50/50">총손익(천원)</th>
+              </tr>
+            </thead>
+            <tbody id="sim-profit-body"></tbody>
+            <tfoot id="sim-profit-foot"></tfoot>
           </table>
+        </div>
+      </div>
+
+      <!-- Chart: Profit by Product -->
+      <div class="card p-5">
+        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">지종별 손익 효과 비교</h3>
+        <div style="height:250px; position:relative;">
+          <canvas id="simProfitChart"></canvas>
         </div>
       </div>
     </div>
@@ -1308,7 +1312,7 @@ export function mainPage(): string {
       if (a) { a.classList.add('pill-tab-active'); a.classList.remove('pill-tab-inactive'); }
       if (tab === 'input') loadRecentRecords();
       if (tab === 'master') { loadUnitsList(); loadMaterialsList(); loadProductionList(); loadMasterIdx(currentMidxTab); }
-      if (tab === 'simulation') { loadSimProducts(); loadSimHistory(); }
+      if (tab === 'simulation') { loadSimProfitBase(); }
       if (tab === 'dataview') { initDataView(); }
     }
 
@@ -3047,132 +3051,292 @@ export function mainPage(): string {
       return s+Math.round(n).toLocaleString('ko-KR')+'원';
     }
 
-    // ============ SIMULATION ============
-    let simPlanIndex = 0;
+    // ============ SIMULATION (지종별 생산량 손익) ============
+    let simBaseData = [];  // 기준 데이터
+    let simRows = [];      // 시뮬레이션 입력 행들
+    let simCatFilter = 'ALL';
+    let simProfitChart = null;
 
-    function loadSimProducts() {
-      if (!productsCache.length) return;
-      const container = document.getElementById('sim-plans');
-      if (container.children.length === 0) addSimProduct();
-      loadSimHistory();
-    }
-
-    function addSimProduct() {
-      const container = document.getElementById('sim-plans');
-      const idx = simPlanIndex++;
-      const opts = productsCache.map(p=>'<option value="'+p.id+'">'+p.unit_name+' / '+p.product_name+'</option>').join('');
-      const div = document.createElement('div');
-      div.className = 'flex items-center gap-3';
-      div.id = 'sim-plan-'+idx;
-      div.innerHTML = '<select class="sim-product flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">'+opts+'</select>'
-        + '<input type="number" class="sim-qty w-32 border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="생산량(ton)" step="0.1">'
-        + '<button onclick="document.getElementById(\\'sim-plan-'+idx+'\\').remove()" class="text-gray-400 hover:text-red-500 text-sm"><i class="fas fa-times"></i></button>';
-      container.appendChild(div);
-    }
-
-    async function runSimulation() {
-      const rows = document.querySelectorAll('#sim-plans > div');
-      const plans = [];
-      rows.forEach(row => {
-        const productId = row.querySelector('.sim-product')?.value;
-        const qty = parseFloat(row.querySelector('.sim-qty')?.value || '0');
-        if (productId && qty > 0) plans.push({ product_id: parseInt(productId), planned_qty: qty });
+    function setSimCatFilter(f) {
+      simCatFilter = f;
+      ['all','raw','sub'].forEach(function(k) {
+        var btn = document.getElementById('sim-cat-' + k);
+        if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(k === f.toLowerCase() ? 'pill-tab-active' : 'pill-tab-inactive'); }
       });
-      if (!plans.length) { alert('제품과 생산량을 입력하세요.'); return; }
+      loadSimProfitBase();
+    }
 
-      const baseYear = parseInt(document.getElementById('sim-base-year').value);
-      const baseMonth = parseInt(document.getElementById('sim-base-month').value);
+    async function loadSimProfitBase() {
+      var year = document.getElementById('analysisYear').value;
+      var month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      var ym = year + month;
+      var catParam = simCatFilter !== 'ALL' ? '&category=' + simCatFilter : '';
+      try {
+        var res = await fetch('/api/simulation/profit-base?ym=' + ym + catParam);
+        var data = await res.json();
+        simBaseData = data.rows || [];
+        initSimRows();
+        renderSimTable();
+        calcSimProfit();
+      } catch(e) { console.error('Sim load error:', e); }
+    }
 
-      const res = await fetch('/api/simulation/run', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ plans, base_year: baseYear, base_month: baseMonth })
+    function initSimRows() {
+      simRows = simBaseData.map(function(d, i) {
+        return {
+          id: i,
+          machine_code: d.machine_code,
+          product_level2_name: d.product_level2_name,
+          base_prod: d.prev_production_ton,
+          base_unit_cost: d.prev_unit_cost,
+          base_material_cost: d.prev_material_cost,
+          sim_prod: d.cur_production_ton,
+          sim_unit_cost: d.cur_unit_cost,
+          is_new: false
+        };
       });
-      if (!res.ok) { alert('시뮬레이션 실패'); return; }
-      simResultData = await res.json();
-      renderSimResults();
     }
 
-    function renderSimResults() {
-      if (!simResultData) return;
-      document.getElementById('sim-results').classList.remove('hidden');
-      document.getElementById('btn-save-sim').classList.remove('hidden');
-      const s = simResultData.summary;
-
-      document.getElementById('sim-total-cost').textContent = formatWon(s.total_sim_cost);
-      const diffEl = document.getElementById('sim-cost-diff');
-      diffEl.textContent = formatSignedWon(s.total_cost_diff);
-      diffEl.className = 'text-lg font-bold mt-2 stat-value ' + (s.total_cost_diff>0?'positive':'negative');
-      const qEl = document.getElementById('sim-qty-effect');
-      qEl.textContent = formatSignedWon(s.total_qty_effect);
-      qEl.className = 'text-lg font-bold mt-2 stat-value ' + (s.total_qty_effect>0?'positive':'negative');
-      const pEl = document.getElementById('sim-price-effect');
-      pEl.textContent = formatSignedWon(s.total_price_effect);
-      pEl.className = 'text-lg font-bold mt-2 stat-value ' + (s.total_price_effect>0?'positive':'negative');
-
-      // Product table
-      document.getElementById('sim-product-body').innerHTML = simResultData.products.map(p => {
-        const pct = p.total_prev_cost>0 ? ((p.cost_diff/p.total_prev_cost)*100).toFixed(1) : '-';
-        return \`<tr>
-          <td><span class="unit-chip \${getCC(p.unit_code)}">\${p.unit_name}</span></td>
-          <td class="font-medium">\${p.product_name}</td>
-          <td class="text-right">\${fmt(p.planned_qty)} ton</td>
-          <td class="text-right font-medium">\${formatWon(p.total_sim_cost)}</td>
-          <td class="text-right text-gray-500">\${formatWon(p.total_prev_cost)}</td>
-          <td class="text-right font-semibold \${p.cost_diff>0?'positive':'negative'}">\${formatSignedWon(p.cost_diff)}</td>
-          <td class="text-right"><span class="text-xs px-2 py-0.5 rounded-full \${p.cost_diff>0?'bg-red-50 text-red-600':'bg-steel-50 text-steel-400'}">\${pct!=='-'?(p.cost_diff>0?'+':'')+pct+'%':'-'}</span></td>
-        </tr>\`;
-      }).join('');
-
-      // Detail table
-      document.getElementById('sim-detail-body').innerHTML = simResultData.details.map(d => \`<tr>
-        <td class="text-xs text-gray-500">\${d.product_name}</td>
-        <td><span class="text-[10px] px-1.5 py-0.5 rounded \${d.category==='RAW'?'bg-steel-50 text-steel-400':'bg-sage-50 text-sage-600'}">\${d.category==='RAW'?'원':'부'}</span></td>
-        <td class="font-medium text-xs">\${d.material_name}</td>
-        <td class="text-right text-gray-500 text-xs">\${d.unit_consumption}</td>
-        <td class="text-right">\${fmt(d.sim_usage_qty)}</td>
-        <td class="text-right">\${fmt(d.unit_price)}</td>
-        <td class="text-right font-medium">\${formatWon(d.sim_cost)}</td>
-        <td class="text-right text-gray-400">\${fmt(d.prev_usage_qty)}</td>
-        <td class="text-right text-gray-400">\${formatWon(d.prev_cost)}</td>
-        <td class="text-right \${d.qty_effect>0?'positive':'negative'}">\${formatSignedWon(d.qty_effect)}</td>
-        <td class="text-right \${d.price_effect>0?'positive':'negative'}">\${formatSignedWon(d.price_effect)}</td>
-        <td class="text-right font-semibold \${d.cost_diff>0?'positive':'negative'}">\${formatSignedWon(d.cost_diff)}</td>
-      </tr>\`).join('');
+    function resetSimToBase() {
+      initSimRows();
+      renderSimTable();
+      calcSimProfit();
     }
 
-    async function saveSimulation() {
-      if (!simResultData) return;
-      const name = prompt('시뮬레이션 이름을 입력하세요:', '시뮬레이션 ' + new Date().toLocaleDateString('ko-KR'));
-      if (!name) return;
-      const rows = document.querySelectorAll('#sim-plans > div');
-      const plans = [];
-      rows.forEach(row => {
-        const pid = row.querySelector('.sim-product')?.value;
-        const qty = parseFloat(row.querySelector('.sim-qty')?.value||'0');
-        if (pid && qty>0) plans.push({product_id:+pid, planned_qty:qty});
+    function addSimRow() {
+      var newId = simRows.length > 0 ? Math.max.apply(null, simRows.map(function(r){return r.id;})) + 1 : 0;
+      simRows.push({
+        id: newId,
+        machine_code: 'PM2',
+        product_level2_name: '',
+        base_prod: 0,
+        base_unit_cost: 0,
+        base_material_cost: 0,
+        sim_prod: 0,
+        sim_unit_cost: 0,
+        is_new: true
       });
-      await fetch('/api/simulation/save', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ sim_name:name, base_year:+document.getElementById('sim-base-year').value, base_month:+document.getElementById('sim-base-month').value, sim_data:plans, result_data:simResultData })
+      renderSimTable();
+    }
+
+    function removeSimRow(id) {
+      simRows = simRows.filter(function(r) { return r.id !== id; });
+      renderSimTable();
+      calcSimProfit();
+    }
+
+    function onSimInputChange(id, field, value) {
+      var row = simRows.find(function(r) { return r.id === id; });
+      if (!row) return;
+      row[field] = parseFloat(value) || 0;
+      calcSimProfit();
+    }
+
+    function onSimSelectChange(id, field, value) {
+      var row = simRows.find(function(r) { return r.id === id; });
+      if (!row) return;
+      row[field] = value;
+    }
+
+    function renderSimTable() {
+      var tbody = document.getElementById('sim-profit-body');
+      if (!tbody) return;
+      var html = '';
+      var prevMachine = '';
+
+      simRows.forEach(function(row) {
+        var machineChanged = row.machine_code !== prevMachine;
+        prevMachine = row.machine_code;
+        var chipClass = row.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        var baseCost = row.base_unit_cost * row.base_prod * 1000;  // 원 → 원 (원단위*kg)
+        var baseCostThou = baseCost / 1000;  // 천원
+
+        html += '<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-blue-50/20 sim-row" data-id="' + row.id + '">';
+        // 호기
+        if (row.is_new) {
+          html += '<td class="!py-1.5"><select onchange="onSimSelectChange(' + row.id + ',\\'machine_code\\',this.value)" class="border border-gray-200 rounded px-1.5 py-0.5 text-xs w-16">'
+            + '<option value="PM2"' + (row.machine_code==='PM2'?' selected':'') + '>PM2</option>'
+            + '<option value="PM3"' + (row.machine_code==='PM3'?' selected':'') + '>PM3</option>'
+            + '</select></td>';
+        } else {
+          html += '<td class="!py-1.5"><span class="unit-chip ' + chipClass + '">' + row.machine_code + '</span></td>';
+        }
+        // 지종
+        if (row.is_new) {
+          html += '<td class="!py-1.5"><input type="text" value="' + (row.product_level2_name||'') + '" onchange="onSimSelectChange(' + row.id + ',\\'product_level2_name\\',this.value)" class="border border-gray-200 rounded px-2 py-0.5 text-xs w-20" placeholder="지종명"></td>';
+        } else {
+          html += '<td class="!py-1.5 font-medium">' + row.product_level2_name + '</td>';
+        }
+        // 기준 생산량(톤)
+        html += '<td class="!py-1.5 text-right font-mono text-gray-500">' + (row.base_prod > 0 ? row.base_prod.toFixed(1) : '-') + '</td>';
+        // 기준 원단위(원/kg)
+        html += '<td class="!py-1.5 text-right font-mono text-gray-500">' + (row.base_unit_cost > 0 ? row.base_unit_cost.toFixed(1) : '-') + '</td>';
+        // 기준 재료비(천원)
+        html += '<td class="!py-1.5 text-right font-mono text-gray-500 !border-r border-slate-200">' + (baseCostThou > 0 ? Math.round(baseCostThou).toLocaleString() : '-') + '</td>';
+        // 시뮬 생산량 input
+        html += '<td class="!py-1.5 bg-blue-50/30"><input type="number" step="0.1" value="' + (row.sim_prod||'') + '" onchange="onSimInputChange(' + row.id + ',\\'sim_prod\\',this.value)" oninput="onSimInputChange(' + row.id + ',\\'sim_prod\\',this.value)" class="w-20 border border-blue-200 rounded px-2 py-0.5 text-xs text-right font-mono focus:ring-1 focus:ring-blue-300 focus:border-blue-300"></td>';
+        // 시뮬 원단위 input
+        html += '<td class="!py-1.5 bg-blue-50/30"><input type="number" step="0.1" value="' + (row.sim_unit_cost ? row.sim_unit_cost.toFixed(1) : '') + '" onchange="onSimInputChange(' + row.id + ',\\'sim_unit_cost\\',this.value)" oninput="onSimInputChange(' + row.id + ',\\'sim_unit_cost\\',this.value)" class="w-20 border border-blue-200 rounded px-2 py-0.5 text-xs text-right font-mono focus:ring-1 focus:ring-blue-300 focus:border-blue-300"></td>';
+        // 시뮬 재료비 (자동계산)
+        var simCost = row.sim_unit_cost * row.sim_prod * 1000 / 1000;  // 원/kg * ton * 1000kg/ton / 1000 = 천원
+        html += '<td class="!py-1.5 text-right font-mono font-medium !border-r border-slate-200 bg-blue-50/30">' + (simCost > 0 ? Math.round(simCost).toLocaleString() : '-') + '</td>';
+        // 생산량 효과: (시뮬생산량 - 기준생산량) * 기준원단위 * 1000 / 1000
+        var prodEffect = (row.sim_prod - row.base_prod) * row.base_unit_cost;  // ton * 원/kg ... 단위: 톤*원/kg = 원*1000/1000 = 천원 아님
+        // 정확한 단위: (톤차이) × (원/kg) × 1000(kg/톤) / 1000(→천원) = 톤차이 × 원단위
+        var prodEffectThou = prodEffect;  // (sim_prod - base_prod) × base_unit_cost → 이미 천원 단위
+        // 원단위 효과: (기준원단위 - 시뮬원단위) * 시뮬생산량
+        var unitEffect = (row.base_unit_cost - row.sim_unit_cost) * row.sim_prod;  // 천원 단위
+        var totalProfit = prodEffectThou + unitEffect;
+        // 아니, 다시 정리:
+        // 손익 = (기준원단위 - 시뮬원단위)(원/kg) × 시뮬생산량(톤) × 1000(kg/톤) / 1000(→천원)
+        //      = (기준원단위 - 시뮬원단위) × 시뮬생산량
+        // 생산량효과 = (기준생산량 - 시뮬생산량)(톤) × 시뮬원단위(원/kg) × 1000/1000
+        //           = -(시뮬생산량 - 기준생산량) × 시뮬원단위  → 음수면 생산량 증가로 원가 증가
+        // 원단위효과 = (기준원단위 - 시뮬원단위)(원/kg) × 기준생산량(톤) × 1000/1000
+        //           = (기준원단위 - 시뮬원단위) × 기준생산량
+        // TOTAL profit = (기준원단위×기준생산량) - (시뮬원단위×시뮬생산량)  (천원, 양수=절감)
+        var actualProdEffect = (row.base_prod - row.sim_prod) * row.sim_unit_cost * (-1);
+        // 더 직관적인 분해:
+        // 총손익 = 기준재료비 - 시뮬재료비 (양수 = 비용절감 = 이익)
+        var baseMatCostThou = row.base_unit_cost * row.base_prod;  // 천원
+        var simMatCostThou = row.sim_unit_cost * row.sim_prod;  // 천원
+        var profit = baseMatCostThou - simMatCostThou;
+        // 생산량효과 = 기준원단위 × (기준생산량 - 시뮬생산량) (시뮬생산량 증가 → 비용 증가 → 음수)
+        var pEffect = row.base_unit_cost * (row.base_prod - row.sim_prod);
+        // 원단위효과 = 시뮬생산량 × (기준원단위 - 시뮬원단위) (시뮬원단위 감소 → 비용절감 → 양수)
+        var uEffect = row.sim_prod * (row.base_unit_cost - row.sim_unit_cost);
+
+        html += buildEffectCell(-pEffect);  // 생산량효과: 생산량 증가면 비용증가(음수 표시)
+        html += buildEffectCell(uEffect);
+        html += buildProfitCell(profit);
+        // 삭제
+        html += '<td class="!py-1.5 text-center"><button onclick="removeSimRow(' + row.id + ')" class="text-gray-300 hover:text-red-500 text-xs"><i class="fas fa-trash"></i></button></td>';
+        html += '</tr>';
       });
-      alert('저장되었습니다!');
-      loadSimHistory();
+      tbody.innerHTML = html;
     }
 
-    async function loadSimHistory() {
-      const data = await fetch('/api/simulations').then(r=>r.json());
-      document.getElementById('sim-history-body').innerHTML = data.length ? data.map(s=>\`<tr>
-        <td class="font-medium">\${s.sim_name}</td>
-        <td class="text-gray-500">\${s.base_year}-\${String(s.base_month).padStart(2,'0')}</td>
-        <td class="text-gray-500">\${s.created_by}</td>
-        <td class="text-gray-400 text-xs">\${s.created_at}</td>
-        <td class="text-center"><button onclick="loadSavedSim(\${s.id})" class="text-xs text-primary-600 hover:underline">불러오기</button></td>
-      </tr>\`).join('') : '<tr><td colspan="5" class="text-center py-6 text-gray-400">저장된 시뮬레이션이 없습니다</td></tr>';
+    function buildEffectCell(v) {
+      var n = Math.round(v);
+      if (n === 0) return '<td class="!py-1.5 text-right font-mono text-gray-400 bg-green-50/30">-</td>';
+      if (n < 0) return '<td class="!py-1.5 text-right font-mono text-red-600 bg-green-50/30">' + String.fromCharCode(9661) + Math.abs(n).toLocaleString() + '</td>';
+      return '<td class="!py-1.5 text-right font-mono text-blue-600 bg-green-50/30">' + String.fromCharCode(9651) + n.toLocaleString() + '</td>';
     }
 
-    async function loadSavedSim(id) {
-      const data = await fetch('/api/simulations/'+id).then(r=>r.json());
-      if (data.result_data) { simResultData = data.result_data; renderSimResults(); }
+    function buildProfitCell(v) {
+      var n = Math.round(v);
+      if (n === 0) return '<td class="!py-1.5 text-right font-mono font-semibold text-gray-400 bg-green-50/30">-</td>';
+      if (n < 0) return '<td class="!py-1.5 text-right font-mono font-semibold text-red-600 bg-green-50/30">' + String.fromCharCode(9661) + Math.abs(n).toLocaleString() + '</td>';
+      return '<td class="!py-1.5 text-right font-mono font-semibold text-blue-600 bg-green-50/30">' + String.fromCharCode(9651) + n.toLocaleString() + '</td>';
+    }
+
+    function calcSimProfit() {
+      var totalBaseMatCost = 0;
+      var totalSimMatCost = 0;
+      var totalProdEffect = 0;
+      var totalUnitEffect = 0;
+      var totalProfit = 0;
+      var chartLabels = [];
+      var chartProfits = [];
+
+      simRows.forEach(function(row) {
+        var baseMatCost = row.base_unit_cost * row.base_prod;  // 천원
+        var simMatCost = row.sim_unit_cost * row.sim_prod;  // 천원
+        var profit = baseMatCost - simMatCost;
+        var pEffect = row.base_unit_cost * (row.base_prod - row.sim_prod);
+        var uEffect = row.sim_prod * (row.base_unit_cost - row.sim_unit_cost);
+
+        totalBaseMatCost += row.base_material_cost;  // 원래 DB 값 (원 단위)
+        totalSimMatCost += simMatCost * 1000;  // 천원 → 원
+        totalProdEffect += (-pEffect);  // 생산량 증가 → 비용증가 → 음수
+        totalUnitEffect += uEffect;
+        totalProfit += profit;
+
+        if (row.product_level2_name) {
+          chartLabels.push(row.machine_code + ' ' + row.product_level2_name);
+          chartProfits.push(Math.round(profit));
+        }
+      });
+
+      // Summary cards 업데이트
+      var baseEl = document.getElementById('sim-base-total');
+      var newEl = document.getElementById('sim-new-total');
+      var profitEl = document.getElementById('sim-profit-total');
+      var prodEl = document.getElementById('sim-prod-effect');
+      var unitEl = document.getElementById('sim-unit-effect');
+
+      if (baseEl) baseEl.textContent = Math.round(totalBaseMatCost / 1000).toLocaleString() + ' 천원';
+      if (newEl) newEl.textContent = Math.round(totalSimMatCost / 1000).toLocaleString() + ' 천원';
+
+      var formatCard = function(el, val) {
+        var n = Math.round(val);
+        if (n === 0) { el.textContent = '-'; el.className = 'text-lg font-bold mt-2 stat-value text-gray-400'; }
+        else if (n > 0) { el.textContent = '+' + n.toLocaleString() + ' 천원'; el.className = 'text-lg font-bold mt-2 stat-value text-blue-600'; }
+        else { el.textContent = n.toLocaleString() + ' 천원'; el.className = 'text-lg font-bold mt-2 stat-value text-red-600'; }
+      };
+      if (profitEl) formatCard(profitEl, totalProfit);
+      if (prodEl) formatCard(prodEl, -totalProdEffect);
+      if (unitEl) formatCard(unitEl, totalUnitEffect);
+
+      // Footer totals
+      var tfoot = document.getElementById('sim-profit-foot');
+      if (tfoot) {
+        var totalBaseThou = Math.round(totalBaseMatCost / 1000);
+        var totalSimThou = Math.round(totalSimMatCost / 1000);
+        tfoot.innerHTML = '<tr class="bg-slate-100 font-semibold border-t-2 border-slate-300">'
+          + '<td colspan="2" class="!py-2 text-center font-bold">합계</td>'
+          + '<td class="!py-2 text-right font-mono">' + simRows.reduce(function(s,r){return s+r.base_prod;},0).toFixed(1) + '</td>'
+          + '<td class="!py-2 text-right font-mono">-</td>'
+          + '<td class="!py-2 text-right font-mono !border-r border-slate-200">' + totalBaseThou.toLocaleString() + '</td>'
+          + '<td class="!py-2 text-right font-mono bg-blue-50/30">' + simRows.reduce(function(s,r){return s+r.sim_prod;},0).toFixed(1) + '</td>'
+          + '<td class="!py-2 text-right font-mono bg-blue-50/30">-</td>'
+          + '<td class="!py-2 text-right font-mono font-medium !border-r border-slate-200 bg-blue-50/30">' + totalSimThou.toLocaleString() + '</td>'
+          + buildEffectCell(-totalProdEffect).replace('bg-green-50/30','bg-green-50/50')
+          + buildEffectCell(totalUnitEffect).replace('bg-green-50/30','bg-green-50/50')
+          + buildProfitCell(totalProfit).replace('bg-green-50/30','bg-green-50/50')
+          + '<td class="!py-2"></td>'
+          + '</tr>';
+      }
+
+      // Chart update
+      renderSimProfitChart(chartLabels, chartProfits);
+    }
+
+    function renderSimProfitChart(labels, profits) {
+      var ctx = document.getElementById('simProfitChart');
+      if (!ctx) return;
+      if (simProfitChart) simProfitChart.destroy();
+      var colors = profits.map(function(v) { return v >= 0 ? 'rgba(59,130,246,0.7)' : 'rgba(220,38,38,0.7)'; });
+      var borderColors = profits.map(function(v) { return v >= 0 ? 'rgb(59,130,246)' : 'rgb(220,38,38)'; });
+      simProfitChart = new Chart(ctx.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '손익(천원)',
+            data: profits,
+            backgroundColor: colors,
+            borderColor: borderColors,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y.toLocaleString() + ' 천원'; } } }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { callback: function(v) { return v.toLocaleString(); } },
+              grid: { color: '#f1f5f9' }
+            },
+            x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+          }
+        }
+      });
     }
 
     // ===== Data View (데이터 조회) - Raw Records 전체 컬럼 =====

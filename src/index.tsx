@@ -343,6 +343,149 @@ app.get('/api/simulations/:id', async (c) => {
   return c.json({ ...result, sim_data: JSON.parse(result.sim_data as string), result_data: result.result_data ? JSON.parse(result.result_data as string) : null })
 })
 
+// ============ 손익 시뮬레이션 API (지종별 생산량 기반) ============
+
+// 시뮬레이션 기준 데이터 로드: 호기별/지종별 원단위/생산량/재료비 (당월 + 전월)
+app.get('/api/simulation/profit-base', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym') || ''
+  const category = c.req.query('category') || '' // ALL, RAW, SUB
+
+  // 전월 계산
+  let prevYm = ''
+  if (ym && ym.length === 6) {
+    let y = parseInt(ym.substring(0, 4))
+    let m = parseInt(ym.substring(4, 6))
+    m -= 1
+    if (m < 1) { m = 12; y -= 1 }
+    prevYm = `${y}${String(m).padStart(2, '0')}`
+  }
+
+  let catFilter = ''
+  if (category === 'RAW') {
+    catFilter = " AND (material_group_major = '1100' OR material_group_major = '1200')"
+  } else if (category === 'SUB') {
+    catFilter = " AND material_group_major != '1100' AND material_group_major != '1200'"
+  }
+
+  // 재료비 SQL
+  const costSql = `
+    SELECT 
+      machine_code,
+      CASE 
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
+        ELSE product_level2_name
+      END as product_level2_name,
+      SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as material_cost
+    FROM raw_records
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+      AND CAST(actual_alloc_qty AS REAL) != 0
+      ${catFilter}
+    GROUP BY machine_code, 
+      CASE 
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
+        ELSE product_level2_name
+      END
+    ORDER BY machine_code, material_cost DESC
+  `
+
+  // 생산량 SQL
+  const prodSql = `
+    SELECT 
+      machine_code,
+      product_level2_name,
+      SUM(total_prod) as production
+    FROM (
+      SELECT 
+        machine_code,
+        CASE 
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
+          ELSE product_level2_name
+        END as product_level2_name,
+        product_level4,
+        MAX(CAST(total_production AS REAL)) as total_prod
+      FROM raw_records
+      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+        AND CAST(total_production AS REAL) > 0
+      GROUP BY machine_code, 
+        CASE 
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+          WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
+          ELSE product_level2_name
+        END,
+        product_level4
+    )
+    GROUP BY machine_code, product_level2_name
+    ORDER BY machine_code, production DESC
+  `
+
+  // 당월
+  const curCostResult = await db.prepare(costSql).bind(ym).all()
+  const curProdResult = await db.prepare(prodSql).bind(ym).all()
+  const curCostMap = new Map<string, number>()
+  const curProdMap = new Map<string, number>()
+  for (const r of curCostResult.results as any[]) {
+    curCostMap.set(`${r.machine_code}|${r.product_level2_name}`, Number(r.material_cost) || 0)
+  }
+  for (const r of curProdResult.results as any[]) {
+    curProdMap.set(`${r.machine_code}|${r.product_level2_name}`, Number(r.production) || 0)
+  }
+
+  // 전월
+  let prevCostMap = new Map<string, number>()
+  let prevProdMap = new Map<string, number>()
+  if (prevYm) {
+    const prevCostResult = await db.prepare(costSql).bind(prevYm).all()
+    const prevProdResult = await db.prepare(prodSql).bind(prevYm).all()
+    for (const r of prevCostResult.results as any[]) {
+      prevCostMap.set(`${r.machine_code}|${r.product_level2_name}`, Number(r.material_cost) || 0)
+    }
+    for (const r of prevProdResult.results as any[]) {
+      prevProdMap.set(`${r.machine_code}|${r.product_level2_name}`, Number(r.production) || 0)
+    }
+  }
+
+  // 모든 키 취합
+  const allKeys = new Set<string>()
+  curCostMap.forEach((_, k) => allKeys.add(k))
+  curProdMap.forEach((_, k) => allKeys.add(k))
+  prevCostMap.forEach((_, k) => allKeys.add(k))
+  prevProdMap.forEach((_, k) => allKeys.add(k))
+
+  const rows = Array.from(allKeys).map(key => {
+    const [machine_code, product_level2_name] = key.split('|')
+    const curCost = curCostMap.get(key) || 0
+    const curProdKg = curProdMap.get(key) || 0
+    const curProdTon = curProdKg / 1000
+    const curUnitCost = curProdKg > 0 ? curCost / curProdKg : 0  // 원/kg
+
+    const prevCost = prevCostMap.get(key) || 0
+    const prevProdKg = prevProdMap.get(key) || 0
+    const prevProdTon = prevProdKg / 1000
+    const prevUnitCost = prevProdKg > 0 ? prevCost / prevProdKg : 0  // 원/kg
+
+    return {
+      machine_code,
+      product_level2_name,
+      cur_production_ton: curProdTon,
+      cur_unit_cost: curUnitCost,  // 원/kg
+      cur_material_cost: curCost,
+      prev_production_ton: prevProdTon,
+      prev_unit_cost: prevUnitCost,  // 원/kg
+      prev_material_cost: prevCost
+    }
+  }).sort((a, b) => {
+    if (a.machine_code < b.machine_code) return -1
+    if (a.machine_code > b.machine_code) return 1
+    return b.cur_material_cost - a.cur_material_cost
+  })
+
+  return c.json({ rows, ym, prevYm, category })
+})
+
 // ============ SAP 엑셀 스마트 업로드 API ============
 
 // SAP 형식 엑셀 파싱 결과를 DB에 일괄 등록 (집계용 monthly_records + 원본 raw_records)
