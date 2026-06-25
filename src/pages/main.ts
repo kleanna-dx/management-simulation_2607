@@ -96,10 +96,13 @@ export function mainPage(): string {
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <button onclick="switchTab('dashboard')" id="tab-dashboard" class="pill-tab pill-tab-active">
-            <i class="fas fa-chart-line mr-1.5"></i>사용현황에 따른 분석
+            <i class="fas fa-chart-line mr-1.5"></i>사용현황 분석
           </button>
-          <button onclick="switchTab('detail')" id="tab-detail" class="pill-tab pill-tab-inactive">
-            <i class="fas fa-table mr-1.5"></i>상세 분석표
+          <button onclick="switchTab('forecast')" id="tab-forecast" class="pill-tab pill-tab-inactive">
+            <i class="fas fa-chart-area mr-1.5"></i>전월 대비 예상 손익
+          </button>
+          <button onclick="switchTab('simulation')" id="tab-simulation" class="pill-tab pill-tab-inactive">
+            <i class="fas fa-flask mr-1.5"></i>시뮬레이션
           </button>
           <button onclick="switchTab('upload')" id="tab-upload" class="pill-tab pill-tab-inactive">
             <i class="fas fa-file-excel mr-1.5"></i>데이터 업로드
@@ -107,18 +110,11 @@ export function mainPage(): string {
           <button onclick="switchTab('dataview')" id="tab-dataview" class="pill-tab pill-tab-inactive">
             <i class="fas fa-database mr-1.5"></i>데이터 조회
           </button>
-          <button onclick="switchTab('input')" id="tab-input" class="pill-tab pill-tab-inactive">
-            <i class="fas fa-keyboard mr-1.5"></i>수동 입력
+          <button onclick="switchTab('detail')" id="tab-detail" class="pill-tab pill-tab-inactive">
+            <i class="fas fa-table mr-1.5"></i>상세 분석표
           </button>
-          <button onclick="switchTab('simulation')" id="tab-simulation" class="pill-tab pill-tab-inactive">
-            <i class="fas fa-flask mr-1.5"></i>시뮬레이션
-          </button>
-
           <button onclick="switchTab('master')" id="tab-master" class="pill-tab pill-tab-inactive">
             <i class="fas fa-cog mr-1.5"></i>기준정보
-          </button>
-          <button onclick="switchTab('forecast')" id="tab-forecast" class="pill-tab pill-tab-inactive">
-            <i class="fas fa-chart-area mr-1.5"></i>전월 대비 예상 실적
           </button>
         </div>
         <!-- Filters -->
@@ -846,57 +842,6 @@ export function mainPage(): string {
     </div>
 
     <!-- Input Tab -->
-    <div id="content-input" class="hidden fade-in">
-      <div class="card p-6">
-        <h3 class="text-sm font-semibold text-gray-700 mb-4">실적 데이터 수동 입력</h3>
-        <form id="record-form" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label class="block text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">호기</label>
-            <select id="input-unit" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-200 focus:border-primary-400" required></select>
-          </div>
-          <div>
-            <label class="block text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">원부자재</label>
-            <select id="input-material" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-200 focus:border-primary-400" required></select>
-          </div>
-          <div>
-            <label class="block text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">년도</label>
-            <input type="number" id="input-year" value="2026" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm" required>
-          </div>
-          <div>
-            <label class="block text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">월</label>
-            <input type="number" id="input-month" min="1" max="12" value="6" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm" required>
-          </div>
-          <div>
-            <label class="block text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">사용량</label>
-            <input type="number" id="input-qty" step="0.01" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm" placeholder="0" required>
-          </div>
-          <div>
-            <label class="block text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">단가 (원)</label>
-            <input type="number" id="input-price" step="0.01" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm" placeholder="0" required>
-          </div>
-          <div>
-            <label class="block text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">생산량</label>
-            <input type="number" id="input-production" step="0.01" class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm" placeholder="0">
-          </div>
-          <div class="flex items-end">
-            <button type="submit" class="btn-primary w-full py-2.5"><i class="fas fa-plus mr-1.5"></i>등록</button>
-          </div>
-        </form>
-      </div>
-      <div class="card overflow-hidden mt-5">
-        <div class="px-5 py-4 border-b border-slate-100">
-          <h3 class="text-sm font-semibold text-gray-700">등록된 실적</h3>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="data-table">
-            <thead>
-              <tr><th>호기</th><th>자재</th><th>기간</th><th class="text-right">사용량</th><th class="text-right">단가</th><th class="text-right">총원가</th><th class="text-right">생산량</th><th class="text-center">관리</th></tr>
-            </thead>
-            <tbody id="recent-records"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
 
     <!-- Master Tab -->
     <div id="content-master" class="hidden fade-in">
@@ -941,43 +886,6 @@ export function mainPage(): string {
             </div>
           </form>
           <div id="materials-list" class="space-y-2 max-h-[450px] overflow-y-auto"></div>
-        </div>
-      </div>
-
-      <!-- Production Qty Master -->
-      <div class="card p-6 mt-5">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h3 class="text-sm font-semibold text-gray-700">월별 생산량 관리</h3>
-            <p class="text-xs text-gray-400 mt-0.5">호기별 월간 생산량을 등록합니다. 원단위 분석에 활용됩니다.</p>
-          </div>
-        </div>
-        <form id="production-form" class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-5 p-4 bg-slate-50 rounded-xl">
-          <div>
-            <label class="block text-[11px] font-medium text-gray-400 uppercase mb-1">호기</label>
-            <select id="prod-unit" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"></select>
-          </div>
-          <div>
-            <label class="block text-[11px] font-medium text-gray-400 uppercase mb-1">년도</label>
-            <input type="number" id="prod-year" value="2026" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-          </div>
-          <div>
-            <label class="block text-[11px] font-medium text-gray-400 uppercase mb-1">월</label>
-            <input type="number" id="prod-month" value="6" min="1" max="12" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm">
-          </div>
-          <div>
-            <label class="block text-[11px] font-medium text-gray-400 uppercase mb-1">생산량</label>
-            <input type="number" id="prod-qty" step="0.01" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder="ton">
-          </div>
-          <div class="flex items-end">
-            <button type="submit" class="btn-primary w-full py-2"><i class="fas fa-save mr-1"></i>저장</button>
-          </div>
-        </form>
-        <div class="overflow-x-auto">
-          <table class="data-table">
-            <thead><tr><th>호기</th><th>기간</th><th class="text-right">생산량</th></tr></thead>
-            <tbody id="production-list"></tbody>
-          </table>
         </div>
       </div>
 
@@ -1364,7 +1272,7 @@ export function mainPage(): string {
     });
 
     function switchTab(tab) {
-      ['dashboard','detail','upload','dataview','input','master','simulation','forecast'].forEach(t => {
+      ['dashboard','detail','upload','dataview','master','simulation','forecast'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.add('pill-tab-inactive'); }
@@ -1372,8 +1280,7 @@ export function mainPage(): string {
       document.getElementById('content-' + tab)?.classList.remove('hidden');
       const a = document.getElementById('tab-' + tab);
       if (a) { a.classList.add('pill-tab-active'); a.classList.remove('pill-tab-inactive'); }
-      if (tab === 'input') loadRecentRecords();
-      if (tab === 'master') { loadUnitsList(); loadMaterialsList(); loadProductionList(); loadMasterIdx(currentMidxTab); }
+      if (tab === 'master') { loadUnitsList(); loadMaterialsList(); loadMasterIdx(currentMidxTab); }
       if (tab === 'simulation') { loadSimProfitBase(); }
       if (tab === 'forecast') { loadForecast(); }
       if (tab === 'dataview') { initDataView(); }
@@ -1390,9 +1297,6 @@ export function mainPage(): string {
     async function loadMasterData() {
       const [u, m, p] = await Promise.all([fetch('/api/units').then(r=>r.json()), fetch('/api/materials').then(r=>r.json()), fetch('/api/products').then(r=>r.json())]);
       unitsCache = u; materialsCache = m; productsCache = p;
-      document.getElementById('input-unit').innerHTML = u.map(x=>'<option value="'+x.id+'">'+x.unit_name+' ('+x.unit_code+')</option>').join('');
-      document.getElementById('input-material').innerHTML = m.map(x=>'<option value="'+x.id+'">'+(x.category==='RAW'?'[원]':'[부]')+' '+x.material_name+'</option>').join('');
-      document.getElementById('prod-unit').innerHTML = u.map(x=>'<option value="'+x.id+'">'+x.unit_name+'</option>').join('');
     }
 
     // ============ 매핑 INDEX 기준정보 ============
@@ -3003,29 +2907,6 @@ export function mainPage(): string {
       const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='원가분석_'+document.getElementById('analysisYear').value+'_'+document.getElementById('analysisMonth').value+'월.csv'; a.click();
     }
 
-    // Manual Input
-    document.getElementById('record-form').addEventListener('submit', async(e)=>{
-      e.preventDefault();
-      const data={unit_id:+document.getElementById('input-unit').value, material_id:+document.getElementById('input-material').value, year:+document.getElementById('input-year').value, month:+document.getElementById('input-month').value, usage_qty:+document.getElementById('input-qty').value, unit_price:+document.getElementById('input-price').value, production_qty:+(document.getElementById('input-production').value||0)};
-      const r=await fetch('/api/records',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-      if(r.ok){alert('저장!'); document.getElementById('input-qty').value=''; document.getElementById('input-price').value=''; document.getElementById('input-production').value=''; loadRecentRecords(); loadAnalysis();}
-    });
-
-    async function loadRecentRecords() {
-      const y=document.getElementById('analysisYear').value, m=document.getElementById('analysisMonth').value;
-      const recs = await fetch('/api/records?year='+y+'&month='+m).then(r=>r.json());
-      document.getElementById('recent-records').innerHTML = recs.map(r=>\`<tr>
-        <td><span class="unit-chip \${getCC(r.unit_code)}">\${r.unit_name}</span></td>
-        <td class="font-medium">\${r.material_name}</td>
-        <td class="text-gray-400">\${r.year}-\${String(r.month).padStart(2,'0')}</td>
-        <td class="text-right">\${fmt(r.usage_qty)} \${r.unit_of_measure}</td>
-        <td class="text-right">\${fmt(r.unit_price)}원</td>
-        <td class="text-right font-medium">\${formatWon(r.total_cost)}</td>
-        <td class="text-right">\${fmt(r.production_qty)}</td>
-        <td class="text-center"><button onclick="deleteRecord(\${r.id})" class="btn-delete">삭제</button></td>
-      </tr>\`).join('');
-    }
-    async function deleteRecord(id) { if(!confirm('삭제?')) return; await fetch('/api/records/'+id,{method:'DELETE'}); loadRecentRecords(); loadAnalysis(); }
 
     // Master
     document.getElementById('unit-form').addEventListener('submit', async(e)=>{
@@ -3039,34 +2920,6 @@ export function mainPage(): string {
       loadMaterialsList(); loadMasterData();
     });
 
-    // Production form
-    document.getElementById('production-form').addEventListener('submit', async(e)=>{
-      e.preventDefault();
-      const unitId = document.getElementById('prod-unit').value;
-      const year = document.getElementById('prod-year').value;
-      const month = document.getElementById('prod-month').value;
-      const qty = document.getElementById('prod-qty').value;
-      // Update production_qty for all records of this unit/period
-      const res = await fetch('/api/records?unit_id='+unitId+'&year='+year+'&month='+month).then(r=>r.json());
-      if (res.length > 0) {
-        const records = res.map(r => ({...r, production_qty: parseFloat(qty), unit_id: r.unit_id, material_id: r.material_id, year: r.year, month: r.month, usage_qty: r.usage_qty, unit_price: r.unit_price}));
-        await fetch('/api/records/bulk', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({records})});
-        alert('생산량 업데이트 완료 ('+res.length+'건)');
-      } else {
-        alert('해당 기간에 등록된 실적이 없습니다. 실적 데이터를 먼저 등록해주세요.');
-      }
-      loadProductionList(); loadAnalysis();
-    });
-
-    async function loadProductionList() {
-      const y=document.getElementById('analysisYear').value, m=document.getElementById('analysisMonth').value;
-      const data = await fetch('/api/analysis/unit-summary?year='+y+'&month='+m).then(r=>r.json());
-      document.getElementById('production-list').innerHTML = data.map(u=>\`<tr>
-        <td><span class="unit-chip \${getCC(u.unit_code)}">\${u.unit_name}</span></td>
-        <td class="text-gray-500">\${y}-\${String(m).padStart(2,'0')}</td>
-        <td class="text-right font-medium">\${fmt(u.production_qty)}</td>
-      </tr>\`).join('') || '<tr><td colspan="3" class="text-center py-4 text-gray-400">데이터 없음</td></tr>';
-    }
 
     async function loadUnitsList() {
       const units=await fetch('/api/units').then(r=>r.json());
