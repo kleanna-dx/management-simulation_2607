@@ -1,167 +1,215 @@
 # 원부자재 사전원가 분석 시스템
 
 ## 프로젝트 개요
-- **목적**: 호기(생산라인)별 원부자재의 전월/당월 실적을 비교하고, 사용량 및 단가 차이에 따른 손익 효과를 분석
-- **핵심 분석 로직**:
-  - **수량차이 효과** = (당월수량 - 전월수량) × 전월단가
-  - **단가차이 효과** = (당월단가 - 전월단가) × 당월수량
-  - **총 원가차이** = 수량차이 효과 + 단가차이 효과
+- **목적**: 제지공장 호기(PM2/PM3)별 원부자재 원가를 분석하고, 차월 예상 손익을 시뮬레이션
+- **데이터 소스**: SAP 추출 엑셀 (raw_records 테이블)
+- **핵심 가치**: 지종별 생산량 변동에 따른 자재 사용량 자동 보정 및 손익 효과 예측
 
-## 기능
-
-### 완료된 기능
-- [x] **통합 대시보드**: 전월 대비 당월 원가 요약 카드 (총원가, 수량효과, 단가효과)
-- [x] **호기별 비교 차트**: 전월/당월 원가 비교 막대 차트 (고정 200px 높이)
-- [x] **손익효과 분해 차트**: 수량차이 vs 단가차이 호기별 시각화
-- [x] **카테고리별 분석**: 원자재/부자재 구분 요약
-- [x] **원가 영향 TOP 5**: 원가차이가 큰 항목 자동 추출
-- [x] **상세분석표**: 전체 항목별 수량/단가/원가 비교 테이블
-- [x] **CSV 내보내기**: 분석 결과를 CSV로 다운로드
-- [x] **Excel 업로드**: SheetJS 기반 엑셀 파일 업로드 → 일괄 데이터 INSERT
-- [x] **템플릿 다운로드**: 엑셀 업로드용 템플릿 파일 제공
-- [x] **수동 데이터 입력**: 호기/자재별 월별 실적 데이터 CRUD
-- [x] **기준정보 관리**: 호기/원부자재 마스터 데이터 관리 + 생산량 관리
-- [x] **필터링**: 분석기간(년/월) 및 호기 필터
-- [x] **시뮬레이션 엔진**: 생산계획 → BOM 기반 자재 소요량/원가 예측
-- [x] **BOM 관리**: 제품-자재 매핑 (원단위 설정) + 추가/삭제 UI
-- [x] **시뮬레이션 저장/이력**: 시뮬레이션 결과 저장 및 이력 조회
-
-### 미구현 기능
-- [ ] 다중 월 트렌드 분석 (3개월 이상 추이)
-- [ ] 예산 대비 실적 분석
-- [ ] 사용자 인증/권한 관리
-- [ ] 시뮬레이션 시나리오 비교 (다중 시나리오 대비)
+---
 
 ## 탭 구성 (7개)
-1. **통합분석** - 대시보드 + 차트 + 카테고리 요약 + TOP5
-2. **상세분석표** - 전체 항목 비교 테이블 + CSV 내보내기
-3. **데이터업로드** - Excel 업로드 + 템플릿 다운로드
-4. **수동입력** - 단건 실적 입력 폼
-5. **시뮬레이션** - 생산계획 입력 → BOM 기반 원가 예측
-6. **제품-자재매핑** - BOM 관리 (제품별 자재 + 원단위)
-7. **기준정보** - 호기/자재/생산량 마스터 관리
+
+| 순서 | 탭명 | 설명 |
+|------|------|------|
+| 1 | 사용현황 분석 | 대시보드 - 호기별 원가 요약, 차트, 원단위 추이 |
+| 2 | 전월 대비 예상 손익 | **핵심** - 당월 실적 vs 차월 예상 비교, 손익 효과 분석 |
+| 3 | 시뮬레이션 | 지종별 생산량/원단위 변경 → 손익 시뮬레이션 |
+| 4 | 데이터 업로드 | SAP 엑셀 업로드 → raw_records 일괄 등록 |
+| 5 | 데이터 조회 | raw_records 원본 데이터 검색/조회 |
+| 6 | 상세 분석표 | 전체 항목별 수량/단가/원가 비교 테이블 |
+| 7 | 기준정보 | 자재구분 매핑, 제품분류 기준정보 관리 |
+
+---
+
+## 핵심 산식
+
+### 1. 지종 분류 기준
+
+```
+SC 고평량: product_level4 뒷 3자리 >= 300 (g/m²)
+SC 저평량: product_level4 뒷 3자리 < 300 (g/m²)
+기타 지종: product_level2_name 그대로 (ACB, KB, 백판지 기타 등)
+```
+
+### 2. 기본 원단위 계산
+
+```
+원단위(kg/톤) = 사용량(kg) ÷ 생산량(톤)
+사용단가(원/kg) = 비용(원) ÷ 사용량(kg)
+비용(백만원) = 사용량(kg) × 사용단가(원/kg) ÷ 1,000,000
+톤당비용(원/톤) = 비용(원) ÷ 생산량(톤)
+```
+
+### 3. 지종별 원단위 (사용량 보정의 핵심)
+
+각 자재는 지종마다 서로 다른 원단위를 가집니다.
+
+```
+지종별 원단위(kg/톤) = 해당 지종 배부수량(actual_alloc_qty) ÷ 해당 지종 생산량(톤)
+```
+
+**예시) PM2 목분:**
+| 지종 | 배부수량(kg) | 생산량(톤) | 원단위(kg/톤) |
+|------|-------------|-----------|--------------|
+| SC저평량 | 414,242 | 4,920 | 84.2 |
+| SC고평량 | 98,813 | 1,218 | 81.1 |
+| ACB | 176,245 | 1,717 | 102.6 |
+| KB | 13,739 | 347 | 39.6 |
+| 백판지 기타 | 8,929 | 105 | 85.3 |
+
+### 4. 차월 예상 사용량 보정 (생산량 변동 반영)
+
+```
+차월 예상 사용량 = Σ (지종별 원단위 × 차월 지종별 생산량)
+```
+
+**예시) 차월에 ACB 생산량 1,717→2,065톤, SC 6,243→4,273톤 변경 시:**
+```
+차월 목분 사용량 = 84.2 × SC저평량(톤) + 81.1 × SC고평량(톤) 
+                + 102.6 × ACB(톤) + 39.6 × KB(톤) + 85.3 × 백판지기타(톤)
+```
+
+→ 지종 믹스가 바뀌면 각 자재 사용량이 **지종별 원단위 비율대로** 자동 재계산됩니다.
+
+### 5. 차월 원단위 역산
+
+```
+차월 원단위(kg/톤) = 차월 예상 사용량(kg) ÷ 차월 총 생산량(톤)
+```
+
+### 6. 손익 효과 계산
+
+```
+사용량 차이(원) = (당월 사용량 - 차월 사용량) × 당월 사용단가
+  → 양수 = 사용량 절감 (개선)
+  → 음수 = 사용량 증가 (악화)
+
+단가 차이(원) = (당월 사용단가 - 차월 사용단가) × 차월 사용량
+  → 양수 = 단가 하락 (개선)
+  → 음수 = 단가 상승 (악화)
+
+재료비 종합(원) = 사용량 차이 + 단가 차이
+  → 양수 = 원가 절감 (개선, +)
+  → 음수 = 원가 증가 (악화, △)
+```
+
+### 7. 시뮬레이션 탭 손익 계산
+
+```
+기준 = 당월(선택한 월) 실적
+시뮬 = 사용자가 입력한 차월 계획
+
+총 손익 = 기준 재료비 - 시뮬 재료비
+  → 양수 = 절감
+
+생산량 효과 = 기준 원단위 × (기준 생산량 - 시뮬 생산량) × 기준 단가
+원단위 효과 = 시뮬 생산량 × (기준 원단위 - 시뮬 원단위) × 기준 단가
+```
+
+---
+
+## 전월 대비 예상 손익 탭 - 상세 구조
+
+### 상단: 생산량 요약
+| 영역 | 내용 | 편집 |
+|------|------|------|
+| 좌측 (당월 실적) | 지종별 생산량(톤) | 읽기전용 |
+| 우측 (차월 예상) | 지종별 생산량(톤) | **편집 가능** |
+| 폐품율 | 당월/-차월 | 차월 **편집 가능** (기본 8.44%) |
+
+### 하단: 자재별 원가 상세 (가로 스프레드시트)
+
+| 구분 | 컬럼 | 편집 | 산식 |
+|------|------|------|------|
+| **당월 실적** | 사용량(kg) | 읽기전용 | DB에서 조회 |
+| | 원단위(kg/톤) | 읽기전용 | = 사용량 ÷ 생산량(톤) |
+| | 사용단가(원/kg) | 읽기전용 | = 비용 ÷ 사용량 |
+| | 비용(백만원) | 읽기전용 | = 사용량 × 사용단가 ÷ 1M |
+| | 톤당비용(원/톤) | 읽기전용 | = 비용 ÷ 생산량(톤) |
+| **차월 예상** | 사용량(kg) | **편집 가능** | 자동: Σ(지종별원단위×지종생산량) |
+| | 원단위(kg/톤) | **편집 가능** | 자동: 사용량÷총생산량 |
+| | 입고단가(원/kg) | **편집 가능** | 사용자 입력 |
+| | 기초재고단가 | **편집 가능** | 사용자 입력 |
+| | 사용단가(원/kg) | **편집 가능** | 사용자 입력 (기본=당월단가) |
+| | 비용(백만원) | 자동 | = 사용량 × 사용단가 ÷ 1M |
+| | 톤당비용(원/톤) | 자동 | = 비용 ÷ 생산량(톤) |
+| **손익 효과** | 사용량차이(원) | 자동 | = (당월사용량-차월사용량) × 당월단가 |
+| | 단가차이(원) | 자동 | = (당월단가-차월단가) × 차월사용량 |
+| | 재료비종합(원) | 자동 | = 사용량차이 + 단가차이 |
+| **이슈사항** | 텍스트 | **편집 가능** | 사용자 메모 |
+
+### 편집 연동 로직
+
+| 사용자 액션 | 자동 반응 |
+|-------------|-----------|
+| 차월 지종별 생산량 변경 | 모든 자재의 사용량/원단위 재계산 (수동 편집한 행 제외) |
+| 차월 사용량 직접 수정 | 해당 행 원단위 연동 (= 사용량 ÷ 생산량) |
+| 차월 원단위 직접 수정 | 해당 행 사용량 연동 (= 원단위 × 생산량) |
+| 차월 사용단가 변경 | 비용/톤당비용/손익효과 즉시 재계산 |
+| 수동 수정한 행 | 생산량 변경 시에도 자동계산 덮어쓰지 않음 (잠금) |
+
+---
 
 ## API 엔드포인트
 
+### 분석 API
 | Method | Path | 설명 |
 |--------|------|------|
-| GET | `/api/units` | 호기 목록 조회 |
-| POST | `/api/units` | 호기 등록 |
-| GET | `/api/materials?category=RAW\|SUB` | 원부자재 목록 조회 |
-| POST | `/api/materials` | 원부자재 등록 |
-| GET | `/api/records?unit_id=&year=&month=` | 월별 실적 데이터 조회 |
-| POST | `/api/records` | 실적 데이터 등록/수정 (Upsert) |
-| POST | `/api/records/bulk` | 실적 일괄 등록 |
-| DELETE | `/api/records/:id` | 실적 삭제 |
-| GET | `/api/analysis/comparison?year=&month=&unit_id=` | **전월대비 분석** (핵심) |
-| GET | `/api/analysis/unit-summary?year=&month=` | 호기별 요약 분석 |
-| GET | `/api/analysis/category-summary?year=&month=&unit_id=` | 카테고리별 분석 |
-| **GET** | **`/api/products`** | **제품 목록 조회** |
-| **POST** | **`/api/products`** | **제품 등록** |
-| **GET** | **`/api/bom?product_id=`** | **BOM 조회 (제품별 자재매핑)** |
-| **POST** | **`/api/bom`** | **BOM 항목 추가/수정 (Upsert)** |
-| **DELETE** | **`/api/bom/:id`** | **BOM 항목 삭제** |
-| **POST** | **`/api/simulation/run`** | **시뮬레이션 실행** |
-| **POST** | **`/api/simulation/save`** | **시뮬레이션 결과 저장** |
-| **GET** | **`/api/simulations`** | **시뮬레이션 이력 조회** |
+| GET | `/api/analysis/comparison` | 전월대비 분석 (year, month, unit_id) |
+| GET | `/api/analysis/unit-summary` | 호기별 요약 (year, month) |
+| GET | `/api/analysis/category-summary` | 카테고리별 분석 |
 
-## 시뮬레이션 엔진 로직
+### 시뮬레이션 API
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/api/simulation/profit-base` | 손익 시뮬레이션 기준 데이터 (ym, machine) |
 
-### 입력
-```json
-{
-  "base_year": 2026,
-  "base_month": 6,
-  "plans": [
-    {"product_id": 1, "planned_qty": 1200},
-    {"product_id": 3, "planned_qty": 800}
-  ]
-}
-```
+### 전월대비 예상실적 API
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/api/forecast/production` | 지종별 생산량 (ym) |
+| GET | `/api/forecast/material-detail` | 자재별 상세 - 사용량/원단위/단가/비용 (ym, machine) |
+| GET | `/api/forecast/unit-by-product` | **자재×지종별 원단위** - 사용량 보정용 (ym, machine) |
 
-### 계산 로직
-```
-예상 사용량 = BOM 원단위 × 계획 생산량
-예상 원가 = 예상 사용량 × 기준월 단가
+### 데이터 관리 API
+| Method | Path | 설명 |
+|--------|------|------|
+| POST | `/api/upload/smart` | SAP 엑셀 업로드 (raw_records 일괄 등록) |
+| GET | `/api/dataview/raw` | raw_records 검색/조회 |
+| GET | `/api/units` | 호기 목록 |
+| GET | `/api/materials` | 자재 목록 |
+| GET | `/api/products` | 제품 목록 |
 
-수량차이 효과 = (예상사용량 - 전월사용량) × 전월단가
-단가차이 효과 = (기준월단가 - 전월단가) × 예상사용량
-원가차이 = 예상원가 - 전월원가
-```
+---
 
-### 예시
-```
-제품: 백상지(A급), 계획 생산량: 1,200 ton
-BOM: LBKP 원단위 0.267 ton/제품ton
+## 데이터 모델 (핵심)
 
-예상 사용량 = 0.267 × 1,200 = 320.4 ton
-기준월 단가 (6월) = 880,000 원/ton
-예상 원가 = 320.4 × 880,000 = 281,952,000 원
+### raw_records (SAP 원본 데이터)
+| 필드 | 설명 |
+|------|------|
+| calendar_ym | 기간 (YYYYMM) |
+| machine_code | 호기 (PM2, PM3) |
+| product_level2_name | 지종 대분류 (SC, ACB, KB 등) |
+| product_level4 | 지종 상세 (평량 포함) |
+| material_code | 자재코드 (18자리) |
+| material_name | 자재명 |
+| material_group_name | 자재 소분류 (펄프:L-BKP, 고지:하판지 등) |
+| material_group_major_name | 자재 대분류 (펄프, 고지, 약품) |
+| production_qty | 생산량 (kg) |
+| actual_alloc_qty | 배부수량 (kg) - 지종별 자재 배부 |
+| actual_unit_price | 실적 단가 |
+| issue_qty | 출고수량 (kg) |
+| issue_amount | 출고금액 (원) |
 
-전월(5월) 사용량: 3,200 ton, 단가: 850,000 원/ton
-수량차이 효과 = (320.4 - 3,200) × 850,000 = -2,447,660,000 원
-단가차이 효과 = (880,000 - 850,000) × 320.4 = +9,612,000 원
-```
-
-## 데이터 모델
-
-### units (호기 마스터)
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| unit_code | TEXT | 호기코드 (PM2, PM3, CHEM, TISSUE) |
-| unit_name | TEXT | 호기명 |
-
-### materials (원부자재 마스터)
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| material_code | TEXT | 자재코드 (RM-001) |
-| material_name | TEXT | 자재명 |
-| category | TEXT | RAW(원자재) / SUB(부자재) |
-| unit_of_measure | TEXT | 단위 (kg, ton, L, EA) |
-
-### monthly_records (월별 실적)
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| unit_id | INTEGER | 호기 FK |
-| material_id | INTEGER | 자재 FK |
-| year, month | INTEGER | 실적 기간 |
-| usage_qty | REAL | 사용량 |
-| unit_price | REAL | 단가 (원) |
-| total_cost | REAL | 총원가 (자동 계산) |
-| production_qty | REAL | 생산량 |
-
-### products (제품 마스터) - NEW
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| product_code | TEXT | 제품코드 (PRD-PM2-01) |
-| product_name | TEXT | 제품명 (백상지A급, 아트지 등) |
-| unit_id | INTEGER | 소속 호기 FK |
-| unit_of_measure | TEXT | 단위 (ton) |
-
-### bom (자재명세서) - NEW
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| product_id | INTEGER | 제품 FK |
-| material_id | INTEGER | 자재 FK |
-| unit_consumption | REAL | 원단위 (제품 1ton 생산 시 자재 소요량) |
-| effective_date | TEXT | 적용 시작일 |
-
-### simulations (시뮬레이션 이력) - NEW
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| sim_name | TEXT | 시뮬레이션명 |
-| base_year, base_month | INTEGER | 기준 기간 |
-| sim_data | TEXT (JSON) | 생산계획 데이터 |
-| result_data | TEXT (JSON) | 계산 결과 |
+---
 
 ## 기술 스택
 - **Backend**: Hono (TypeScript) + Cloudflare Workers
-- **Database**: Cloudflare D1 (SQLite)
-- **Frontend**: TailwindCSS + Chart.js + SheetJS (XLSX) + Vanilla JS
+- **Database**: Cloudflare D1 (SQLite) - `material-cost-analysis`
+- **Frontend**: TailwindCSS (CDN) + Chart.js + SheetJS + Vanilla JS
 - **Build**: Vite + @hono/vite-cloudflare-pages
-- **Deployment**: Cloudflare Pages
-- **Font**: Inter (Google Fonts)
-- **Color System**: Indigo (primary) + Tailwind Slate
+- **Process Manager**: PM2 (sandbox)
+- **Color**: Steel/Sage 톤 미니멀 디자인
 
 ## 로컬 개발
 
@@ -169,26 +217,29 @@ BOM: LBKP 원단위 0.267 ton/제품ton
 # 빌드
 npm run build
 
-# DB 마이그레이션 (전체)
+# DB 마이그레이션
 npm run db:migrate:local
 
-# 시드 데이터 투입
-npm run db:seed
-npx wrangler d1 execute material-cost-analysis --local --file=./seed_bom.sql
-
-# 개발 서버 시작 (PM2)
+# 개발 서버 (PM2)
 pm2 start ecosystem.config.cjs
 
 # 테스트
 curl http://localhost:3000
-curl http://localhost:3000/api/products
-curl -X POST http://localhost:3000/api/simulation/run -H "Content-Type: application/json" -d '{"base_year":2026,"base_month":6,"plans":[{"product_id":1,"planned_qty":1200}]}'
+curl "http://localhost:3000/api/forecast/production?ym=202605"
+curl "http://localhost:3000/api/forecast/unit-by-product?ym=202605&machine=PM2"
 ```
 
 ## 호기 구성
-| 코드 | 호기명 | 주요 제품 |
-|------|--------|-----------|
-| PM2 | PM2 | 백상지(A급), 백상지(B급) |
-| PM3 | PM3 | 아트지, 스노우화이트 |
-| CHEM | 제지약품 | - |
-| TISSUE | 화장지 | 두루마리(3겹), 미용티슈 |
+| 호기 | 주요 지종 |
+|------|-----------|
+| PM2 | SC저평량, SC고평량, ACB, KB, 백판지 기타 |
+| PM3 | SC고평량, SC저평량, CCP, NCR, 백판지 기타 |
+
+---
+
+## 향후 개발 계획
+- [ ] 차월 입고단가/기초재고단가 → 가중평균 사용단가 자동 산출
+- [ ] 3개월 추이 트렌드 분석
+- [ ] 시뮬레이션 시나리오 저장/비교
+- [ ] 사용자 인증 (Cloudflare Access)
+- [ ] Cloudflare Pages 프로덕션 배포

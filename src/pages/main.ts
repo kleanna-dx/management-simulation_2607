@@ -220,57 +220,6 @@ export function mainPage(): string {
         </div>
       </div>
 
-      <!-- Unit Summary Table -->
-      <div class="card overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 class="text-sm font-semibold text-gray-700">호기별 원가 요약</h3>
-          <span class="text-xs text-gray-400" id="period-label"></span>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>호기</th>
-                <th class="text-right">생산량</th>
-                <th class="text-right">전월 원가</th>
-                <th class="text-right">당월 원가</th>
-                <th class="text-right">수량효과</th>
-                <th class="text-right">단가효과</th>
-                <th class="text-right">총 차이</th>
-                <th class="text-right">증감률</th>
-              </tr>
-            </thead>
-            <tbody id="unit-summary-body"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Top Impact -->
-      <div class="card overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100">
-          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-fire text-orange-400 mr-1.5"></i>원가 영향 TOP 10</h3>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th class="w-8">#</th>
-                <th>호기</th>
-                <th>구분</th>
-                <th>자재명</th>
-                <th class="text-right">전월원가</th>
-                <th class="text-right">당월원가</th>
-                <th class="text-right">수량효과</th>
-                <th class="text-right">단가효과</th>
-                <th class="text-right">총차이</th>
-                <th class="text-right">증감률</th>
-              </tr>
-            </thead>
-            <tbody id="top-impact-body"></tbody>
-          </table>
-        </div>
-      </div>
-
       <!-- 재료비 총괄 (호기별 지종별) + 원재료 손익 통합 카드 -->
       <div class="card overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between card-header-toggle" onclick="toggleCard('card-overview')">
