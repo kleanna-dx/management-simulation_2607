@@ -2973,6 +2973,7 @@ export function mainPage(): string {
     let fcCurProd = null;  // 당월 생산량
     let fcUnitByProduct = null;  // 자재코드 × 지종별 원단위
     let fcNextInputs = {}; // 차월 사용자 입력값 저장
+    let fcManualFlags = {}; // { idx: { usage: true, uc: true } } - 사용자가 직접 수정한 행 추적
 
     function setFcMachineFilter(mc) {
       fcMachineFilter = mc;
@@ -3101,6 +3102,7 @@ export function mainPage(): string {
     }
 
     function renderFcDetail() {
+      fcManualFlags = {};  // 새 렌더링시 수동 플래그 초기화
       var tbody = document.getElementById('fc-detail-body');
       if (!tbody || !fcCurData || !fcCurData.rows || !fcCurData.rows.length) {
         if (tbody) tbody.innerHTML = '<tr><td colspan="17" class="text-center text-gray-400 py-6">데이터가 없습니다</td></tr>';
@@ -3156,8 +3158,12 @@ export function mainPage(): string {
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (r.cost_million > 0 ? r.cost_million.toFixed(1) : '-') + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-r border-slate-300">' + (r.cost_per_ton > 0 ? Math.round(r.cost_per_ton).toLocaleString() : '-') + '</td>';
           // 차월 예상 7열 (사용량,원단위 자동계산 + 입고단가,기초재고단가 사용자입력 + 사용단가,비용,톤당비용 자동계산)
-          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs" id="' + rid + '-nu">' + Math.round(r.usage_qty).toLocaleString() + '</td>';
-          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs" id="' + rid + '-nuc">' + (r.unit_consumption > 0 ? r.unit_consumption.toFixed(1) : '-') + '</td>';
+          html += '<td class="px-1.5 py-0.5 text-right">'
+            + '<input type="number" class="w-16 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" id="' + rid + '-nu" data-row="' + rowIdx + '" data-field="next_usage" value="' + Math.round(r.usage_qty) + '" onchange="onFcUsageChange(' + rowIdx + ')">'
+            + '</td>';
+          html += '<td class="px-1.5 py-0.5 text-right">'
+            + '<input type="number" step="0.1" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" id="' + rid + '-nuc" data-row="' + rowIdx + '" data-field="next_uc" value="' + (r.unit_consumption > 0 ? r.unit_consumption.toFixed(1) : '') + '" onchange="onFcUcChange(' + rowIdx + ')">'
+            + '</td>';
           // 입고단가 (사용자 입력)
           html += '<td class="px-1.5 py-0.5 text-right">'
             + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" data-row="' + rowIdx + '" data-field="incoming_price" value="" placeholder="-" onchange="calcFcRow(' + rowIdx + ')">'
@@ -3210,6 +3216,38 @@ export function mainPage(): string {
       calcFcProfit();
     }
 
+    function onFcUsageChange(idx) {
+      if (!fcManualFlags[idx]) fcManualFlags[idx] = {};
+      fcManualFlags[idx].usage = true;
+      // 사용량 수정 → 원단위도 연동 갱신
+      var nextProdInputs = document.querySelectorAll('.fc-next-prod');
+      var nextProdTon = 0;
+      nextProdInputs.forEach(function(inp) { nextProdTon += Number(inp.value) || 0; });
+      var nuEl = document.getElementById('fc-r-' + idx + '-nu');
+      var nucEl = document.getElementById('fc-r-' + idx + '-nuc');
+      if (nuEl && nucEl && nextProdTon > 0) {
+        var usage = Number(nuEl.value) || 0;
+        nucEl.value = (usage / nextProdTon).toFixed(1);
+      }
+      calcFcProfit();
+    }
+
+    function onFcUcChange(idx) {
+      if (!fcManualFlags[idx]) fcManualFlags[idx] = {};
+      fcManualFlags[idx].uc = true;
+      // 원단위 수정 → 사용량 연동 갱신
+      var nextProdInputs = document.querySelectorAll('.fc-next-prod');
+      var nextProdTon = 0;
+      nextProdInputs.forEach(function(inp) { nextProdTon += Number(inp.value) || 0; });
+      var nuEl = document.getElementById('fc-r-' + idx + '-nu');
+      var nucEl = document.getElementById('fc-r-' + idx + '-nuc');
+      if (nuEl && nucEl) {
+        var uc = Number(nucEl.value) || 0;
+        nuEl.value = Math.round(uc * nextProdTon);
+      }
+      calcFcProfit();
+    }
+
     function calcFcProfit() {
       if (!fcCurData || !fcCurData.rows) return;
       var rows = fcCurData.rows;
@@ -3236,26 +3274,37 @@ export function mainPage(): string {
         var curUC = r.unit_consumption;
         var curPrice = r.unit_price;
 
-        // 차월 사용량 계산: 지종별 원단위 기반 보정
-        var nextUsage = 0;
-        var hasUnitData = false;
-        if (fcUnitByProduct && fcUnitByProduct.unitMap && fcUnitByProduct.unitMap[r.material_code]) {
-          var ucByType = fcUnitByProduct.unitMap[r.material_code];
-          hasUnitData = true;
-          // 각 지종별: 원단위(kg/톤) × 차월 지종생산량(톤)
-          for (var pt in ucByType) {
-            var typeUC = ucByType[pt];  // kg/톤
-            var typeProd = nextProdByType[pt] || 0;  // 톤
-            nextUsage += typeUC * typeProd;
-          }
-        }
-        // 지종별 원단위 데이터가 없으면 단순 비례 (총량 원단위 × 차월 총생산량)
-        if (!hasUnitData || nextUsage === 0) {
-          nextUsage = curUC * nextProdTon;
-        }
+        var nextUsage, nextUC;
+        var manualFlag = fcManualFlags[idx] || {};
+        var nuEl = document.getElementById(rid + '-nu');
+        var nucEl = document.getElementById(rid + '-nuc');
 
-        // 차월 원단위 = 차월사용량 / 차월총생산량
-        var nextUC = nextProdTon > 0 ? nextUsage / nextProdTon : 0;
+        if (manualFlag.usage || manualFlag.uc) {
+          // 사용자가 직접 수정한 경우: input 값 그대로 사용
+          nextUsage = nuEl ? (Number(nuEl.value) || 0) : 0;
+          nextUC = nucEl ? (Number(nucEl.value) || 0) : 0;
+        } else {
+          // 자동 계산: 지종별 원단위 기반 보정
+          nextUsage = 0;
+          var hasUnitData = false;
+          if (fcUnitByProduct && fcUnitByProduct.unitMap && fcUnitByProduct.unitMap[r.material_code]) {
+            var ucByType = fcUnitByProduct.unitMap[r.material_code];
+            hasUnitData = true;
+            for (var pt in ucByType) {
+              var typeUC = ucByType[pt];
+              var typeProd = nextProdByType[pt] || 0;
+              nextUsage += typeUC * typeProd;
+            }
+          }
+          if (!hasUnitData || nextUsage === 0) {
+            nextUsage = curUC * nextProdTon;
+          }
+          nextUC = nextProdTon > 0 ? nextUsage / nextProdTon : 0;
+
+          // input 값 동기화
+          if (nuEl) nuEl.value = Math.round(nextUsage);
+          if (nucEl) nucEl.value = nextUC > 0 ? nextUC.toFixed(1) : '';
+        }
 
         // 차월 사용단가 (사용자 입력값 우선)
         var priceInput = document.querySelector('[data-row="' + idx + '"][data-field="next_unit_price"]');
@@ -3266,13 +3315,9 @@ export function mainPage(): string {
         var nextCostM = nextCost / 1000000;
         var nextCostPerTon = nextProdTon > 0 ? nextCost / nextProdTon : 0;
 
-        // 셀 업데이트
-        var nuEl = document.getElementById(rid + '-nu');
-        var nucEl = document.getElementById(rid + '-nuc');
+        // 셀 업데이트 (비용/톤당비용은 항상 자동)
         var ncmEl = document.getElementById(rid + '-ncm');
         var nctEl = document.getElementById(rid + '-nct');
-        if (nuEl) nuEl.textContent = nextUsage > 0 ? Math.round(nextUsage).toLocaleString() : '-';
-        if (nucEl) nucEl.textContent = nextUC > 0 ? nextUC.toFixed(1) : '-';
         if (ncmEl) ncmEl.textContent = nextCostM > 0 ? nextCostM.toFixed(1) : '-';
         if (nctEl) nctEl.textContent = nextCostPerTon > 0 ? Math.round(nextCostPerTon).toLocaleString() : '-';
 
