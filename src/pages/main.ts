@@ -1274,31 +1274,35 @@ export function mainPage(): string {
     </div>
 
     <!-- Forecast Tab (전월 대비 예상 실적) -->
-    <div id="content-forecast" class="hidden fade-in space-y-5">
+    <div id="content-forecast" class="hidden fade-in space-y-4">
       <!-- Header -->
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
           <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-area text-sage-500 mr-1.5"></i>전월 대비 예상 실적</h3>
           <div class="flex items-center gap-1">
-            <button onclick="setFcMachineFilter('')" id="fc-mc-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
-            <button onclick="setFcMachineFilter('PM2')" id="fc-mc-pm2" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">PM2</button>
+            <button onclick="setFcMachineFilter('PM2')" id="fc-mc-pm2" class="pill-tab pill-tab-active text-xs !px-3 !py-1">PM2</button>
             <button onclick="setFcMachineFilter('PM3')" id="fc-mc-pm3" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">PM3</button>
           </div>
         </div>
         <span class="text-xs text-gray-400" id="fc-period-label"></span>
       </div>
 
-      <!-- 지종별 생산량 & 폐품율 -->
+      <!-- 상단: 생산량 요약 (당월 실적 + 차월 예상) -->
       <div class="card overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100">
-          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-industry text-steel-400 mr-1.5"></i>지종별 생산량</h3>
-        </div>
         <div class="overflow-x-auto">
-          <table class="data-table">
+          <table class="w-full text-xs border-collapse">
             <thead>
-              <tr>
-                <th>지종</th>
-                <th class="text-right">생산량(톤)</th>
+              <tr class="bg-slate-50 border-b">
+                <th class="px-2 py-1.5 text-left font-semibold text-gray-600 w-20"></th>
+                <th colspan="2" class="px-2 py-1.5 text-center font-semibold text-blue-700 border-l border-slate-200" id="fc-cur-header">당월 (실적)</th>
+                <th colspan="2" class="px-2 py-1.5 text-center font-semibold text-emerald-700 border-l border-slate-200" id="fc-next-header">차월 (예상)</th>
+              </tr>
+              <tr class="bg-slate-50/50 border-b text-[10px] text-gray-500">
+                <th class="px-2 py-1"></th>
+                <th class="px-2 py-1 text-center border-l border-slate-200">지종</th>
+                <th class="px-2 py-1 text-right">생산량(톤)</th>
+                <th class="px-2 py-1 text-center border-l border-slate-200">지종</th>
+                <th class="px-2 py-1 text-right">생산량(톤)</th>
               </tr>
             </thead>
             <tbody id="fc-prod-body"></tbody>
@@ -1307,29 +1311,42 @@ export function mainPage(): string {
         </div>
       </div>
 
-      <!-- 자재별 상세 테이블 -->
+      <!-- 하단: 자재별 상세 (좌: 당월실적 | 중앙: 차월예상 | 우: 손익효과) -->
       <div class="card overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-cubes text-primary-400 mr-1.5"></i>호기별 원/부자재 상세</h3>
-          <span class="text-xs text-gray-400">호기 > 원/부자재 구분 > 자재코드별</span>
+        <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-xs font-semibold text-gray-700"><i class="fas fa-cubes text-primary-400 mr-1.5"></i>자재별 원가 상세</h3>
+          <span class="text-[10px] text-gray-400">좌: 당월실적 / 중앙: 차월예상(편집가능) / 우: 손익효과</span>
         </div>
-        <div class="overflow-x-auto max-h-[600px]">
-          <table class="data-table">
-            <thead class="sticky top-0 bg-white z-10">
-              <tr>
-                <th>호기</th>
-                <th>구분</th>
-                <th>자재코드</th>
-                <th>자재명</th>
-                <th class="text-right">사용량(kg)</th>
-                <th class="text-right">원단위(kg/톤)</th>
-                <th class="text-right">사용단가(원/kg)</th>
-                <th class="text-right">비용(백만원)</th>
-                <th class="text-right">톤당비용(원/톤)</th>
+        <div class="overflow-x-auto" style="max-height:calc(100vh - 320px)">
+          <table class="w-full text-[11px] border-collapse whitespace-nowrap" id="fc-detail-table">
+            <thead class="sticky top-0 z-10">
+              <tr class="bg-slate-100 border-b">
+                <th colspan="2" class="px-2 py-1.5 text-left font-semibold text-gray-600 border-r border-slate-300" rowspan="2">구분 / 자재</th>
+                <th colspan="5" class="px-2 py-1.5 text-center font-semibold text-blue-700 border-r border-slate-300" id="fc-detail-cur-header">당월 (실적)</th>
+                <th colspan="7" class="px-2 py-1.5 text-center font-semibold text-emerald-700 border-r border-slate-300" id="fc-detail-next-header">차월 (예상)</th>
+                <th colspan="3" class="px-2 py-1.5 text-center font-semibold text-amber-700" id="fc-detail-diff-header">손익 효과</th>
+                <th class="px-2 py-1.5 text-center font-semibold text-gray-500 border-l border-slate-300" rowspan="2">이슈사항</th>
+              </tr>
+              <tr class="bg-slate-50 border-b text-[10px] text-gray-500">
+                <th class="px-1.5 py-1 text-right border-l border-slate-200">사용량(kg)</th>
+                <th class="px-1.5 py-1 text-right">원단위(kg/톤)</th>
+                <th class="px-1.5 py-1 text-right">사용단가(원/kg)</th>
+                <th class="px-1.5 py-1 text-right">비용(백만원)</th>
+                <th class="px-1.5 py-1 text-right border-r border-slate-300">톤당비용(원/톤)</th>
+                <th class="px-1.5 py-1 text-right">사용량(kg)</th>
+                <th class="px-1.5 py-1 text-right">원단위(kg/톤)</th>
+                <th class="px-1.5 py-1 text-right">입고단가(원/kg)</th>
+                <th class="px-1.5 py-1 text-right">기초재고단가</th>
+                <th class="px-1.5 py-1 text-right">사용단가(원/kg)</th>
+                <th class="px-1.5 py-1 text-right">비용(백만원)</th>
+                <th class="px-1.5 py-1 text-right border-r border-slate-300">톤당비용(원/톤)</th>
+                <th class="px-1.5 py-1 text-right">사용량차이(원)</th>
+                <th class="px-1.5 py-1 text-right">단가차이(원)</th>
+                <th class="px-1.5 py-1 text-right border-r border-slate-300">재료비종합(원)</th>
               </tr>
             </thead>
-            <tbody id="fc-mat-body"></tbody>
-            <tfoot id="fc-mat-foot"></tfoot>
+            <tbody id="fc-detail-body"></tbody>
+            <tfoot id="fc-detail-foot"></tfoot>
           </table>
         </div>
       </div>
@@ -3098,14 +3115,16 @@ export function mainPage(): string {
     }
 
     // ============ FORECAST (전월 대비 예상 실적) ============
-    let fcMachineFilter = '';
+    let fcMachineFilter = 'PM2';
+    let fcCurData = null;  // 당월 자재 상세
+    let fcCurProd = null;  // 당월 생산량
+    let fcNextInputs = {}; // 차월 사용자 입력값 저장
 
     function setFcMachineFilter(mc) {
       fcMachineFilter = mc;
-      ['','PM2','PM3'].forEach(function(k) {
-        var key = k === '' ? 'all' : k.toLowerCase();
-        var btn = document.getElementById('fc-mc-' + key);
-        if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(key === (mc===''?'all':mc.toLowerCase()) ? 'pill-tab-active' : 'pill-tab-inactive'); }
+      ['PM2','PM3'].forEach(function(k) {
+        var btn = document.getElementById('fc-mc-' + k.toLowerCase());
+        if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(k === mc ? 'pill-tab-active' : 'pill-tab-inactive'); }
       });
       loadForecast();
     }
@@ -3114,122 +3133,303 @@ export function mainPage(): string {
       var year = document.getElementById('analysisYear').value;
       var month = document.getElementById('analysisMonth').value.padStart(2, '0');
       var ym = year + month;
-      var labelEl = document.getElementById('fc-period-label');
-      if (labelEl) labelEl.textContent = year + '년 ' + parseInt(month) + '월 실적';
+      var curMonth = parseInt(month);
+      var nextMonth = curMonth + 1;
+      var nextYear = parseInt(year);
+      if (nextMonth > 12) { nextMonth = 1; nextYear++; }
 
-      var mcParam = fcMachineFilter ? '&machine=' + fcMachineFilter : '';
+      // 헤더 레이블
+      var labelEl = document.getElementById('fc-period-label');
+      if (labelEl) labelEl.textContent = fcMachineFilter + ' | ' + year + '.' + month + ' 실적 vs ' + nextYear + '.' + String(nextMonth).padStart(2,'0') + ' 예상';
+
+      var curH = document.getElementById('fc-cur-header');
+      var nextH = document.getElementById('fc-next-header');
+      var detCurH = document.getElementById('fc-detail-cur-header');
+      var detNextH = document.getElementById('fc-detail-next-header');
+      if (curH) curH.textContent = year + '.' + month + '월 (실적)';
+      if (nextH) nextH.textContent = nextYear + '.' + String(nextMonth).padStart(2,'0') + '월 (예상)';
+      if (detCurH) detCurH.textContent = year + '.' + month + '월 (실적)';
+      if (detNextH) detNextH.textContent = nextYear + '.' + String(nextMonth).padStart(2,'0') + '월 (예상)';
+
+      var mcParam = '&machine=' + fcMachineFilter;
       try {
-        var [prodRes, matRes] = await Promise.all([
+        var results = await Promise.all([
           fetch('/api/forecast/production?ym=' + ym).then(function(r){return r.json();}),
           fetch('/api/forecast/material-detail?ym=' + ym + mcParam).then(function(r){return r.json();})
         ]);
-        renderFcProduction(prodRes);
-        renderFcMaterialDetail(matRes);
+        fcCurProd = results[0];
+        fcCurData = results[1];
+        renderFcProduction();
+        renderFcDetail();
       } catch(e) { console.error('Forecast load error:', e); }
     }
 
-    function renderFcProduction(data) {
+    function renderFcProduction() {
       var tbody = document.getElementById('fc-prod-body');
       var tfoot = document.getElementById('fc-prod-foot');
-      if (!tbody || !data || !data.length) {
-        if (tbody) tbody.innerHTML = '<tr><td colspan="2" class="text-center text-gray-400 py-6">데이터가 없습니다</td></tr>';
+      if (!tbody) return;
+
+      var data = fcCurProd;
+      if (!data || !data.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-400 py-4">데이터가 없습니다</td></tr>';
         if (tfoot) tfoot.innerHTML = '';
         return;
       }
 
-      // 호기 필터 적용
-      var filtered = fcMachineFilter ? data.filter(function(d){return d.machine_code === fcMachineFilter;}) : data;
-
-      // 지종별 합산 (production_qty 기준)
+      // 호기 필터 & 지종별 합산
+      var filtered = data.filter(function(d){return d.machine_code === fcMachineFilter;});
       var typeMap = {};
       filtered.forEach(function(d) {
         var key = d.product_type;
-        if (!typeMap[key]) { typeMap[key] = 0; }
+        if (!typeMap[key]) typeMap[key] = 0;
         typeMap[key] += (Number(d.production_qty) || 0) / 1000;
       });
 
-      // 생산량 DESC 정렬
-      var types = Object.keys(typeMap).sort(function(a,b) { return typeMap[b] - typeMap[a]; });
-
-      var html = '';
+      var types = Object.keys(typeMap).sort(function(a,b){return typeMap[b]-typeMap[a];});
       var grandProd = 0;
+      types.forEach(function(t){grandProd += typeMap[t];});
 
-      types.forEach(function(type) {
-        var prod = typeMap[type];
-        grandProd += prod;
+      var maxRows = Math.max(types.length, 1);
+      var html = '';
 
-        html += '<tr class="hover:bg-slate-50/50">'
-          + '<td class="!py-1.5 font-medium">' + type + '</td>'
-          + '<td class="!py-1.5 text-right font-mono">' + Math.round(prod).toLocaleString() + '</td>'
-          + '</tr>';
-      });
+      // 생산량 행 + 폐품율 행
+      for (var i = 0; i < maxRows; i++) {
+        var t = types[i] || '';
+        var p = t ? Math.round(typeMap[t]) : 0;
+        html += '<tr class="border-b border-slate-50 hover:bg-slate-50/30">';
+        if (i === 0) {
+          html += '<td class="px-2 py-1 text-[10px] text-gray-400 align-top" rowspan="' + (maxRows + 2) + '"></td>';
+        }
+        // 당월 실적
+        html += '<td class="px-2 py-0.5 text-xs border-l border-slate-200">' + t + '</td>';
+        html += '<td class="px-2 py-0.5 text-xs text-right font-mono">' + (p ? p.toLocaleString() : '') + '</td>';
+        // 차월 예상 (사용자입력)
+        html += '<td class="px-2 py-0.5 text-xs border-l border-slate-200">' + t + '</td>';
+        html += '<td class="px-2 py-0.5 text-xs text-right">'
+          + '<input type="number" class="w-20 text-right text-xs font-mono border border-slate-200 rounded px-1 py-0.5 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200 fc-next-prod" data-type="' + t + '" value="' + p + '" onchange="onFcProdChange()">'
+          + '</td>';
+        html += '</tr>';
+      }
+
+      // 합계 행
+      html += '<tr class="border-t border-slate-200 bg-slate-50/50 font-semibold">';
+      html += '<td class="px-2 py-1 text-xs border-l border-slate-200">합계</td>';
+      html += '<td class="px-2 py-1 text-xs text-right font-mono">' + Math.round(grandProd).toLocaleString() + '</td>';
+      html += '<td class="px-2 py-1 text-xs border-l border-slate-200">합계</td>';
+      html += '<td class="px-2 py-1 text-xs text-right font-mono" id="fc-next-prod-total">' + Math.round(grandProd).toLocaleString() + '</td>';
+      html += '</tr>';
+
+      // 폐품율 행
+      html += '<tr class="bg-amber-50/50">';
+      html += '<td class="px-2 py-1 text-xs border-l border-slate-200 text-amber-700">폐품율</td>';
+      html += '<td class="px-2 py-1 text-xs text-right font-mono text-amber-700" id="fc-cur-waste">-</td>';
+      html += '<td class="px-2 py-1 text-xs border-l border-slate-200 text-amber-700">폐품율</td>';
+      html += '<td class="px-2 py-1 text-xs text-right">'
+        + '<input type="number" step="0.01" class="w-16 text-right text-xs font-mono border border-amber-200 rounded px-1 py-0.5 focus:border-amber-400 text-amber-700" id="fc-next-waste-rate" value="8.44" onchange="onFcProdChange()"> %'
+        + '</td>';
+      html += '</tr>';
+
       tbody.innerHTML = html;
-
-      tfoot.innerHTML = '<tr class="bg-slate-100 font-semibold">'
-        + '<td class="!py-2 text-center font-bold">합계</td>'
-        + '<td class="!py-2 text-right font-mono">' + Math.round(grandProd).toLocaleString() + '</td>'
-        + '</tr>';
+      if (tfoot) tfoot.innerHTML = '';
     }
 
-    function renderFcMaterialDetail(data) {
-      var tbody = document.getElementById('fc-mat-body');
-      var tfoot = document.getElementById('fc-mat-foot');
-      if (!tbody) return;
-      if (!data || !data.rows || !data.rows.length) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-gray-400 py-6">데이터가 없습니다</td></tr>';
-        if (tfoot) tfoot.innerHTML = '';
+    function onFcProdChange() {
+      // 차월 합계 갱신
+      var inputs = document.querySelectorAll('.fc-next-prod');
+      var total = 0;
+      inputs.forEach(function(inp) { total += Number(inp.value) || 0; });
+      var el = document.getElementById('fc-next-prod-total');
+      if (el) el.textContent = Math.round(total).toLocaleString();
+      // 손익 재계산
+      calcFcProfit();
+    }
+
+    function renderFcDetail() {
+      var tbody = document.getElementById('fc-detail-body');
+      if (!tbody || !fcCurData || !fcCurData.rows || !fcCurData.rows.length) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="17" class="text-center text-gray-400 py-6">데이터가 없습니다</td></tr>';
         return;
       }
 
-      var rows = data.rows;
+      var rows = fcCurData.rows;
+      var prodTon = (fcCurData.production && fcCurData.production[fcMachineFilter]) ? fcCurData.production[fcMachineFilter] / 1000 : 0;
       var html = '';
-      var prevMc = '';
-      var prevCat = '';
-      var totalUsage = 0, totalCost = 0;
+      var prevGroup = '';
+      var groupUsage = 0, groupCost = 0;
+      var grandUsage = 0, grandCost = 0;
+      var rowIdx = 0;
 
+      // 그룹별(material_group_name) 소계를 위해 미리 정리
+      var grouped = {};
       rows.forEach(function(r) {
-        var machineChanged = r.machine_code !== prevMc;
-        var catChanged = r.mat_category !== prevCat || machineChanged;
-        prevMc = r.machine_code;
-        prevCat = r.mat_category;
-
-        var chipClass = r.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
-        var catLabel = r.mat_category === 'RAW' ? '원재료' : '부재료';
-        var catBadge = r.mat_category === 'RAW' 
-          ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-steel-50 text-steel-400 font-medium">원</span>'
-          : '<span class="text-[10px] px-1.5 py-0.5 rounded bg-sage-50 text-sage-600 font-medium">부</span>';
-
-        totalUsage += r.usage_qty;
-        totalCost += r.total_cost;
-
-        html += '<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : (catChanged ? 'border-t border-slate-100' : '')) + ' hover:bg-slate-50/50">'
-          + '<td class="!py-1 text-xs"><span class="unit-chip ' + chipClass + '">' + r.machine_code + '</span></td>'
-          + '<td class="!py-1 text-xs">' + catBadge + '</td>'
-          + '<td class="!py-1 text-xs font-mono text-gray-500">' + r.material_code + '</td>'
-          + '<td class="!py-1 text-xs font-medium">' + r.material_name + '</td>'
-          + '<td class="!py-1 text-right font-mono text-xs">' + Math.round(r.usage_qty).toLocaleString() + '</td>'
-          + '<td class="!py-1 text-right font-mono text-xs">' + r.unit_consumption.toFixed(1) + '</td>'
-          + '<td class="!py-1 text-right font-mono text-xs">' + r.avg_unit_price.toFixed(1) + '</td>'
-          + '<td class="!py-1 text-right font-mono text-xs font-medium">' + (r.total_cost / 1000000).toFixed(1) + '</td>'
-          + '<td class="!py-1 text-right font-mono text-xs">' + Math.round(r.cost_per_ton).toLocaleString() + '</td>'
-          + '</tr>';
+        var gk = r.material_group_name || r.material_group_major_name;
+        if (!grouped[gk]) grouped[gk] = [];
+        grouped[gk].push(r);
       });
+
+      var groupKeys = Object.keys(grouped);
+      groupKeys.forEach(function(gk) {
+        var items = grouped[gk];
+        var gUsage = 0, gCost = 0;
+
+        // 그룹 헤더
+        html += '<tr class="bg-slate-50 border-t border-slate-200">';
+        html += '<td colspan="2" class="px-2 py-1 text-xs font-semibold text-gray-700 border-r border-slate-300">' + gk + '</td>';
+        html += '<td colspan="5" class="border-r border-slate-300"></td>';
+        html += '<td colspan="7" class="border-r border-slate-300"></td>';
+        html += '<td colspan="3" class="border-r border-slate-300"></td>';
+        html += '<td></td>';
+        html += '</tr>';
+
+        items.forEach(function(r) {
+          var shortCode = r.material_code.replace(/^0+/, '') || r.material_code;
+          gUsage += r.usage_qty;
+          gCost += r.cost_million * 1000000;
+          grandUsage += r.usage_qty;
+          grandCost += r.cost_million * 1000000;
+
+          var rid = 'fc-r-' + rowIdx;
+          html += '<tr class="hover:bg-blue-50/30 border-b border-slate-50">';
+          // 구분/자재
+          html += '<td class="px-1.5 py-0.5 text-[10px] font-mono text-gray-400 border-r border-slate-100">' + shortCode + '</td>';
+          html += '<td class="px-1.5 py-0.5 text-xs border-r border-slate-300">' + r.material_name + '</td>';
+          // 당월 실적 5열
+          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-l border-slate-200">' + Math.round(r.usage_qty).toLocaleString() + '</td>';
+          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (r.unit_consumption > 0 ? r.unit_consumption.toFixed(1) : '-') + '</td>';
+          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (r.unit_price > 0 ? Math.round(r.unit_price).toLocaleString() : '-') + '</td>';
+          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (r.cost_million > 0 ? r.cost_million.toFixed(1) : '-') + '</td>';
+          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-r border-slate-300">' + (r.cost_per_ton > 0 ? Math.round(r.cost_per_ton).toLocaleString() : '-') + '</td>';
+          // 차월 예상 7열 (사용량,원단위 자동계산 + 입고단가,기초재고단가 사용자입력 + 사용단가,비용,톤당비용 자동계산)
+          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs" id="' + rid + '-nu">' + Math.round(r.usage_qty).toLocaleString() + '</td>';
+          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs" id="' + rid + '-nuc">' + (r.unit_consumption > 0 ? r.unit_consumption.toFixed(1) : '-') + '</td>';
+          // 입고단가 (사용자 입력)
+          html += '<td class="px-1.5 py-0.5 text-right">'
+            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" data-row="' + rowIdx + '" data-field="incoming_price" value="" placeholder="-" onchange="calcFcRow(' + rowIdx + ')">'
+            + '</td>';
+          // 기초재고단가 (사용자 입력)
+          html += '<td class="px-1.5 py-0.5 text-right">'
+            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" data-row="' + rowIdx + '" data-field="stock_price" value="" placeholder="-" onchange="calcFcRow(' + rowIdx + ')">'
+            + '</td>';
+          // 사용단가 (자동 or 사용자)
+          html += '<td class="px-1.5 py-0.5 text-right">'
+            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 bg-emerald-50/50 focus:border-emerald-400 fc-inp" data-row="' + rowIdx + '" data-field="next_unit_price" value="' + (r.unit_price > 0 ? Math.round(r.unit_price) : '') + '" placeholder="-" onchange="calcFcRow(' + rowIdx + ')">'
+            + '</td>';
+          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs" id="' + rid + '-ncm">-</td>';
+          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-r border-slate-300" id="' + rid + '-nct">-</td>';
+          // 손익 효과 3열
+          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs" id="' + rid + '-du">-</td>';
+          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs" id="' + rid + '-dp">-</td>';
+          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs font-semibold border-r border-slate-300" id="' + rid + '-dt">-</td>';
+          // 이슈사항
+          html += '<td class="px-1.5 py-0.5 border-l border-slate-300">'
+            + '<input type="text" class="w-28 text-[10px] border border-slate-200 rounded px-1 py-0.5 focus:border-blue-300" data-row="' + rowIdx + '" data-field="issue" placeholder="">'
+            + '</td>';
+          html += '</tr>';
+          rowIdx++;
+        });
+
+        // 그룹 소계
+        html += '<tr class="bg-slate-100/70 border-t border-slate-200 font-semibold">';
+        html += '<td colspan="2" class="px-2 py-1 text-[10px] text-gray-600 border-r border-slate-300">' + gk + ' 소계</td>';
+        html += '<td class="px-1.5 py-1 text-right font-mono text-[10px] border-l border-slate-200">' + Math.round(gUsage).toLocaleString() + '</td>';
+        html += '<td class="px-1.5 py-1 text-right text-[10px]">-</td>';
+        html += '<td class="px-1.5 py-1 text-right text-[10px]">-</td>';
+        var gCostM = gCost / 1000000;
+        html += '<td class="px-1.5 py-1 text-right font-mono text-[10px]">' + gCostM.toFixed(1) + '</td>';
+        var gCostPerTon = prodTon > 0 ? gCost / prodTon : 0;
+        html += '<td class="px-1.5 py-1 text-right font-mono text-[10px] border-r border-slate-300">' + Math.round(gCostPerTon).toLocaleString() + '</td>';
+        html += '<td colspan="7" class="border-r border-slate-300"></td>';
+        html += '<td colspan="3" class="border-r border-slate-300"></td>';
+        html += '<td></td>';
+        html += '</tr>';
+      });
+
       tbody.innerHTML = html;
 
-      // footer
-      if (tfoot) {
-        var totalProdTon = 0;
-        for (var k in data.production) { totalProdTon += data.production[k] / 1000; }
-        var grandCostPerTon = totalProdTon > 0 ? totalCost / totalProdTon : 0;
-        tfoot.innerHTML = '<tr class="bg-slate-100 font-semibold">'
-          + '<td colspan="4" class="!py-2 text-center font-bold">합계</td>'
-          + '<td class="!py-2 text-right font-mono">' + Math.round(totalUsage).toLocaleString() + '</td>'
-          + '<td class="!py-2 text-right font-mono">-</td>'
-          + '<td class="!py-2 text-right font-mono">-</td>'
-          + '<td class="!py-2 text-right font-mono font-medium">' + (totalCost / 1000000).toFixed(1) + '</td>'
-          + '<td class="!py-2 text-right font-mono">' + Math.round(grandCostPerTon).toLocaleString() + '</td>'
-          + '</tr>';
-      }
+      // 초기 차월 값 계산
+      calcFcProfit();
+    }
+
+    function calcFcRow(idx) {
+      calcFcProfit();
+    }
+
+    function calcFcProfit() {
+      if (!fcCurData || !fcCurData.rows) return;
+      var rows = fcCurData.rows;
+      var prodTon = (fcCurData.production && fcCurData.production[fcMachineFilter]) ? fcCurData.production[fcMachineFilter] / 1000 : 0;
+
+      // 차월 예상 생산량
+      var nextProdInputs = document.querySelectorAll('.fc-next-prod');
+      var nextProdTon = 0;
+      nextProdInputs.forEach(function(inp) { nextProdTon += Number(inp.value) || 0; });
+      if (nextProdTon === 0) nextProdTon = prodTon;  // 미입력시 당월과 동일
+
+      var grandDiffUsage = 0, grandDiffPrice = 0, grandDiffTotal = 0;
+
+      rows.forEach(function(r, idx) {
+        var rid = 'fc-r-' + idx;
+        // 당월 값
+        var curUsage = r.usage_qty;
+        var curUC = r.unit_consumption;
+        var curPrice = r.unit_price;
+
+        // 차월 원단위 = 당월 원단위 (기본값, 나중에 사용자 수정 가능)
+        var nextUC = curUC;
+        // 차월 사용량 = 차월원단위 × 차월생산량(톤)
+        var nextUsage = nextUC * nextProdTon;
+
+        // 차월 사용단가 (사용자 입력값 우선)
+        var priceInput = document.querySelector('[data-row="' + idx + '"][data-field="next_unit_price"]');
+        var nextPrice = priceInput ? (Number(priceInput.value) || curPrice) : curPrice;
+
+        // 차월 비용, 톤당비용
+        var nextCost = nextUsage * nextPrice;  // 원
+        var nextCostM = nextCost / 1000000;
+        var nextCostPerTon = nextProdTon > 0 ? nextCost / nextProdTon : 0;
+
+        // 셀 업데이트
+        var nuEl = document.getElementById(rid + '-nu');
+        var nucEl = document.getElementById(rid + '-nuc');
+        var ncmEl = document.getElementById(rid + '-ncm');
+        var nctEl = document.getElementById(rid + '-nct');
+        if (nuEl) nuEl.textContent = nextUsage > 0 ? Math.round(nextUsage).toLocaleString() : '-';
+        if (nucEl) nucEl.textContent = nextUC > 0 ? nextUC.toFixed(1) : '-';
+        if (ncmEl) ncmEl.textContent = nextCostM > 0 ? nextCostM.toFixed(1) : '-';
+        if (nctEl) nctEl.textContent = nextCostPerTon > 0 ? Math.round(nextCostPerTon).toLocaleString() : '-';
+
+        // 손익효과 계산
+        // 사용량차이 = (당월원단위 - 차월원단위) × 차월생산량 × 당월사용단가
+        var diffUsage = (curUC - nextUC) * nextProdTon * curPrice;
+        // 단가차이 = (당월사용단가 - 차월사용단가) × 차월사용량
+        var diffPrice = (curPrice - nextPrice) * nextUsage;
+        // 재료비종합
+        var diffTotal = diffUsage + diffPrice;
+
+        grandDiffUsage += diffUsage;
+        grandDiffPrice += diffPrice;
+        grandDiffTotal += diffTotal;
+
+        var duEl = document.getElementById(rid + '-du');
+        var dpEl = document.getElementById(rid + '-dp');
+        var dtEl = document.getElementById(rid + '-dt');
+
+        function fmtDiff(v) {
+          if (!v || Math.abs(v) < 1) return '-';
+          var sign = v > 0 ? '+' : '';
+          if (Math.abs(v) >= 1000000) return sign + (v/1000000).toFixed(1) + 'M';
+          if (Math.abs(v) >= 1000) return sign + Math.round(v/1000) + 'K';
+          return sign + Math.round(v);
+        }
+        function diffColor(v) {
+          if (!v || Math.abs(v) < 1) return '';
+          return v > 0 ? 'text-blue-600' : 'text-red-600';
+        }
+
+        if (duEl) { duEl.textContent = fmtDiff(diffUsage); duEl.className = 'px-1.5 py-0.5 text-right font-mono text-xs ' + diffColor(diffUsage); }
+        if (dpEl) { dpEl.textContent = fmtDiff(diffPrice); dpEl.className = 'px-1.5 py-0.5 text-right font-mono text-xs ' + diffColor(diffPrice); }
+        if (dtEl) { dtEl.textContent = fmtDiff(diffTotal); dtEl.className = 'px-1.5 py-0.5 text-right font-mono text-xs font-semibold border-r border-slate-300 ' + diffColor(diffTotal); }
+      });
     }
 
     // ============ SIMULATION (지종별 생산량 손익) ============
