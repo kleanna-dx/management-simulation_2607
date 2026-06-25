@@ -1529,7 +1529,8 @@ export function mainPage(): string {
         fetch('/api/analysis/unit-summary?'+new URLSearchParams({year,month})).then(r=>r.json())
       ]);
       analysisData = comp; unitSummaryData = summary;
-      document.getElementById('period-label').textContent = comp.summary?.period ? comp.summary.period.previous + ' vs ' + comp.summary.period.current : '';
+      var periodEl = document.getElementById('period-label');
+      if (periodEl) periodEl.textContent = comp.summary?.period ? comp.summary.period.previous + ' vs ' + comp.summary.period.current : '';
       renderDashboard(); renderDetailTable();
       loadDashboardSummary(ym);
     }
@@ -2326,41 +2327,9 @@ export function mainPage(): string {
       });
     }
 
-    function renderUnitSummaryTable() {
-      const tb = document.getElementById('unit-summary-body');
-      if (!unitSummaryData?.length) { tb.innerHTML='<tr><td colspan="8" class="text-center py-8 text-gray-400">데이터 없음</td></tr>'; return; }
-      tb.innerHTML = unitSummaryData.map(u => {
-        const pct = u.prev_total_cost>0 ? ((u.cost_diff/u.prev_total_cost)*100).toFixed(1) : '-';
-        return \`<tr>
-          <td><span class="unit-chip \${getCC(u.unit_code)}">\${u.unit_name}</span></td>
-          <td class="text-right text-gray-500">\${fmt(u.production_qty)}</td>
-          <td class="text-right">\${formatWon(u.prev_total_cost)}</td>
-          <td class="text-right font-medium">\${formatWon(u.cur_total_cost)}</td>
-          <td class="text-right \${u.total_qty_effect>0?'positive':'negative'}">\${formatSignedWon(u.total_qty_effect)}</td>
-          <td class="text-right \${u.total_price_effect>0?'positive':'negative'}">\${formatSignedWon(u.total_price_effect)}</td>
-          <td class="text-right font-semibold \${u.cost_diff>0?'positive':'negative'}">\${formatSignedWon(u.cost_diff)}</td>
-          <td class="text-right"><span class="text-xs px-2 py-0.5 rounded-full font-medium \${u.cost_diff>0?'bg-red-50 text-red-600':'bg-steel-50 text-steel-400'}">\${pct!=='-'?(u.cost_diff>0?'+':'')+pct+'%':'-'}</span></td>
-        </tr>\`;
-      }).join('');
-    }
+    function renderUnitSummaryTable() {}
 
-    function renderTopImpact() {
-      const tb = document.getElementById('top-impact-body');
-      if (!analysisData?.items?.length) { tb.innerHTML='<tr><td colspan="10" class="text-center py-8 text-gray-400">데이터 없음</td></tr>'; return; }
-      const sorted = [...analysisData.items].sort((a,b)=>Math.abs(b.cost_diff)-Math.abs(a.cost_diff)).slice(0,10);
-      tb.innerHTML = sorted.map((i,idx) => \`<tr>
-        <td class="font-bold text-gray-300">\${idx+1}</td>
-        <td><span class="unit-chip \${getCC(i.unit_code)}">\${i.unit_name}</span></td>
-        <td><span class="text-[10px] px-1.5 py-0.5 rounded font-medium \${i.category==='RAW'?'bg-steel-50 text-steel-400':'bg-sage-50 text-sage-600'}">\${i.category==='RAW'?'원자재':'부자재'}</span></td>
-        <td class="font-medium">\${i.material_name}</td>
-        <td class="text-right text-gray-500">\${formatWon(i.prev_total_cost)}</td>
-        <td class="text-right">\${formatWon(i.cur_total_cost)}</td>
-        <td class="text-right \${i.qty_effect>0?'positive':'negative'}">\${formatSignedWon(i.qty_effect)}</td>
-        <td class="text-right \${i.price_effect>0?'positive':'negative'}">\${formatSignedWon(i.price_effect)}</td>
-        <td class="text-right font-semibold \${i.cost_diff>0?'positive':'negative'}">\${formatSignedWon(i.cost_diff)}</td>
-        <td class="text-right"><span class="text-xs \${i.cost_diff>0?'text-red-500':'text-steel-400'}">\${i.cost_change_pct!=null?(i.cost_diff>0?'+':'')+i.cost_change_pct+'%':'-'}</span></td>
-      </tr>\`).join('');
-    }
+    function renderTopImpact() {}
 
     function renderDetailTable() {
       const tb = document.getElementById('detail-table-body');
