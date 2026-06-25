@@ -3177,38 +3177,12 @@ export function mainPage(): string {
         html += '<td class="!py-1.5 bg-blue-50/30"><input type="number" step="0.1" value="' + (row.sim_prod||'') + '" onchange="onSimInputChange(' + row.id + ',\\'sim_prod\\',this.value)" oninput="onSimInputChange(' + row.id + ',\\'sim_prod\\',this.value)" class="w-20 border border-blue-200 rounded px-2 py-0.5 text-xs text-right font-mono focus:ring-1 focus:ring-blue-300 focus:border-blue-300"></td>';
         // 시뮬 원단위 input
         html += '<td class="!py-1.5 bg-blue-50/30"><input type="number" step="0.1" value="' + (row.sim_unit_cost ? row.sim_unit_cost.toFixed(1) : '') + '" onchange="onSimInputChange(' + row.id + ',\\'sim_unit_cost\\',this.value)" oninput="onSimInputChange(' + row.id + ',\\'sim_unit_cost\\',this.value)" class="w-20 border border-blue-200 rounded px-2 py-0.5 text-xs text-right font-mono focus:ring-1 focus:ring-blue-300 focus:border-blue-300"></td>';
-        // 시뮬 재료비 (자동계산)
-        var simCost = row.sim_unit_cost * row.sim_prod * 1000 / 1000;  // 원/kg * ton * 1000kg/ton / 1000 = 천원
-        html += '<td class="!py-1.5 text-right font-mono font-medium !border-r border-slate-200 bg-blue-50/30">' + (simCost > 0 ? Math.round(simCost).toLocaleString() : '-') + '</td>';
-        // 생산량 효과: (시뮬생산량 - 기준생산량) * 기준원단위 * 1000 / 1000
-        var prodEffect = (row.sim_prod - row.base_prod) * row.base_unit_cost;  // ton * 원/kg ... 단위: 톤*원/kg = 원*1000/1000 = 천원 아님
-        // 정확한 단위: (톤차이) × (원/kg) × 1000(kg/톤) / 1000(→천원) = 톤차이 × 원단위
-        var prodEffectThou = prodEffect;  // (sim_prod - base_prod) × base_unit_cost → 이미 천원 단위
-        // 원단위 효과: (기준원단위 - 시뮬원단위) * 시뮬생산량
-        var unitEffect = (row.base_unit_cost - row.sim_unit_cost) * row.sim_prod;  // 천원 단위
-        var totalProfit = prodEffectThou + unitEffect;
-        // 아니, 다시 정리:
-        // 손익 = (기준원단위 - 시뮬원단위)(원/kg) × 시뮬생산량(톤) × 1000(kg/톤) / 1000(→천원)
-        //      = (기준원단위 - 시뮬원단위) × 시뮬생산량
-        // 생산량효과 = (기준생산량 - 시뮬생산량)(톤) × 시뮬원단위(원/kg) × 1000/1000
-        //           = -(시뮬생산량 - 기준생산량) × 시뮬원단위  → 음수면 생산량 증가로 원가 증가
-        // 원단위효과 = (기준원단위 - 시뮬원단위)(원/kg) × 기준생산량(톤) × 1000/1000
-        //           = (기준원단위 - 시뮬원단위) × 기준생산량
-        // TOTAL profit = (기준원단위×기준생산량) - (시뮬원단위×시뮬생산량)  (천원, 양수=절감)
-        var actualProdEffect = (row.base_prod - row.sim_prod) * row.sim_unit_cost * (-1);
-        // 더 직관적인 분해:
-        // 총손익 = 기준재료비 - 시뮬재료비 (양수 = 비용절감 = 이익)
-        var baseMatCostThou = row.base_unit_cost * row.base_prod;  // 천원
-        var simMatCostThou = row.sim_unit_cost * row.sim_prod;  // 천원
-        var profit = baseMatCostThou - simMatCostThou;
-        // 생산량효과 = 기준원단위 × (기준생산량 - 시뮬생산량) (시뮬생산량 증가 → 비용 증가 → 음수)
-        var pEffect = row.base_unit_cost * (row.base_prod - row.sim_prod);
-        // 원단위효과 = 시뮬생산량 × (기준원단위 - 시뮬원단위) (시뮬원단위 감소 → 비용절감 → 양수)
-        var uEffect = row.sim_prod * (row.base_unit_cost - row.sim_unit_cost);
-
-        html += buildEffectCell(-pEffect);  // 생산량효과: 생산량 증가면 비용증가(음수 표시)
-        html += buildEffectCell(uEffect);
-        html += buildProfitCell(profit);
+        // 시뮬 재료비 (자동계산) - ID 부여하여 실시간 업데이트
+        html += '<td id="sim-cost-' + row.id + '" class="!py-1.5 text-right font-mono font-medium !border-r border-slate-200 bg-blue-50/30">-</td>';
+        // 손익 결과 셀들 - ID 부여
+        html += '<td id="sim-pe-' + row.id + '" class="!py-1.5 text-right font-mono bg-green-50/30">-</td>';
+        html += '<td id="sim-ue-' + row.id + '" class="!py-1.5 text-right font-mono bg-green-50/30">-</td>';
+        html += '<td id="sim-pr-' + row.id + '" class="!py-1.5 text-right font-mono font-semibold bg-green-50/30">-</td>';
         // 삭제
         html += '<td class="!py-1.5 text-center"><button onclick="removeSimRow(' + row.id + ')" class="text-gray-300 hover:text-red-500 text-xs"><i class="fas fa-trash"></i></button></td>';
         html += '</tr>';
@@ -3243,18 +3217,48 @@ export function mainPage(): string {
         var baseMatCost = row.base_unit_cost * row.base_prod;  // 천원
         var simMatCost = row.sim_unit_cost * row.sim_prod;  // 천원
         var profit = baseMatCost - simMatCost;
+        // 생산량효과: 생산량 증가 → 비용증가 → 음수
         var pEffect = row.base_unit_cost * (row.base_prod - row.sim_prod);
+        // 원단위효과: 원단위 감소 → 비용절감 → 양수
         var uEffect = row.sim_prod * (row.base_unit_cost - row.sim_unit_cost);
 
         totalBaseMatCost += row.base_material_cost;  // 원래 DB 값 (원 단위)
         totalSimMatCost += simMatCost * 1000;  // 천원 → 원
-        totalProdEffect += (-pEffect);  // 생산량 증가 → 비용증가 → 음수
+        totalProdEffect += (-pEffect);
         totalUnitEffect += uEffect;
         totalProfit += profit;
 
         if (row.product_level2_name) {
           chartLabels.push(row.machine_code + ' ' + row.product_level2_name);
           chartProfits.push(Math.round(profit));
+        }
+
+        // 각 행의 손익 결과 셀 업데이트
+        var costEl = document.getElementById('sim-cost-' + row.id);
+        var peEl = document.getElementById('sim-pe-' + row.id);
+        var ueEl = document.getElementById('sim-ue-' + row.id);
+        var prEl = document.getElementById('sim-pr-' + row.id);
+
+        if (costEl) {
+          costEl.textContent = simMatCost > 0 ? Math.round(simMatCost).toLocaleString() : '-';
+        }
+        if (peEl) {
+          var peN = Math.round(-pEffect);
+          if (peN === 0) { peEl.textContent = '-'; peEl.className = '!py-1.5 text-right font-mono text-gray-400 bg-green-50/30'; }
+          else if (peN < 0) { peEl.innerHTML = String.fromCharCode(9661) + Math.abs(peN).toLocaleString(); peEl.className = '!py-1.5 text-right font-mono text-red-600 bg-green-50/30'; }
+          else { peEl.innerHTML = String.fromCharCode(9651) + peN.toLocaleString(); peEl.className = '!py-1.5 text-right font-mono text-blue-600 bg-green-50/30'; }
+        }
+        if (ueEl) {
+          var ueN = Math.round(uEffect);
+          if (ueN === 0) { ueEl.textContent = '-'; ueEl.className = '!py-1.5 text-right font-mono text-gray-400 bg-green-50/30'; }
+          else if (ueN < 0) { ueEl.innerHTML = String.fromCharCode(9661) + Math.abs(ueN).toLocaleString(); ueEl.className = '!py-1.5 text-right font-mono text-red-600 bg-green-50/30'; }
+          else { ueEl.innerHTML = String.fromCharCode(9651) + ueN.toLocaleString(); ueEl.className = '!py-1.5 text-right font-mono text-blue-600 bg-green-50/30'; }
+        }
+        if (prEl) {
+          var prN = Math.round(profit);
+          if (prN === 0) { prEl.textContent = '-'; prEl.className = '!py-1.5 text-right font-mono font-semibold text-gray-400 bg-green-50/30'; }
+          else if (prN < 0) { prEl.innerHTML = String.fromCharCode(9661) + Math.abs(prN).toLocaleString(); prEl.className = '!py-1.5 text-right font-mono font-semibold text-red-600 bg-green-50/30'; }
+          else { prEl.innerHTML = String.fromCharCode(9651) + prN.toLocaleString(); prEl.className = '!py-1.5 text-right font-mono font-semibold text-blue-600 bg-green-50/30'; }
         }
       });
 
