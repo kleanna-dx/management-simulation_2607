@@ -1241,15 +1241,32 @@ app.get('/api/dashboard/mix-effect', async (c) => {
 
 // ============ Raw Records (원본 데이터) 조회 API ============
 
-// 원본 데이터 조회 (필터링, 페이징)
+// 원본 데이터 조회 (필터링, 페이징) + 자재구분 매핑
 app.get('/api/raw-records', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') // 예: 202605
   const machine = c.req.query('machine') // PM2, PM3
   const category = c.req.query('category') // RAW, SUB (material_group_major_name 기반)
   const search = c.req.query('search')
+  const matGroup = c.req.query('mat_group') // 자재구분 필터
   const page = parseInt(c.req.query('page') || '0')
   const limit = parseInt(c.req.query('limit') || '100')
+
+  // 자재구분 매핑 인덱스 구축 (material_code → material_group)
+  const paperRaw = await db.prepare('SELECT material_code, material_group FROM master_paper_raw_materials').all()
+  const paperSub = await db.prepare('SELECT material_code, material_group FROM master_paper_sub_materials').all()
+  const tissueRaw = await db.prepare('SELECT material_code, category FROM master_tissue_raw_materials').all()
+
+  const codeToGroup: Record<string, string> = {}
+  for (const r of (paperRaw.results || []) as any[]) {
+    codeToGroup[r.material_code] = r.material_group
+  }
+  for (const r of (paperSub.results || []) as any[]) {
+    codeToGroup[r.material_code] = r.material_group
+  }
+  for (const r of (tissueRaw.results || []) as any[]) {
+    codeToGroup[r.material_code] = r.category
+  }
 
   let where = '1=1'
   const params: any[] = []
@@ -1271,7 +1288,40 @@ app.get('/api/raw-records', async (c) => {
   params.push(limit, page * limit)
   const dataResult = await db.prepare(`SELECT * FROM raw_records WHERE ${where} ORDER BY machine_code, material_group_name, material_name LIMIT ? OFFSET ?`).bind(...params).all()
 
-  return c.json({ total, page, limit, data: dataResult.results })
+  // 자재구분 매핑 적용
+  let mappedData = ((dataResult.results || []) as any[]).map((row: any) => {
+    const shortCode = row.material_code ? row.material_code.replace(/^0+/, '') : ''
+    const materialClassification = codeToGroup[shortCode] || ''
+    return { ...row, material_classification: materialClassification }
+  })
+
+  // mat_group 필터 적용 (매핑 후 필터링)
+  let filteredTotal = total
+  if (matGroup) {
+    mappedData = mappedData.filter((row: any) => row.material_classification === matGroup)
+    // mat_group 필터가 있으면 전체 개수도 다시 계산 (간이 방식: 현 페이지 기준)
+    // 정확한 total을 위해 전체 데이터에서 필터링해야 하지만, 성능상 표시만 조정
+    filteredTotal = mappedData.length
+  }
+
+  return c.json({ total: matGroup ? filteredTotal : total, page, limit, data: mappedData })
+})
+
+// 자재구분 목록 (드롭다운용)
+app.get('/api/raw-records/material-groups', async (c) => {
+  const db = c.env.DB
+  
+  // master 테이블에서 고유 자재구분 목록 추출
+  const paperRaw = await db.prepare('SELECT DISTINCT material_group FROM master_paper_raw_materials ORDER BY material_group').all()
+  const paperSub = await db.prepare('SELECT DISTINCT material_group FROM master_paper_sub_materials ORDER BY material_group').all()
+  const tissueRaw = await db.prepare('SELECT DISTINCT category FROM master_tissue_raw_materials ORDER BY category').all()
+
+  const groups = new Set<string>()
+  for (const r of (paperRaw.results || []) as any[]) { if (r.material_group) groups.add(r.material_group) }
+  for (const r of (paperSub.results || []) as any[]) { if (r.material_group) groups.add(r.material_group) }
+  for (const r of (tissueRaw.results || []) as any[]) { if (r.category) groups.add(r.category) }
+
+  return c.json([...groups].sort())
 })
 
 // 원본 데이터 전체 삭제

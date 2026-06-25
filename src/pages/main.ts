@@ -735,6 +735,9 @@ export function mainPage(): string {
               <option value="RAW">원재료</option>
               <option value="SUB">부재료</option>
             </select>
+            <select id="dv-mat-group" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs" onchange="loadDataView()">
+              <option value="">전체 자재구분</option>
+            </select>
             <input type="text" id="dv-search" placeholder="자재명 검색..." class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs w-32" onkeyup="if(event.key==='Enter')loadDataView()">
             <button onclick="loadDataView()" class="btn-primary text-xs !py-1.5 !px-3"><i class="fas fa-search mr-1"></i>조회</button>
             <button onclick="exportDataViewCSV()" class="bg-sage-50 text-green-700 border border-green-200 rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-green-100 transition">
@@ -784,6 +787,7 @@ export function mainPage(): string {
                 <th class="!px-2">제품레벨4명</th>
                 <th class="!px-2">자재코드</th>
                 <th class="!px-2">자재명</th>
+                <th class="!px-2">자재구분</th>
                 <th class="!px-2">자재그룹</th>
                 <th class="!px-2">자재그룹명</th>
                 <th class="!px-2">대분류</th>
@@ -3089,12 +3093,25 @@ export function mainPage(): string {
     let dvPageData = [];
 
     async function initDataView() {
+      await loadMatGroupOptions();
       await loadDataView();
+    }
+
+    async function loadMatGroupOptions() {
+      try {
+        const groups = await fetch('/api/raw-records/material-groups').then(r => r.json());
+        const sel = document.getElementById('dv-mat-group');
+        sel.innerHTML = '<option value="">전체 자재구분</option>';
+        groups.forEach(function(g) {
+          sel.innerHTML += '<option value="' + g + '">' + g + '</option>';
+        });
+      } catch(e) { console.warn('자재구분 목록 로드 실패:', e); }
     }
 
     async function loadDataView() {
       const machine = document.getElementById('dv-unit').value;
       const category = document.getElementById('dv-category').value;
+      const matGroup = document.getElementById('dv-mat-group').value;
       const search = document.getElementById('dv-search').value;
       const limit = parseInt(document.getElementById('dv-page-size').value);
       const year = document.getElementById('dv-year').value;
@@ -3104,6 +3121,7 @@ export function mainPage(): string {
       let url = '/api/raw-records?ym=' + ym + '&page=' + dvCurrentPage + '&limit=' + limit;
       if (machine) url += '&machine=' + machine;
       if (category) url += '&category=' + category;
+      if (matGroup) url += '&mat_group=' + encodeURIComponent(matGroup);
       if (search) url += '&search=' + encodeURIComponent(search);
 
       const resp = await fetch(url).then(r => r.json());
@@ -3129,7 +3147,7 @@ export function mainPage(): string {
       // Table body
       const tbody = document.getElementById('dv-tbody');
       if (dvPageData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="38" class="text-center text-gray-400 py-12"><i class="fas fa-inbox text-3xl mb-3 block text-gray-200"></i>데이터가 없습니다. SAP 파일을 업로드해주세요.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="39" class="text-center text-gray-400 py-12"><i class="fas fa-inbox text-3xl mb-3 block text-gray-200"></i>데이터가 없습니다. SAP 파일을 업로드해주세요.</td></tr>';
       } else {
         const numFmt = (v) => v != null ? Number(v).toLocaleString(undefined, {maximumFractionDigits:2}) : '-';
         tbody.innerHTML = dvPageData.map((d, idx) => {
@@ -3152,6 +3170,7 @@ export function mainPage(): string {
             '<td class="!px-2 max-w-[120px] truncate" title="'+(d.product_level4_name||'')+'">' + (d.product_level4_name||'') + '</td>' +
             '<td class="!px-2 font-mono text-[10px]">' + (d.material_code||'') + '</td>' +
             '<td class="!px-2 font-medium">' + (d.material_name||'') + '</td>' +
+            '<td class="!px-2"><span class="' + (d.material_classification ? 'bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px]' : 'text-gray-300') + '">' + (d.material_classification||'-') + '</span></td>' +
             '<td class="!px-2">' + (d.material_group||'') + '</td>' +
             '<td class="!px-2 max-w-[100px] truncate" title="'+(d.material_group_name||'')+'">' + (d.material_group_name||'') + '</td>' +
             '<td class="!px-2">' + (d.material_group_major||'') + '</td>' +
