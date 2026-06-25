@@ -1297,7 +1297,6 @@ export function mainPage(): string {
           <table class="data-table">
             <thead>
               <tr>
-                <th>호기</th>
                 <th>지종</th>
                 <th class="text-right">총생산량(톤)</th>
                 <th class="text-right">생산량(톤)</th>
@@ -3136,37 +3135,39 @@ export function mainPage(): string {
       var tbody = document.getElementById('fc-prod-body');
       var tfoot = document.getElementById('fc-prod-foot');
       if (!tbody || !data || !data.length) {
-        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-6">데이터가 없습니다</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-400 py-6">데이터가 없습니다</td></tr>';
         if (tfoot) tfoot.innerHTML = '';
         return;
       }
 
-      // 호기 필터 적용
-      var filtered = fcMachineFilter ? data.filter(function(d){return d.machine_code === fcMachineFilter;}) : data;
+      // 지종별 합산 (호기 구분 없이)
+      var typeMap = {};
+      data.forEach(function(d) {
+        var key = d.product_type;
+        if (!typeMap[key]) { typeMap[key] = { total: 0, prod: 0, waste: 0 }; }
+        typeMap[key].total += (Number(d.total_production) || 0) / 1000;
+        typeMap[key].prod += (Number(d.production_qty) || 0) / 1000;
+        typeMap[key].waste += (Number(d.waste_qty) || 0) / 1000;
+      });
+
+      // 총생산량 DESC 정렬
+      var types = Object.keys(typeMap).sort(function(a,b) { return typeMap[b].total - typeMap[a].total; });
 
       var html = '';
-      var prevMc = '';
       var grandTotal = 0, grandProd = 0, grandWaste = 0;
 
-      filtered.forEach(function(d) {
-        var machineChanged = d.machine_code !== prevMc;
-        prevMc = d.machine_code;
-        var chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
-        var totalProd = (Number(d.total_production) || 0) / 1000;  // kg → ton
-        var prodQty = (Number(d.production_qty) || 0) / 1000;
-        var wasteQty = (Number(d.waste_qty) || 0) / 1000;
-        var wasteRate = totalProd > 0 ? (wasteQty / totalProd * 100) : 0;
+      types.forEach(function(type) {
+        var t = typeMap[type];
+        var wasteRate = t.total > 0 ? (t.waste / t.total * 100) : 0;
+        grandTotal += t.total;
+        grandProd += t.prod;
+        grandWaste += t.waste;
 
-        grandTotal += totalProd;
-        grandProd += prodQty;
-        grandWaste += wasteQty;
-
-        html += '<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + '">'
-          + '<td class="!py-1.5"><span class="unit-chip ' + chipClass + '">' + d.machine_code + '</span></td>'
-          + '<td class="!py-1.5 font-medium">' + d.product_type + '</td>'
-          + '<td class="!py-1.5 text-right font-mono">' + totalProd.toFixed(1) + '</td>'
-          + '<td class="!py-1.5 text-right font-mono">' + prodQty.toFixed(1) + '</td>'
-          + '<td class="!py-1.5 text-right font-mono">' + wasteQty.toFixed(1) + '</td>'
+        html += '<tr class="hover:bg-slate-50/50">'
+          + '<td class="!py-1.5 font-medium">' + type + '</td>'
+          + '<td class="!py-1.5 text-right font-mono">' + t.total.toFixed(1) + '</td>'
+          + '<td class="!py-1.5 text-right font-mono">' + t.prod.toFixed(1) + '</td>'
+          + '<td class="!py-1.5 text-right font-mono">' + t.waste.toFixed(1) + '</td>'
           + '<td class="!py-1.5 text-right font-mono ' + (wasteRate > 1 ? 'text-red-600' : 'text-gray-600') + '">' + wasteRate.toFixed(2) + '%</td>'
           + '</tr>';
       });
@@ -3174,7 +3175,7 @@ export function mainPage(): string {
 
       var grandWasteRate = grandTotal > 0 ? (grandWaste / grandTotal * 100) : 0;
       tfoot.innerHTML = '<tr class="bg-slate-100 font-semibold">'
-        + '<td colspan="2" class="!py-2 text-center font-bold">합계</td>'
+        + '<td class="!py-2 text-center font-bold">합계</td>'
         + '<td class="!py-2 text-right font-mono">' + grandTotal.toFixed(1) + '</td>'
         + '<td class="!py-2 text-right font-mono">' + grandProd.toFixed(1) + '</td>'
         + '<td class="!py-2 text-right font-mono">' + grandWaste.toFixed(1) + '</td>'
