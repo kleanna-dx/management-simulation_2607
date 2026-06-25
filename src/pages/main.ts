@@ -1223,7 +1223,10 @@ export function mainPage(): string {
       <div class="card overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
           <h3 class="text-xs font-semibold text-gray-700"><i class="fas fa-cubes text-primary-400 mr-1.5"></i>자재별 원가 상세</h3>
-          <span class="text-[10px] text-gray-400">좌: 당월실적 / 중앙: 차월예상(편집가능) / 우: 손익효과</span>
+          <div class="flex items-center gap-2">
+            <button onclick="downloadFcExcel()" class="text-[10px] px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors"><i class="fas fa-download mr-1"></i>엑셀 다운로드</button>
+            <label class="text-[10px] px-2.5 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors cursor-pointer"><i class="fas fa-upload mr-1"></i>엑셀 업로드<input type="file" accept=".xlsx,.xls" class="hidden" onchange="uploadFcExcel(event)"></label>
+          </div>
         </div>
         <div class="overflow-x-auto" style="max-height:calc(100vh - 320px)">
           <table class="w-full text-[11px] border-collapse whitespace-nowrap" id="fc-detail-table">
@@ -3353,6 +3356,142 @@ export function mainPage(): string {
         if (dpEl) { dpEl.textContent = fmtDiff(diffPrice); dpEl.className = 'px-1.5 py-0.5 text-right font-mono text-xs ' + diffColor(diffPrice); }
         if (dtEl) { dtEl.textContent = fmtDiff(diffTotal); dtEl.className = 'px-1.5 py-0.5 text-right font-mono text-xs font-semibold border-r border-slate-300 ' + diffColor(diffTotal); }
       });
+    }
+
+    // ============ FORECAST 엑셀 다운로드/업로드 ============
+    function downloadFcExcel() {
+      if (!fcCurData || !fcCurData.rows || !fcCurData.rows.length) {
+        alert('데이터가 없습니다. 먼저 조회해주세요.');
+        return;
+      }
+      var rows = fcCurData.rows;
+      var prodTon = (fcCurData.production && fcCurData.production[fcMachineFilter]) ? fcCurData.production[fcMachineFilter] / 1000 : 0;
+
+      var excelData = [];
+      rows.forEach(function(r, idx) {
+        var rid = 'fc-r-' + idx;
+        // 현재 화면의 차월 값 읽기
+        var nuEl = document.getElementById(rid + '-nu');
+        var nucEl = document.getElementById(rid + '-nuc');
+        var priceEl = document.querySelector('[data-row="' + idx + '"][data-field="next_unit_price"]');
+        var incomingEl = document.querySelector('[data-row="' + idx + '"][data-field="incoming_price"]');
+        var stockEl = document.querySelector('[data-row="' + idx + '"][data-field="stock_price"]');
+        var issueEl = document.querySelector('[data-row="' + idx + '"][data-field="issue"]');
+
+        excelData.push({
+          '자재코드': r.material_code,
+          '자재명': r.material_name,
+          '자재그룹': r.material_group_name || r.material_group_major_name,
+          '당월_사용량(kg)': Math.round(r.usage_qty),
+          '당월_원단위(kg/톤)': r.unit_consumption,
+          '당월_사용단가(원/kg)': Math.round(r.unit_price),
+          '당월_비용(백만원)': r.cost_million,
+          '당월_톤당비용(원/톤)': r.cost_per_ton,
+          '차월_사용량(kg)': nuEl ? Number(nuEl.value) || '' : '',
+          '차월_원단위(kg/톤)': nucEl ? Number(nucEl.value) || '' : '',
+          '차월_입고단가(원/kg)': incomingEl ? Number(incomingEl.value) || '' : '',
+          '차월_기초재고단가(원/kg)': stockEl ? Number(stockEl.value) || '' : '',
+          '차월_사용단가(원/kg)': priceEl ? Number(priceEl.value) || '' : '',
+          '이슈사항': issueEl ? issueEl.value : ''
+        });
+      });
+
+      var ws = XLSX.utils.json_to_sheet(excelData);
+      // 컬럼 너비 설정
+      ws['!cols'] = [
+        {wch:20},{wch:18},{wch:16},
+        {wch:14},{wch:14},{wch:14},{wch:14},{wch:14},
+        {wch:14},{wch:14},{wch:14},{wch:14},{wch:14},
+        {wch:20}
+      ];
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '자재별원가상세');
+
+      var year = document.getElementById('analysisYear').value;
+      var month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      XLSX.writeFile(wb, '전월대비예상실적_' + fcMachineFilter + '_' + year + month + '.xlsx');
+    }
+
+    function uploadFcExcel(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      event.target.value = '';  // 같은 파일 재업로드 가능하게
+
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          var wb = XLSX.read(e.target.result, {type: 'array'});
+          var ws = wb.Sheets[wb.SheetNames[0]];
+          var data = XLSX.utils.sheet_to_json(ws);
+
+          if (!data || !data.length) {
+            alert('엑셀에 데이터가 없습니다.');
+            return;
+          }
+          if (!fcCurData || !fcCurData.rows) {
+            alert('먼저 예상실적 데이터를 조회해주세요.');
+            return;
+          }
+
+          // 자재코드 기준으로 매핑
+          var uploadMap = {};
+          data.forEach(function(row) {
+            var code = String(row['자재코드'] || '').trim();
+            if (code) uploadMap[code] = row;
+          });
+
+          var applied = 0;
+          fcCurData.rows.forEach(function(r, idx) {
+            var uploaded = uploadMap[r.material_code];
+            if (!uploaded) return;
+
+            var rid = 'fc-r-' + idx;
+            // 차월 사용량
+            var nuEl = document.getElementById(rid + '-nu');
+            if (nuEl && uploaded['차월_사용량(kg)']) {
+              nuEl.value = Math.round(Number(uploaded['차월_사용량(kg)']));
+              if (!fcManualFlags[idx]) fcManualFlags[idx] = {};
+              fcManualFlags[idx].usage = true;
+            }
+            // 차월 원단위
+            var nucEl = document.getElementById(rid + '-nuc');
+            if (nucEl && uploaded['차월_원단위(kg/톤)']) {
+              nucEl.value = Number(uploaded['차월_원단위(kg/톤)']).toFixed(1);
+              if (!fcManualFlags[idx]) fcManualFlags[idx] = {};
+              fcManualFlags[idx].uc = true;
+            }
+            // 차월 입고단가
+            var incomingEl = document.querySelector('[data-row="' + idx + '"][data-field="incoming_price"]');
+            if (incomingEl && uploaded['차월_입고단가(원/kg)']) {
+              incomingEl.value = Math.round(Number(uploaded['차월_입고단가(원/kg)']));
+            }
+            // 차월 기초재고단가
+            var stockEl = document.querySelector('[data-row="' + idx + '"][data-field="stock_price"]');
+            if (stockEl && uploaded['차월_기초재고단가(원/kg)']) {
+              stockEl.value = Math.round(Number(uploaded['차월_기초재고단가(원/kg)']));
+            }
+            // 차월 사용단가
+            var priceEl = document.querySelector('[data-row="' + idx + '"][data-field="next_unit_price"]');
+            if (priceEl && uploaded['차월_사용단가(원/kg)']) {
+              priceEl.value = Math.round(Number(uploaded['차월_사용단가(원/kg)']));
+            }
+            // 이슈사항
+            var issueEl = document.querySelector('[data-row="' + idx + '"][data-field="issue"]');
+            if (issueEl && uploaded['이슈사항']) {
+              issueEl.value = uploaded['이슈사항'];
+            }
+            applied++;
+          });
+
+          // 재계산
+          calcFcProfit();
+          alert('엑셀 업로드 완료! ' + applied + '개 자재 반영됨');
+        } catch(err) {
+          alert('엑셀 파일 처리 오류: ' + err.message);
+          console.error(err);
+        }
+      };
+      reader.readAsArrayBuffer(file);
     }
 
     // ============ SIMULATION (지종별 생산량 손익) ============
