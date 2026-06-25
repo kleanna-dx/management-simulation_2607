@@ -553,8 +553,8 @@ app.get('/api/dashboard/material-overview', async (c) => {
     SELECT 
       machine_code,
       CASE 
-        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
-        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
         ELSE product_level2_name
       END as product_level2_name,
       SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as material_cost
@@ -564,8 +564,8 @@ app.get('/api/dashboard/material-overview', async (c) => {
       ${catFilter}
     GROUP BY machine_code, 
       CASE 
-        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
-        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
         ELSE product_level2_name
       END
     ORDER BY machine_code, material_cost DESC
@@ -635,9 +635,9 @@ app.get('/api/dashboard/material-overview', async (c) => {
     const [machine_code, product_level2_name] = key.split('|')
     const curCost = curCostData.find(d => `${d.machine_code}|${d.product_level2_name}` === key)
     const cur_material_cost = curCost ? Number(curCost.material_cost) || 0 : 0
-    const cur_production = curProdMap.get(key) || 0
+    const cur_production = (curProdMap.get(key) || 0) / 1000  // kg → ton
     const prev_material_cost = prevCostMap.get(key) || 0
-    const prev_production = prevProdMap.get(key) || 0
+    const prev_production = (prevProdMap.get(key) || 0) / 1000  // kg → ton
     return {
       machine_code,
       product_level2_name,
@@ -687,8 +687,8 @@ app.get('/api/dashboard/material-cost-summary', async (c) => {
       machine_code,
       machine_name,
       CASE 
-        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
-        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
         ELSE product_level2_name
       END as product_level2_name,
       material_group_name,
@@ -704,8 +704,8 @@ app.get('/api/dashboard/material-cost-summary', async (c) => {
       ${catFilter}
     GROUP BY machine_code, 
       CASE 
-        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
-        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
         ELSE product_level2_name
       END,
       material_group_name
@@ -772,8 +772,8 @@ app.get('/api/dashboard/material-by-group', async (c) => {
       machine_name,
       material_group_major_name,
       CASE 
-        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
-        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
         ELSE product_level2_name
       END as product_level2_name,
       SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as material_cost,
@@ -787,8 +787,8 @@ app.get('/api/dashboard/material-by-group', async (c) => {
       ${catFilter}
     GROUP BY machine_code, material_group_major_name,
       CASE 
-        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
-        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
         ELSE product_level2_name
       END
     ORDER BY machine_code, material_group_major_name, material_cost DESC
@@ -1040,8 +1040,8 @@ app.get('/api/dashboard/mix-effect', async (c) => {
     SELECT 
       machine_code,
       CASE 
-        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
-        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
         ELSE product_level2_name
       END as product_type,
       SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as material_cost
@@ -1051,8 +1051,8 @@ app.get('/api/dashboard/mix-effect', async (c) => {
       ${categoryFilter}
     GROUP BY machine_code, 
       CASE 
-        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 250 THEN 'SC저평량'
-        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 250 THEN 'SC고평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) <= 280 THEN 'SC저평량'
+        WHEN product_level2_name = 'SC' AND CAST(SUBSTR(product_level4, -3) AS INTEGER) > 280 THEN 'SC고평량'
         ELSE product_level2_name
       END
   `

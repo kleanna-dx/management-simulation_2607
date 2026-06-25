@@ -347,19 +347,19 @@ export function mainPage(): string {
                 <th class="!py-1.5 text-right bg-steel-50">재료비(원)</th>
                 <th class="!py-1.5 text-right bg-steel-50">생산량(톤)</th>
                 <th class="!py-1.5 text-right bg-steel-50">호기비중(%)</th>
-                <th class="!py-1.5 text-right bg-steel-50">원단위</th>
+                <th class="!py-1.5 text-right bg-steel-50">원단위(원/kg)</th>
                 <th class="!py-1.5 text-right bg-steel-50">재료비(억원)</th>
                 <th class="!py-1.5 text-right bg-steel-50 border-r border-slate-200">전체비중(%)</th>
                 <th class="!py-1.5 text-right bg-amber-50">재료비(원)</th>
                 <th class="!py-1.5 text-right bg-amber-50">생산량(톤)</th>
                 <th class="!py-1.5 text-right bg-amber-50">호기비중(%)</th>
-                <th class="!py-1.5 text-right bg-amber-50">원단위</th>
+                <th class="!py-1.5 text-right bg-amber-50">원단위(원/kg)</th>
                 <th class="!py-1.5 text-right bg-amber-50">재료비(억원)</th>
                 <th class="!py-1.5 text-right bg-amber-50 border-r border-slate-200">전체비중(%)</th>
                 <th class="!py-1.5 text-right bg-sage-50">재료비(원)</th>
                 <th class="!py-1.5 text-right bg-sage-50">생산량(톤)</th>
                 <th class="!py-1.5 text-right bg-sage-50">호기비중(%)</th>
-                <th class="!py-1.5 text-right bg-sage-50">원단위</th>
+                <th class="!py-1.5 text-right bg-sage-50">원단위(원/kg)</th>
                 <th class="!py-1.5 text-right bg-sage-50">재료비(억원)</th>
                 <th class="!py-1.5 text-right bg-sage-50">전체비중(%)</th>
               </tr>
@@ -538,7 +538,7 @@ export function mainPage(): string {
             <button onclick="event.stopPropagation();setMixEffectFilter('ALL')" id="mix-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
             <button onclick="event.stopPropagation();setMixEffectFilter('RAW')" id="mix-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
             <button onclick="event.stopPropagation();setMixEffectFilter('SUB')" id="mix-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
-            <span class="text-xs text-gray-400 ml-2">단위: 원단위차이(원/톤), 수량차이(톤), 금액효과(천원)</span>
+            <span class="text-xs text-gray-400 ml-2">단위: 원단위차이(원/kg), 수량차이(톤), 금액효과(천원)</span>
             <i class="fas fa-chevron-down card-chevron card-chevron-collapsed text-gray-400 ml-2" id="card-mixeffect-chevron"></i>
           </div>
         </div>
@@ -1668,6 +1668,7 @@ export function mainPage(): string {
         return;
       }
       const fmt = (v) => v != null ? Math.round(Number(v)).toLocaleString() : '-';
+      const fmtUnit = (v) => v != null ? Number(v).toFixed(1) : '-';
       const pct = (v) => v != null ? Number(v).toFixed(1) : '-';
       const eok = (v) => v != null ? (Number(v) / 100000000).toFixed(1) : '-';
 
@@ -1696,22 +1697,22 @@ export function mainPage(): string {
 
       const subtotalRow = (mc) => {
         const chipClass = mc === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
-        const mCurUnit = mCurProd > 0 ? Math.round(mCurCost / mCurProd) : 0;
-        const mPrevUnit = mPrevProd > 0 ? Math.round(mPrevCost / mPrevProd) : 0;
-        const mEstUnit = mEstProd > 0 ? Math.round(mEstCost / mEstProd) : 0;
+        const mCurUnit = mCurProd > 0 ? mCurCost / (mCurProd * 1000) : 0;
+        const mPrevUnit = mPrevProd > 0 ? mPrevCost / (mPrevProd * 1000) : 0;
+        const mEstUnit = mEstProd > 0 ? mEstCost / (mEstProd * 1000) : 0;
         return '<tr class="bg-slate-100 font-semibold border-b-2 border-slate-300">' +
           '<td class="!py-1.5 border-r border-slate-200"><span class="unit-chip '+chipClass+'">'+mc+'</span></td>' +
           '<td class="!py-1.5 border-r border-slate-200">\uc694\uc57d</td>' +
           '<td class="!py-1.5 text-right font-mono">'+fmt(mCurCost)+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+fmt(mCurProd)+'</td>' +
           '<td class="!py-1.5 text-right font-mono">100.0</td>' +
-          '<td class="!py-1.5 text-right font-mono">'+fmt(mCurUnit)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+fmtUnit(mCurUnit)+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+eok(mCurCost)+'</td>' +
           '<td class="!py-1.5 text-right font-mono border-r border-slate-200">'+(grandCurCost>0?pct(mCurCost/grandCurCost*100):'-')+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+fmt(mPrevCost)+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+fmt(mPrevProd)+'</td>' +
           '<td class="!py-1.5 text-right font-mono">100.0</td>' +
-          '<td class="!py-1.5 text-right font-mono">'+fmt(mPrevUnit)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+fmtUnit(mPrevUnit)+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+eok(mPrevCost)+'</td>' +
           '<td class="!py-1.5 text-right font-mono border-r border-slate-200">'+(grandPrevCost>0?pct(mPrevCost/grandPrevCost*100):'-')+'</td>' +
           '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
@@ -1747,9 +1748,9 @@ export function mainPage(): string {
         // 호기비중: 해당 지종 생산량 / 호기 총생산량 * 100
         const curMachWeight = machineProd[mc] > 0 ? (curProd / machineProd[mc] * 100) : 0;
         const prevMachWeight = machinePrevProd[mc] > 0 ? (prevProd / machinePrevProd[mc] * 100) : 0;
-        // 원단위: 재료비 / 생산량
-        const curUnit = curProd > 0 ? Math.round(curCost / curProd) : 0;
-        const prevUnit = prevProd > 0 ? Math.round(prevCost / prevProd) : 0;
+        // 원단위: 재료비(원) / 생산량(kg) = 원/kg  (생산량은 톤 단위이므로 ×1000)
+        const curUnit = curProd > 0 ? curCost / (curProd * 1000) : 0;
+        const prevUnit = prevProd > 0 ? prevCost / (prevProd * 1000) : 0;
         // 전체비중: 해당 지종 재료비 / 전체 재료비 * 100
         const curTotalWeight = grandCurCost > 0 ? (curCost / grandCurCost * 100) : 0;
         const prevTotalWeight = grandPrevCost > 0 ? (prevCost / grandPrevCost * 100) : 0;
@@ -1761,14 +1762,14 @@ export function mainPage(): string {
           '<td class="!py-1.5 text-right font-mono">'+fmt(curCost)+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+fmt(curProd)+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+pct(curMachWeight)+'</td>' +
-          '<td class="!py-1.5 text-right font-mono">'+fmt(curUnit)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+fmtUnit(curUnit)+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+eok(curCost)+'</td>' +
           '<td class="!py-1.5 text-right font-mono border-r border-slate-200">'+pct(curTotalWeight)+'</td>' +
           // 전월
           '<td class="!py-1.5 text-right font-mono">'+(prevCost?fmt(prevCost):'-')+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+(prevProd?fmt(prevProd):'-')+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+(prevMachWeight?pct(prevMachWeight):'-')+'</td>' +
-          '<td class="!py-1.5 text-right font-mono">'+(prevUnit?fmt(prevUnit):'-')+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+(prevUnit?fmtUnit(prevUnit):'-')+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+(prevCost?eok(prevCost):'-')+'</td>' +
           '<td class="!py-1.5 text-right font-mono border-r border-slate-200">'+(prevTotalWeight?pct(prevTotalWeight):'-')+'</td>' +
           // 예상 (공란)
@@ -1785,20 +1786,20 @@ export function mainPage(): string {
       tbody.innerHTML = rows.join('');
 
       // 총합계
-      const grandCurUnit = grandCurProd > 0 ? Math.round(grandCurCost / grandCurProd) : 0;
-      const grandPrevUnit = grandPrevProd > 0 ? Math.round(grandPrevCost / grandPrevProd) : 0;
+      const grandCurUnit = grandCurProd > 0 ? grandCurCost / (grandCurProd * 1000) : 0;
+      const grandPrevUnit = grandPrevProd > 0 ? grandPrevCost / (grandPrevProd * 1000) : 0;
       tfoot.innerHTML = '<tr>' +
         '<td colspan="2" class="!py-2 text-center border-r border-slate-200 font-bold">\ucd1d\ud569\uacc4</td>' +
         '<td class="!py-2 text-right font-mono">'+fmt(grandCurCost)+'</td>' +
         '<td class="!py-2 text-right font-mono">'+fmt(grandCurProd)+'</td>' +
         '<td class="!py-2 text-right font-mono">100.0</td>' +
-        '<td class="!py-2 text-right font-mono">'+fmt(grandCurUnit)+'</td>' +
+        '<td class="!py-2 text-right font-mono">'+fmtUnit(grandCurUnit)+'</td>' +
         '<td class="!py-2 text-right font-mono">'+eok(grandCurCost)+'</td>' +
         '<td class="!py-2 text-right font-mono border-r border-slate-200">100.0</td>' +
         '<td class="!py-2 text-right font-mono">'+fmt(grandPrevCost)+'</td>' +
         '<td class="!py-2 text-right font-mono">'+fmt(grandPrevProd)+'</td>' +
         '<td class="!py-2 text-right font-mono">100.0</td>' +
-        '<td class="!py-2 text-right font-mono">'+fmt(grandPrevUnit)+'</td>' +
+        '<td class="!py-2 text-right font-mono">'+fmtUnit(grandPrevUnit)+'</td>' +
         '<td class="!py-2 text-right font-mono">'+eok(grandPrevCost)+'</td>' +
         '<td class="!py-2 text-right font-mono border-r border-slate-200">100.0</td>' +
         '<td class="!py-2 text-right font-mono text-gray-300">-</td>' +
@@ -1860,10 +1861,10 @@ export function mainPage(): string {
         return n.toLocaleString();
       };
       const diffCell = (v) => {
-        const n = Math.round(Number(v) || 0);
-        if (n === 0) return '<td class="!py-1.5 text-right font-mono text-gray-400">-</td>';
-        if (n < 0) return '<td class="!py-1.5 text-right font-mono text-red-600">' + String.fromCharCode(9651) + Math.abs(n).toLocaleString() + '</td>';
-        return '<td class="!py-1.5 text-right font-mono text-steel-400">' + n.toLocaleString() + '</td>';
+        const n = Number(v) || 0;
+        if (Math.abs(n) < 0.05) return '<td class="!py-1.5 text-right font-mono text-gray-400">-</td>';
+        if (n < 0) return '<td class="!py-1.5 text-right font-mono text-red-600">' + String.fromCharCode(9651) + Math.abs(n).toFixed(1) + '</td>';
+        return '<td class="!py-1.5 text-right font-mono text-steel-400">' + n.toFixed(1) + '</td>';
       };
       const profitCell = (v) => {
         const n = Math.round(Number(v) || 0);
@@ -1899,10 +1900,11 @@ export function mainPage(): string {
         const prevCost = Number(d.prev_material_cost) || 0;
         const prevProd = Number(d.prev_production) || 0;
 
-        const curUnit = curProd > 0 ? curCost / curProd : 0;
-        const prevUnit = prevProd > 0 ? prevCost / prevProd : 0;
-        // 원재료 손익 = (전월원단위 - 당월원단위) * 생산량(당월) / 1000
-        const profit = (prevUnit - curUnit) * curProd / 1000;
+        const curUnit = curProd > 0 ? curCost / (curProd * 1000) : 0;  // 원/kg
+        const prevUnit = prevProd > 0 ? prevCost / (prevProd * 1000) : 0;  // 원/kg
+        // 원재료 손익 = (전월원단위 - 당월원단위)(원/kg) * 생산량(톤) * 1000(kg/톤) / 1000(→천원)
+        // = (prevUnit - curUnit) * curProd
+        const profit = (prevUnit - curUnit) * curProd;
 
         if (prevMachine && d.machine_code !== prevMachine) {
           rows.push(subtotalRow(prevMachine));
@@ -1919,9 +1921,9 @@ export function mainPage(): string {
         rows.push('<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-sage-50/30">' +
           '<td class="!py-1.5"><span class="unit-chip '+chipClass+'">'+(d.machine_code||'')+'</span></td>' +
           '<td class="!py-1.5">'+(d.product_level2_name||'-')+'</td>' +
-          '<td class="!py-1.5 text-right font-mono">'+(prevUnit ? fmt(Math.round(prevUnit)) : '-')+'</td>' +
-          '<td class="!py-1.5 text-right font-mono">'+fmt(Math.round(curUnit))+'</td>' +
-          diffCell(Math.round(prevUnit - curUnit)) +
+          '<td class="!py-1.5 text-right font-mono">'+(prevUnit ? Number(prevUnit).toFixed(1) : '-')+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+Number(curUnit).toFixed(1)+'</td>' +
+          diffCell(prevUnit - curUnit) +
           '<td class="!py-1.5 text-right font-mono">'+fmt(curProd)+'</td>' +
           profitCell(profit) +
           '</tr>');
@@ -3379,7 +3381,7 @@ export function mainPage(): string {
 
         // 재료비총괄 시트 생성 헬퍼 함수
         function buildOverviewSheet(ovData) {
-          var ovHeaders = ['호기','지종','당월재료비(원)','당월생산량(톤)','당월호기비중(%)','당월원단위','당월재료비(억원)','당월전체비중(%)','전월재료비(원)','전월생산량(톤)','전월호기비중(%)','전월원단위','전월재료비(억원)','전월전체비중(%)','예상재료비(원)','예상생산량(톤)','예상호기비중(%)','예상원단위','예상재료비(억원)','예상전체비중(%)'];
+          var ovHeaders = ['호기','지종','당월재료비(원)','당월생산량(톤)','당월호기비중(%)','당월원단위(원/kg)','당월재료비(억원)','당월전체비중(%)','전월재료비(원)','전월생산량(톤)','전월호기비중(%)','전월원단위(원/kg)','전월재료비(억원)','전월전체비중(%)','예상재료비(원)','예상생산량(톤)','예상호기비중(%)','예상원단위(원/kg)','예상재료비(억원)','예상전체비중(%)'];
           var data = ovData || [];
           var ovRows = [];
           var rs = 2;
@@ -3398,11 +3400,11 @@ export function mainPage(): string {
           var tr = rs + data.length;
           data.forEach(function(d, i) {
             var row = i + rs;
-            ws['F' + row] = {t:'n', f:'IF(D'+row+'=0,0,C'+row+'/D'+row+')'};
+            ws['F' + row] = {t:'n', f:'IF(D'+row+'=0,0,C'+row+'/(D'+row+'*1000))'};
             ws['G' + row] = {t:'n', f:'C'+row+'/100000000'};
-            ws['L' + row] = {t:'n', f:'IF(J'+row+'=0,0,I'+row+'/J'+row+')'};
+            ws['L' + row] = {t:'n', f:'IF(J'+row+'=0,0,I'+row+'/(J'+row+'*1000))'};
             ws['M' + row] = {t:'n', f:'I'+row+'/100000000'};
-            ws['R' + row] = {t:'n', f:'IF(P'+row+'=0,0,O'+row+'/P'+row+')'};
+            ws['R' + row] = {t:'n', f:'IF(P'+row+'=0,0,O'+row+'/(P'+row+'*1000))'};
             ws['S' + row] = {t:'n', f:'O'+row+'/100000000'};
             ws['E' + row] = {t:'n', f:'IF(SUMIF(A$'+rs+':A$'+(tr-1)+',A'+row+',D$'+rs+':D$'+(tr-1)+')=0,0,D'+row+'/SUMIF(A$'+rs+':A$'+(tr-1)+',A'+row+',D$'+rs+':D$'+(tr-1)+')*100)'};
             ws['H' + row] = {t:'n', f:'IF(SUM(C$'+rs+':C$'+(tr-1)+')=0,0,C'+row+'/SUM(C$'+rs+':C$'+(tr-1)+')*100)'};
@@ -3416,19 +3418,19 @@ export function mainPage(): string {
           ws['C' + tr] = {t:'n', f:'SUM(C'+rs+':C'+(tr-1)+')'};
           ws['D' + tr] = {t:'n', f:'SUM(D'+rs+':D'+(tr-1)+')'};
           ws['E' + tr] = {t:'n', v:100};
-          ws['F' + tr] = {t:'n', f:'IF(D'+tr+'=0,0,C'+tr+'/D'+tr+')'};
+          ws['F' + tr] = {t:'n', f:'IF(D'+tr+'=0,0,C'+tr+'/(D'+tr+'*1000))'};
           ws['G' + tr] = {t:'n', f:'C'+tr+'/100000000'};
           ws['H' + tr] = {t:'n', v:100};
           ws['I' + tr] = {t:'n', f:'SUM(I'+rs+':I'+(tr-1)+')'};
           ws['J' + tr] = {t:'n', f:'SUM(J'+rs+':J'+(tr-1)+')'};
           ws['K' + tr] = {t:'n', v:100};
-          ws['L' + tr] = {t:'n', f:'IF(J'+tr+'=0,0,I'+tr+'/J'+tr+')'};
+          ws['L' + tr] = {t:'n', f:'IF(J'+tr+'=0,0,I'+tr+'/(J'+tr+'*1000))'};
           ws['M' + tr] = {t:'n', f:'I'+tr+'/100000000'};
           ws['N' + tr] = {t:'n', v:100};
           ws['O' + tr] = {t:'n', f:'SUM(O'+rs+':O'+(tr-1)+')'};
           ws['P' + tr] = {t:'n', f:'SUM(P'+rs+':P'+(tr-1)+')'};
           ws['Q' + tr] = {t:'n', v:100};
-          ws['R' + tr] = {t:'n', f:'IF(P'+tr+'=0,0,O'+tr+'/P'+tr+')'};
+          ws['R' + tr] = {t:'n', f:'IF(P'+tr+'=0,0,O'+tr+'/(P'+tr+'*1000))'};
           ws['S' + tr] = {t:'n', f:'O'+tr+'/100000000'};
           ws['T' + tr] = {t:'n', v:100};
           ws['!ref'] = XLSX.utils.encode_range({s:{c:0,r:0},e:{c:19,r:tr}});
