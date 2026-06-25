@@ -3233,9 +3233,11 @@ export function mainPage(): string {
 
       try {
         // 1) 모든 API 데이터 병렬 fetch
-        const [rawRecords, overview, matCost, matGroup, prodSummary, prodAnalysis, mixEffect] = await Promise.all([
+        const [rawRecords, overview, overviewRaw, overviewSub, matCost, matGroup, prodSummary, prodAnalysis, mixEffect] = await Promise.all([
           fetch('/api/raw-records?ym=' + ym + '&page=0&limit=99999').then(r => r.json()),
           fetch('/api/dashboard/material-overview?ym=' + ym).then(r => r.json()),
+          fetch('/api/dashboard/material-overview?ym=' + ym + '&category=RAW').then(r => r.json()),
+          fetch('/api/dashboard/material-overview?ym=' + ym + '&category=SUB').then(r => r.json()),
           fetch('/api/dashboard/material-cost-summary?ym=' + ym).then(r => r.json()),
           fetch('/api/dashboard/material-by-group?ym=' + ym).then(r => r.json()),
           fetch('/api/dashboard/production-summary?ym=' + ym).then(r => r.json()),
@@ -3244,6 +3246,64 @@ export function mainPage(): string {
         ]);
 
         const wb = XLSX.utils.book_new();
+
+        // 재료비총괄 시트 생성 헬퍼 함수
+        function buildOverviewSheet(ovData) {
+          var ovHeaders = ['호기','지종','당월재료비(원)','당월생산량(톤)','당월호기비중(%)','당월원단위','당월재료비(억원)','당월전체비중(%)','전월재료비(원)','전월생산량(톤)','전월호기비중(%)','전월원단위','전월재료비(억원)','전월전체비중(%)','예상재료비(원)','예상생산량(톤)','예상호기비중(%)','예상원단위','예상재료비(억원)','예상전체비중(%)'];
+          var data = ovData || [];
+          var ovRows = [];
+          var rs = 2;
+          data.forEach(function(d) {
+            ovRows.push([
+              d.machine_code || '', d.product_level2_name || '',
+              Number(d.cur_material_cost) || 0, Number(d.cur_production) || 0,
+              null, null, null, null,
+              Number(d.prev_material_cost) || 0, Number(d.prev_production) || 0,
+              null, null, null, null,
+              Number(d.est_material_cost) || 0, Number(d.est_production) || 0,
+              null, null, null, null
+            ]);
+          });
+          var ws = XLSX.utils.aoa_to_sheet([ovHeaders].concat(ovRows));
+          var tr = rs + data.length;
+          data.forEach(function(d, i) {
+            var row = i + rs;
+            ws['F' + row] = {t:'n', f:'IF(D'+row+'=0,0,C'+row+'/D'+row+')'};
+            ws['G' + row] = {t:'n', f:'C'+row+'/100000000'};
+            ws['L' + row] = {t:'n', f:'IF(J'+row+'=0,0,I'+row+'/J'+row+')'};
+            ws['M' + row] = {t:'n', f:'I'+row+'/100000000'};
+            ws['R' + row] = {t:'n', f:'IF(P'+row+'=0,0,O'+row+'/P'+row+')'};
+            ws['S' + row] = {t:'n', f:'O'+row+'/100000000'};
+            ws['E' + row] = {t:'n', f:'IF(SUMIF(A$'+rs+':A$'+(tr-1)+',A'+row+',D$'+rs+':D$'+(tr-1)+')=0,0,D'+row+'/SUMIF(A$'+rs+':A$'+(tr-1)+',A'+row+',D$'+rs+':D$'+(tr-1)+')*100)'};
+            ws['H' + row] = {t:'n', f:'IF(SUM(C$'+rs+':C$'+(tr-1)+')=0,0,C'+row+'/SUM(C$'+rs+':C$'+(tr-1)+')*100)'};
+            ws['K' + row] = {t:'n', f:'IF(SUMIF(A$'+rs+':A$'+(tr-1)+',A'+row+',J$'+rs+':J$'+(tr-1)+')=0,0,J'+row+'/SUMIF(A$'+rs+':A$'+(tr-1)+',A'+row+',J$'+rs+':J$'+(tr-1)+')*100)'};
+            ws['N' + row] = {t:'n', f:'IF(SUM(I$'+rs+':I$'+(tr-1)+')=0,0,I'+row+'/SUM(I$'+rs+':I$'+(tr-1)+')*100)'};
+            ws['Q' + row] = {t:'n', f:'IF(SUMIF(A$'+rs+':A$'+(tr-1)+',A'+row+',P$'+rs+':P$'+(tr-1)+')=0,0,P'+row+'/SUMIF(A$'+rs+':A$'+(tr-1)+',A'+row+',P$'+rs+':P$'+(tr-1)+')*100)'};
+            ws['T' + row] = {t:'n', f:'IF(SUM(O$'+rs+':O$'+(tr-1)+')=0,0,O'+row+'/SUM(O$'+rs+':O$'+(tr-1)+')*100)'};
+          });
+          ws['A' + tr] = {t:'s', v:'합계'};
+          ws['B' + tr] = {t:'s', v:''};
+          ws['C' + tr] = {t:'n', f:'SUM(C'+rs+':C'+(tr-1)+')'};
+          ws['D' + tr] = {t:'n', f:'SUM(D'+rs+':D'+(tr-1)+')'};
+          ws['E' + tr] = {t:'n', v:100};
+          ws['F' + tr] = {t:'n', f:'IF(D'+tr+'=0,0,C'+tr+'/D'+tr+')'};
+          ws['G' + tr] = {t:'n', f:'C'+tr+'/100000000'};
+          ws['H' + tr] = {t:'n', v:100};
+          ws['I' + tr] = {t:'n', f:'SUM(I'+rs+':I'+(tr-1)+')'};
+          ws['J' + tr] = {t:'n', f:'SUM(J'+rs+':J'+(tr-1)+')'};
+          ws['K' + tr] = {t:'n', v:100};
+          ws['L' + tr] = {t:'n', f:'IF(J'+tr+'=0,0,I'+tr+'/J'+tr+')'};
+          ws['M' + tr] = {t:'n', f:'I'+tr+'/100000000'};
+          ws['N' + tr] = {t:'n', v:100};
+          ws['O' + tr] = {t:'n', f:'SUM(O'+rs+':O'+(tr-1)+')'};
+          ws['P' + tr] = {t:'n', f:'SUM(P'+rs+':P'+(tr-1)+')'};
+          ws['Q' + tr] = {t:'n', v:100};
+          ws['R' + tr] = {t:'n', f:'IF(P'+tr+'=0,0,O'+tr+'/P'+tr+')'};
+          ws['S' + tr] = {t:'n', f:'O'+tr+'/100000000'};
+          ws['T' + tr] = {t:'n', v:100};
+          ws['!ref'] = XLSX.utils.encode_range({s:{c:0,r:0},e:{c:19,r:tr}});
+          return ws;
+        }
 
         // ======== Sheet 1: Raw (원본 데이터) ========
         var rawHeaders = ['달력연도/월','공정','공정명','생산호기','생산호기명','제품레벨1','제품레벨1명','제품레벨2','제품레벨2명','제품레벨3','제품레벨3명','제품레벨4','제품레벨4명','자재코드','자재명','자재구분','자재그룹','자재그룹명','대분류','대분류명','지종구분','지종구분명','계획원단위','구성부품수량','기준수량','계획원단위(폐품)','계획단가','계획배부수량','총생산량','생산수량','폐품수량','실제원단위','실제배부수량','실제단가','출고수량','출고금액','사용량차이','단가차이'];
@@ -3262,99 +3322,12 @@ export function mainPage(): string {
         var wsRaw = XLSX.utils.aoa_to_sheet([rawHeaders].concat(rawRows));
         XLSX.utils.book_append_sheet(wb, wsRaw, 'Raw');
 
-        // ======== Sheet 2: 재료비총괄 (Overview) ========
-        var ovHeaders = ['호기','지종','당월재료비(원)','당월생산량(톤)','당월호기비중(%)','당월원단위','당월재료비(억원)','당월전체비중(%)','전월재료비(원)','전월생산량(톤)','전월호기비중(%)','전월원단위','전월재료비(억원)','전월전체비중(%)','예상재료비(원)','예상생산량(톤)','예상호기비중(%)','예상원단위','예상재료비(억원)','예상전체비중(%)'];
-        var ovData = overview || [];
-        var ovRows = [];
-        // 전체 합계 계산용 변수 참조할 셀 주소
-        var rowStart = 2; // 데이터 시작 행 (1-based, header가 1행)
-        ovData.forEach(function(d, i) {
-          var row = i + rowStart;
-          ovRows.push([
-            d.machine_code || '', d.product_level2_name || '',
-            Number(d.cur_material_cost) || 0,
-            Number(d.cur_production) || 0,
-            null, // 호기비중 - 수식으로
-            null, // 원단위 - 수식으로
-            null, // 억원 - 수식으로
-            null, // 전체비중 - 수식으로
-            Number(d.prev_material_cost) || 0,
-            Number(d.prev_production) || 0,
-            null, // 호기비중
-            null, // 원단위
-            null, // 억원
-            null, // 전체비중
-            Number(d.est_material_cost) || 0,
-            Number(d.est_production) || 0,
-            null, // 호기비중
-            null, // 원단위
-            null, // 억원
-            null  // 전체비중
-          ]);
-        });
-        var wsOv = XLSX.utils.aoa_to_sheet([ovHeaders].concat(ovRows));
+        // ======== Sheet 2/3/4: 재료비총괄 (전체, 원재료, 부재료) ========
+        XLSX.utils.book_append_sheet(wb, buildOverviewSheet(overview), '재료비총괄(전체)');
+        XLSX.utils.book_append_sheet(wb, buildOverviewSheet(overviewRaw), '재료비총괄(원재료)');
+        XLSX.utils.book_append_sheet(wb, buildOverviewSheet(overviewSub), '재료비총괄(부재료)');
 
-        // 수식 추가
-        var totalRow = rowStart + ovData.length; // 합계행
-        ovData.forEach(function(d, i) {
-          var row = i + rowStart;
-          // 당월 원단위 = 재료비/생산량 (F열 = C/D)
-          wsOv['F' + row] = {t:'n', f:'IF(D'+row+'=0,0,C'+row+'/D'+row+')'};
-          // 당월 재료비(억원) = C/100000000
-          wsOv['G' + row] = {t:'n', f:'C'+row+'/100000000'};
-          // 전월 원단위 = I/J
-          wsOv['L' + row] = {t:'n', f:'IF(J'+row+'=0,0,I'+row+'/J'+row+')'};
-          // 전월 재료비(억원) = I/100000000
-          wsOv['M' + row] = {t:'n', f:'I'+row+'/100000000'};
-          // 예상 원단위 = O/P
-          wsOv['R' + row] = {t:'n', f:'IF(P'+row+'=0,0,O'+row+'/P'+row+')'};
-          // 예상 재료비(억원) = O/100000000
-          wsOv['S' + row] = {t:'n', f:'O'+row+'/100000000'};
-        });
-        // 호기비중/전체비중은 SUMIF기반이 복잡하므로 값으로 삽입
-        ovData.forEach(function(d, i) {
-          var row = i + rowStart;
-          // 당월 호기비중
-          wsOv['E' + row] = {t:'n', f:'IF(SUMIF(A$'+rowStart+':A$'+(totalRow-1)+',A'+row+',D$'+rowStart+':D$'+(totalRow-1)+')=0,0,D'+row+'/SUMIF(A$'+rowStart+':A$'+(totalRow-1)+',A'+row+',D$'+rowStart+':D$'+(totalRow-1)+')*100)'};
-          // 당월 전체비중
-          wsOv['H' + row] = {t:'n', f:'IF(SUM(C$'+rowStart+':C$'+(totalRow-1)+')=0,0,C'+row+'/SUM(C$'+rowStart+':C$'+(totalRow-1)+')*100)'};
-          // 전월 호기비중
-          wsOv['K' + row] = {t:'n', f:'IF(SUMIF(A$'+rowStart+':A$'+(totalRow-1)+',A'+row+',J$'+rowStart+':J$'+(totalRow-1)+')=0,0,J'+row+'/SUMIF(A$'+rowStart+':A$'+(totalRow-1)+',A'+row+',J$'+rowStart+':J$'+(totalRow-1)+')*100)'};
-          // 전월 전체비중
-          wsOv['N' + row] = {t:'n', f:'IF(SUM(I$'+rowStart+':I$'+(totalRow-1)+')=0,0,I'+row+'/SUM(I$'+rowStart+':I$'+(totalRow-1)+')*100)'};
-          // 예상 호기비중
-          wsOv['Q' + row] = {t:'n', f:'IF(SUMIF(A$'+rowStart+':A$'+(totalRow-1)+',A'+row+',P$'+rowStart+':P$'+(totalRow-1)+')=0,0,P'+row+'/SUMIF(A$'+rowStart+':A$'+(totalRow-1)+',A'+row+',P$'+rowStart+':P$'+(totalRow-1)+')*100)'};
-          // 예상 전체비중
-          wsOv['T' + row] = {t:'n', f:'IF(SUM(O$'+rowStart+':O$'+(totalRow-1)+')=0,0,O'+row+'/SUM(O$'+rowStart+':O$'+(totalRow-1)+')*100)'};
-        });
-        // 합계행
-        var sumRow = [];
-        sumRow.push('합계','');
-        ovRows.push(sumRow);
-        wsOv['A' + totalRow] = {t:'s', v:'합계'};
-        wsOv['B' + totalRow] = {t:'s', v:''};
-        wsOv['C' + totalRow] = {t:'n', f:'SUM(C'+rowStart+':C'+(totalRow-1)+')'};
-        wsOv['D' + totalRow] = {t:'n', f:'SUM(D'+rowStart+':D'+(totalRow-1)+')'};
-        wsOv['E' + totalRow] = {t:'n', v:100};
-        wsOv['F' + totalRow] = {t:'n', f:'IF(D'+totalRow+'=0,0,C'+totalRow+'/D'+totalRow+')'};
-        wsOv['G' + totalRow] = {t:'n', f:'C'+totalRow+'/100000000'};
-        wsOv['H' + totalRow] = {t:'n', v:100};
-        wsOv['I' + totalRow] = {t:'n', f:'SUM(I'+rowStart+':I'+(totalRow-1)+')'};
-        wsOv['J' + totalRow] = {t:'n', f:'SUM(J'+rowStart+':J'+(totalRow-1)+')'};
-        wsOv['K' + totalRow] = {t:'n', v:100};
-        wsOv['L' + totalRow] = {t:'n', f:'IF(J'+totalRow+'=0,0,I'+totalRow+'/J'+totalRow+')'};
-        wsOv['M' + totalRow] = {t:'n', f:'I'+totalRow+'/100000000'};
-        wsOv['N' + totalRow] = {t:'n', v:100};
-        wsOv['O' + totalRow] = {t:'n', f:'SUM(O'+rowStart+':O'+(totalRow-1)+')'};
-        wsOv['P' + totalRow] = {t:'n', f:'SUM(P'+rowStart+':P'+(totalRow-1)+')'};
-        wsOv['Q' + totalRow] = {t:'n', v:100};
-        wsOv['R' + totalRow] = {t:'n', f:'IF(P'+totalRow+'=0,0,O'+totalRow+'/P'+totalRow+')'};
-        wsOv['S' + totalRow] = {t:'n', f:'O'+totalRow+'/100000000'};
-        wsOv['T' + totalRow] = {t:'n', v:100};
-        wsOv['!ref'] = XLSX.utils.encode_range({s:{c:0,r:0},e:{c:19,r:totalRow-1}});
-        XLSX.utils.book_append_sheet(wb, wsOv, '재료비총괄');
-
-        // ======== Sheet 3: 자재그룹별재료비 (Material Cost Summary) ========
+        // ======== Sheet 5: 자재그룹별재료비 (Material Cost Summary) ========
         var mcHeaders = ['호기','제품구분(레벨2)','자재그룹명','재료비(당월)','재료비(전월)','전월대비차이','사용량차이','단가차이','건수'];
         var mcData = matCost || [];
         var mcRows = mcData.map(function(d, i) {
@@ -3484,10 +3457,9 @@ export function mainPage(): string {
 
         // ======== Sheet 8: 손익분석 (Profit Analysis from Overview) ========
         var profHeaders = ['호기','지종','전월원단위','당월원단위','원단위차이','생산량(당월)','손익(천원)'];
-        var profRows = ovData.map(function(d, i) {
+        var ovDataAll = overview || [];
+        var profRows = ovDataAll.map(function(d, i) {
           var row = i + 2;
-          var prevUnit = (Number(d.prev_material_cost)||0) / (Number(d.prev_production)||1);
-          var curUnit = (Number(d.cur_material_cost)||0) / (Number(d.cur_production)||1);
           return [
             d.machine_code || '', d.product_level2_name || '',
             null, null, null, // 수식으로
@@ -3497,9 +3469,8 @@ export function mainPage(): string {
         });
         var wsProf = XLSX.utils.aoa_to_sheet([profHeaders].concat(profRows));
         // 수식: 전월원단위, 당월원단위, 차이, 손익
-        ovData.forEach(function(d, i) {
+        ovDataAll.forEach(function(d, i) {
           var row = i + 2;
-          // 전월원단위 = 재료비총괄 시트 참조 또는 직접 계산
           var prevCost = Number(d.prev_material_cost)||0;
           var prevProd = Number(d.prev_production)||1;
           var curCost = Number(d.cur_material_cost)||0;
@@ -3510,7 +3481,7 @@ export function mainPage(): string {
           // 손익(천원) = (전월원단위-당월원단위)*생산량/1000
           wsProf['G' + row] = {t:'n', f:'E'+row+'*F'+row+'/1000'};
         });
-        var profTotalRow = ovData.length + 2;
+        var profTotalRow = ovDataAll.length + 2;
         wsProf['A' + profTotalRow] = {t:'s', v:'합계'};
         wsProf['F' + profTotalRow] = {t:'n', f:'SUM(F2:F'+(profTotalRow-1)+')'};
         wsProf['G' + profTotalRow] = {t:'n', f:'SUM(G2:G'+(profTotalRow-1)+')'};
