@@ -3247,6 +3247,57 @@ export function mainPage(): string {
 
         const wb = XLSX.utils.book_new();
 
+        // 유틸: 열 너비 자동 조정
+        function autoFitCols(ws) {
+          var ref = ws['!ref'];
+          if (!ref) return;
+          var range = XLSX.utils.decode_range(ref);
+          var colWidths = [];
+          for (var C = range.s.c; C <= range.e.c; C++) {
+            var maxLen = 8; // 최소 너비
+            for (var R = range.s.r; R <= range.e.r; R++) {
+              var addr = XLSX.utils.encode_cell({r:R, c:C});
+              var cell = ws[addr];
+              if (!cell) continue;
+              var val = '';
+              if (cell.t === 's') val = cell.v || '';
+              else if (cell.t === 'n') val = cell.v != null ? Number(cell.v).toLocaleString() : '';
+              else if (cell.f) val = '00000000000'; // 수식은 대략 11자
+              var len = 0;
+              for (var k = 0; k < val.length; k++) {
+                len += val.charCodeAt(k) > 127 ? 2.2 : 1.1;
+              }
+              if (len > maxLen) maxLen = len;
+            }
+            colWidths.push({wch: Math.min(Math.ceil(maxLen) + 2, 30)});
+          }
+          ws['!cols'] = colWidths;
+        }
+
+        // 유틸: 숫자 셀에 천단위 쉼표 포맷 적용
+        function applyNumberFormat(ws) {
+          var ref = ws['!ref'];
+          if (!ref) return;
+          var range = XLSX.utils.decode_range(ref);
+          for (var R = range.s.r; R <= range.e.r; R++) {
+            for (var C = range.s.c; C <= range.e.c; C++) {
+              var addr = XLSX.utils.encode_cell({r:R, c:C});
+              var cell = ws[addr];
+              if (!cell) continue;
+              if (cell.t === 'n' || cell.f) {
+                cell.z = '#,##0';
+              }
+            }
+          }
+        }
+
+        // 유틸: 시트 마무리 (열너비 + 숫자포맷)
+        function finalizeSheet(ws) {
+          applyNumberFormat(ws);
+          autoFitCols(ws);
+          return ws;
+        }
+
         // 재료비총괄 시트 생성 헬퍼 함수
         function buildOverviewSheet(ovData) {
           var ovHeaders = ['호기','지종','당월재료비(원)','당월생산량(톤)','당월호기비중(%)','당월원단위','당월재료비(억원)','당월전체비중(%)','전월재료비(원)','전월생산량(톤)','전월호기비중(%)','전월원단위','전월재료비(억원)','전월전체비중(%)','예상재료비(원)','예상생산량(톤)','예상호기비중(%)','예상원단위','예상재료비(억원)','예상전체비중(%)'];
@@ -3302,7 +3353,7 @@ export function mainPage(): string {
           ws['S' + tr] = {t:'n', f:'O'+tr+'/100000000'};
           ws['T' + tr] = {t:'n', v:100};
           ws['!ref'] = XLSX.utils.encode_range({s:{c:0,r:0},e:{c:19,r:tr}});
-          return ws;
+          return finalizeSheet(ws);
         }
 
         // ======== Sheet 1: Raw (원본 데이터) ========
@@ -3320,7 +3371,7 @@ export function mainPage(): string {
             d.issue_qty, d.issue_amount, d.plan_vs_usage_diff, d.plan_vs_price_diff];
         });
         var wsRaw = XLSX.utils.aoa_to_sheet([rawHeaders].concat(rawRows));
-        XLSX.utils.book_append_sheet(wb, wsRaw, 'Raw');
+        XLSX.utils.book_append_sheet(wb, finalizeSheet(wsRaw), 'Raw');
 
         // ======== Sheet 2/3/4: 재료비총괄 (전체, 원재료, 부재료) ========
         XLSX.utils.book_append_sheet(wb, buildOverviewSheet(overview), '재료비총괄(전체)');
@@ -3356,7 +3407,7 @@ export function mainPage(): string {
         wsMc['H' + mcTotalRow] = {t:'n', f:'SUM(H2:H'+(mcTotalRow-1)+')'};
         wsMc['I' + mcTotalRow] = {t:'n', f:'SUM(I2:I'+(mcTotalRow-1)+')'};
         wsMc['!ref'] = XLSX.utils.encode_range({s:{c:0,r:0},e:{c:8,r:mcTotalRow-1}});
-        XLSX.utils.book_append_sheet(wb, wsMc, '자재그룹별재료비');
+        XLSX.utils.book_append_sheet(wb, finalizeSheet(wsMc), '자재그룹별재료비');
 
         // ======== Sheet 4: 대분류별재료비 (Material by Group) ========
         var mgHeaders = ['호기','자재그룹(대분류)명','제품구분(레벨2)','재료비(당월)','재료비(전월)','사용량차이','단가차이','배부수량(당월)','배부수량(전월)'];
@@ -3380,7 +3431,7 @@ export function mainPage(): string {
         wsMg['H' + mgTotalRow] = {t:'n', f:'SUM(H2:H'+(mgTotalRow-1)+')'};
         wsMg['I' + mgTotalRow] = {t:'n', f:'SUM(I2:I'+(mgTotalRow-1)+')'};
         wsMg['!ref'] = XLSX.utils.encode_range({s:{c:0,r:0},e:{c:8,r:mgTotalRow-1}});
-        XLSX.utils.book_append_sheet(wb, wsMg, '대분류별재료비');
+        XLSX.utils.book_append_sheet(wb, finalizeSheet(wsMg), '대분류별재료비');
 
         // ======== Sheet 5: 생산량합계 (Production Summary) ========
         var psHeaders = ['호기','호기명','제품구분(레벨2)','총생산량'];
@@ -3393,7 +3444,7 @@ export function mainPage(): string {
         wsPs['A' + psTotalRow] = {t:'s', v:'합계'};
         wsPs['D' + psTotalRow] = {t:'n', f:'SUM(D2:D'+(psTotalRow-1)+')'};
         wsPs['!ref'] = XLSX.utils.encode_range({s:{c:0,r:0},e:{c:3,r:psTotalRow-1}});
-        XLSX.utils.book_append_sheet(wb, wsPs, '생산량합계');
+        XLSX.utils.book_append_sheet(wb, finalizeSheet(wsPs), '생산량합계');
 
         // ======== Sheet 6: 생산량분석 (Production Analysis) ========
         var paHeaders = ['행레이블','당월_총생산량','당월_생산수량','당월_폐품수량','전월_총생산량','전월_생산수량','전월_폐품수량','증감_총생산량','증감_생산수량','증감_폐품수량'];
@@ -3425,7 +3476,7 @@ export function mainPage(): string {
         wsPa['I' + paTotalRow] = {t:'n', f:'C'+paTotalRow+'-F'+paTotalRow};
         wsPa['J' + paTotalRow] = {t:'n', f:'D'+paTotalRow+'-G'+paTotalRow};
         wsPa['!ref'] = XLSX.utils.encode_range({s:{c:0,r:0},e:{c:9,r:paTotalRow-1}});
-        XLSX.utils.book_append_sheet(wb, wsPa, '생산량분석');
+        XLSX.utils.book_append_sheet(wb, finalizeSheet(wsPa), '생산량분석');
 
         // ======== Sheet 7: 믹스효과 (Mix Effect) ========
         var mxHeaders = ['시나리오','구분','유형','원단위차이','수량차이','금액효과(천원)'];
@@ -3453,7 +3504,7 @@ export function mainPage(): string {
           });
         }
         var wsMx = XLSX.utils.aoa_to_sheet([mxHeaders].concat(mxRows));
-        XLSX.utils.book_append_sheet(wb, wsMx, '믹스효과');
+        XLSX.utils.book_append_sheet(wb, finalizeSheet(wsMx), '믹스효과');
 
         // ======== Sheet 8: 손익분석 (Profit Analysis from Overview) ========
         var profHeaders = ['호기','지종','전월원단위','당월원단위','원단위차이','생산량(당월)','손익(천원)'];
@@ -3486,7 +3537,7 @@ export function mainPage(): string {
         wsProf['F' + profTotalRow] = {t:'n', f:'SUM(F2:F'+(profTotalRow-1)+')'};
         wsProf['G' + profTotalRow] = {t:'n', f:'SUM(G2:G'+(profTotalRow-1)+')'};
         wsProf['!ref'] = XLSX.utils.encode_range({s:{c:0,r:0},e:{c:6,r:profTotalRow-1}});
-        XLSX.utils.book_append_sheet(wb, wsProf, '손익분석');
+        XLSX.utils.book_append_sheet(wb, finalizeSheet(wsProf), '손익분석');
 
         // 파일 다운로드
         XLSX.writeFile(wb, '원부자재_사전원가분석_' + ym + '.xlsx');
