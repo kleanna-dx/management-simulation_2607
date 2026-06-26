@@ -160,25 +160,37 @@ export function mainPage(): string {
       <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
         <div class="summary-card">
           <div class="flex items-center gap-2 mb-3">
-            <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center"><i class="fas fa-calendar-minus text-slate-400 text-xs"></i></div>
-            <span class="text-xs font-medium text-slate-400">전월 총원가</span>
+            <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center"><i class="fas fa-industry text-slate-500 text-xs"></i></div>
+            <span class="text-xs font-medium text-slate-500">제지 전체 원단위</span>
           </div>
-          <p id="s-prev" class="text-lg font-bold text-gray-900 stat-value">-</p>
+          <p id="s-total-uc" class="text-lg font-bold text-gray-900 stat-value">-</p>
+          <p class="text-[10px] text-slate-400 mt-1">천원/톤</p>
         </div>
-        <div class="summary-card">
+        <div class="summary-card" style="border-color: #bfdbfe; background: linear-gradient(135deg, #eff6ff, #dbeafe)">
           <div class="flex items-center gap-2 mb-3">
-            <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center"><i class="fas fa-calendar text-slate-400 text-xs"></i></div>
-            <span class="text-xs font-medium text-slate-400">당월 총원가</span>
+            <div class="w-7 h-7 rounded-lg bg-blue-200/50 flex items-center justify-center"><i class="fas fa-cogs text-blue-500 text-xs"></i></div>
+            <span class="text-xs font-medium text-blue-600">호기별 원단위</span>
           </div>
-          <p id="s-cur" class="text-lg font-bold text-gray-900 stat-value">-</p>
+          <div class="flex items-center gap-3">
+            <div>
+              <span class="text-[10px] text-gray-400">PM2</span>
+              <p id="s-pm2-uc" class="text-base font-bold text-gray-900">-</p>
+            </div>
+            <div class="text-gray-300">|</div>
+            <div>
+              <span class="text-[10px] text-gray-400">PM3</span>
+              <p id="s-pm3-uc" class="text-base font-bold text-gray-900">-</p>
+            </div>
+          </div>
+          <p class="text-[10px] text-slate-400 mt-1">천원/톤</p>
         </div>
         <div class="summary-card" style="border-color: #c7d2fe; background: linear-gradient(135deg, #eef2ff, #e0e7ff)">
           <div class="flex items-center gap-2 mb-3">
             <div class="w-7 h-7 rounded-lg bg-primary-200/50 flex items-center justify-center"><i class="fas fa-boxes text-primary-500 text-xs"></i></div>
-            <span class="text-xs font-medium text-primary-500">수량차이 효과</span>
+            <span class="text-xs font-medium text-primary-500">사용량차이</span>
           </div>
           <p id="s-qty" class="text-lg font-bold stat-value">-</p>
-          <p class="text-[10px] text-slate-400 mt-1">사용량 변동 영향</p>
+          <p class="text-[10px] text-slate-400 mt-1">전월대비 손익 효과(예상)</p>
         </div>
         <div class="summary-card" style="border-color: #fde68a; background: linear-gradient(135deg, #fffbeb, #fef3c7)">
           <div class="flex items-center gap-2 mb-3">
@@ -186,15 +198,15 @@ export function mainPage(): string {
             <span class="text-xs font-medium text-amber-600">단가차이 효과</span>
           </div>
           <p id="s-price" class="text-lg font-bold stat-value">-</p>
-          <p class="text-[10px] text-slate-400 mt-1">단가 변동 영향</p>
+          <p class="text-[10px] text-slate-400 mt-1">전월대비 손익 효과(예상)</p>
         </div>
-        <div class="summary-card" style="border-color: #fecaca; background: linear-gradient(135deg, #fef2f2, #fee2e2)">
+        <div class="summary-card" style="border-color: #bbf7d0; background: linear-gradient(135deg, #f0fdf4, #dcfce7)">
           <div class="flex items-center gap-2 mb-3">
-            <div class="w-7 h-7 rounded-lg bg-red-200/50 flex items-center justify-center"><i class="fas fa-arrow-trend-up text-red-500 text-xs"></i></div>
-            <span class="text-xs font-medium text-red-500">총 원가차이</span>
+            <div class="w-7 h-7 rounded-lg bg-green-200/50 flex items-center justify-center"><i class="fas fa-chart-line text-green-600 text-xs"></i></div>
+            <span class="text-xs font-medium text-green-700">재료비 종합</span>
           </div>
           <p id="s-total" class="text-lg font-bold stat-value">-</p>
-          <p class="text-[10px] text-slate-400 mt-1">전월 대비 증감</p>
+          <p class="text-[10px] text-slate-400 mt-1">전월대비 손익 효과(예상)</p>
         </div>
       </div>
 
@@ -202,8 +214,8 @@ export function mainPage(): string {
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="card p-5">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">호기별 원가 비교</h3>
-            <span class="text-[10px] text-gray-400">전월 vs 당월</span>
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">호기별 원단위 추이</h3>
+            <span class="text-[10px] text-gray-400">전월 vs 당월 (천원/톤)</span>
           </div>
           <div class="chart-container">
             <canvas id="unitChart"></canvas>
@@ -212,7 +224,7 @@ export function mainPage(): string {
         <div class="card p-5">
           <div class="flex items-center justify-between mb-3">
             <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">손익효과 분해</h3>
-            <span class="text-[10px] text-gray-400">수량효과 vs 단가효과</span>
+            <span class="text-[10px] text-gray-400">사용량차이 vs 단가차이 (억원)</span>
           </div>
           <div class="chart-container">
             <canvas id="effectChart"></canvas>
@@ -1535,8 +1547,27 @@ export function mainPage(): string {
     function renderDashboard() {
       if (!analysisData) return;
       const s = analysisData.summary;
-      document.getElementById('s-prev').textContent = formatWon(s.total_prev_cost);
-      document.getElementById('s-cur').textContent = formatWon(s.total_cur_cost);
+      // 원단위 카드: analysisData에서 호기별 원단위 계산
+      // total_cur_cost / total_production(톤) / 1000 = 천원/톤
+      var totalCurCost = s.total_cur_cost || 0;
+      var totalCurProd = 0;
+      var pm2Cost = 0, pm2Prod = 0, pm3Cost = 0, pm3Prod = 0;
+      if (analysisData.items) {
+        analysisData.items.forEach(function(item) {
+          var prod = Number(item.cur_production) || 0;
+          var cost = Number(item.cur_material_cost) || 0;
+          totalCurProd += prod;
+          if (item.machine_code === 'PM2') { pm2Cost += cost; pm2Prod += prod; }
+          else if (item.machine_code === 'PM3') { pm3Cost += cost; pm3Prod += prod; }
+        });
+      }
+      var totalUC = totalCurProd > 0 ? totalCurCost / totalCurProd / 1000 : 0;
+      var pm2UC = pm2Prod > 0 ? pm2Cost / pm2Prod / 1000 : 0;
+      var pm3UC = pm3Prod > 0 ? pm3Cost / pm3Prod / 1000 : 0;
+      document.getElementById('s-total-uc').textContent = totalUC > 0 ? totalUC.toFixed(1) : '-';
+      document.getElementById('s-pm2-uc').textContent = pm2UC > 0 ? pm2UC.toFixed(1) : '-';
+      document.getElementById('s-pm3-uc').textContent = pm3UC > 0 ? pm3UC.toFixed(1) : '-';
+
       setVC('s-qty', s.total_qty_effect);
       setVC('s-price', s.total_price_effect);
       setVC('s-total', s.total_cost_diff);
