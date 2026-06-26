@@ -95,23 +95,14 @@ export function mainPage(): string {
     <div class="max-w-[1800px] mx-auto px-6 py-3">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
+          <button onclick="switchTab('datainput')" id="tab-datainput" class="pill-tab pill-tab-inactive">
+            <i class="fas fa-file-upload mr-1.5"></i>데이터 입력
+          </button>
           <button onclick="switchTab('dashboard')" id="tab-dashboard" class="pill-tab pill-tab-active">
             <i class="fas fa-chart-line mr-1.5"></i>사용현황 분석
           </button>
           <button onclick="switchTab('forecast')" id="tab-forecast" class="pill-tab pill-tab-inactive">
             <i class="fas fa-chart-area mr-1.5"></i>전월 대비 예상 손익
-          </button>
-          <button onclick="switchTab('simulation')" id="tab-simulation" class="pill-tab pill-tab-inactive">
-            <i class="fas fa-flask mr-1.5"></i>시뮬레이션
-          </button>
-          <button onclick="switchTab('upload')" id="tab-upload" class="pill-tab pill-tab-inactive">
-            <i class="fas fa-file-excel mr-1.5"></i>데이터 업로드
-          </button>
-          <button onclick="switchTab('dataview')" id="tab-dataview" class="pill-tab pill-tab-inactive">
-            <i class="fas fa-database mr-1.5"></i>데이터 조회
-          </button>
-          <button onclick="switchTab('detail')" id="tab-detail" class="pill-tab pill-tab-inactive">
-            <i class="fas fa-table mr-1.5"></i>상세 분석표
           </button>
           <button onclick="switchTab('master')" id="tab-master" class="pill-tab pill-tab-inactive">
             <i class="fas fa-cog mr-1.5"></i>기준정보
@@ -558,8 +549,23 @@ export function mainPage(): string {
       </div>
     </div>
 
-    <!-- Upload Tab -->
-    <div id="content-upload" class="hidden fade-in">
+    <!-- 데이터 입력 Tab (메인) -->
+    <div id="content-datainput" class="hidden fade-in space-y-5">
+      <!-- 서브탭 네비게이션 -->
+      <div class="flex items-center gap-2">
+        <button onclick="switchDataInputSub('upload')" id="di-tab-upload" class="pill-tab pill-tab-active text-xs !px-4 !py-2">
+          <i class="fas fa-file-excel mr-1.5"></i>Raw 데이터 입력
+        </button>
+        <button onclick="switchDataInputSub('dataview')" id="di-tab-dataview" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
+          <i class="fas fa-database mr-1.5"></i>데이터 조회
+        </button>
+        <button onclick="switchDataInputSub('manual')" id="di-tab-manual" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
+          <i class="fas fa-edit mr-1.5"></i>부서 수기 입력
+        </button>
+      </div>
+
+    <!-- 서브: Raw 데이터 입력 (Upload) -->
+    <div id="content-upload" class="fade-in">
       <div class="card p-6">
         <div class="flex items-center justify-between mb-6">
           <div>
@@ -655,7 +661,7 @@ export function mainPage(): string {
       </div>
     </div>
 
-    <!-- Data View Tab (업로드된 데이터 조회) -->
+    <!-- 서브: 데이터 조회 -->
     <div id="content-dataview" class="hidden fade-in space-y-5">
       <div class="card p-6">
         <div class="flex items-center justify-between mb-5">
@@ -795,7 +801,23 @@ export function mainPage(): string {
       </div>
     </div>
 
-    <!-- Input Tab -->
+    <!-- 서브: 부서 수기 입력 -->
+    <div id="content-manual" class="hidden fade-in space-y-5">
+      <div class="card p-6">
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700">부서 수기 입력</h3>
+            <p class="text-xs text-gray-400 mt-1">예상 단가, 사용량 등을 부서별로 수기 입력합니다.</p>
+          </div>
+        </div>
+        <div class="text-center py-16 text-gray-400">
+          <i class="fas fa-edit text-4xl mb-4 text-gray-300"></i>
+          <p class="text-sm">부서 수기 입력 기능 준비 중입니다.</p>
+        </div>
+      </div>
+    </div>
+
+    </div><!-- /content-datainput -->
 
     <!-- Master Tab -->
     <div id="content-master" class="hidden fade-in">
@@ -1135,8 +1157,23 @@ export function mainPage(): string {
       </div>
     </div>
 
+    <!-- 전월 대비 예상 손익 (메인 탭 래퍼) -->
+    <div id="content-profitanalysis" class="hidden fade-in space-y-4">
+      <!-- 서브탭 네비게이션 -->
+      <div class="flex items-center gap-2">
+        <button onclick="switchProfitSub('forecast')" id="pa-tab-forecast" class="pill-tab pill-tab-active text-xs !px-4 !py-2">
+          <i class="fas fa-chart-area mr-1.5"></i>전월 대비 예상
+        </button>
+        <button onclick="switchProfitSub('detail')" id="pa-tab-detail" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
+          <i class="fas fa-table mr-1.5"></i>상세 분석표
+        </button>
+        <button onclick="switchProfitSub('simulation')" id="pa-tab-simulation" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
+          <i class="fas fa-flask mr-1.5"></i>시뮬레이션
+        </button>
+      </div>
+
     <!-- Forecast Tab (전월 대비 예상 실적) -->
-    <div id="content-forecast" class="hidden fade-in space-y-4">
+    <div id="content-forecast" class="fade-in space-y-4">
       <!-- Header -->
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
@@ -1216,6 +1253,7 @@ export function mainPage(): string {
         </div>
       </div>
     </div>
+    </div><!-- /content-profitanalysis -->
   </main>
 
   <script>
@@ -1242,18 +1280,56 @@ export function mainPage(): string {
     });
 
     function switchTab(tab) {
-      ['dashboard','detail','upload','dataview','master','simulation','forecast'].forEach(t => {
+      ['dashboard','detail','upload','dataview','master','simulation','forecast','datainput','manual','profitanalysis'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.add('pill-tab-inactive'); }
       });
-      document.getElementById('content-' + tab)?.classList.remove('hidden');
+      if (tab === 'datainput') {
+        document.getElementById('content-datainput')?.classList.remove('hidden');
+        var activeSub = document.querySelector('#content-datainput [id^="di-tab-"].pill-tab-active');
+        var subId = activeSub ? activeSub.id.replace('di-tab-','') : 'upload';
+        switchDataInputSub(subId);
+      } else if (tab === 'forecast') {
+        document.getElementById('content-profitanalysis')?.classList.remove('hidden');
+        var activeSub = document.querySelector('[id^="pa-tab-"].pill-tab-active');
+        var subId2 = activeSub ? activeSub.id.replace('pa-tab-','') : 'forecast';
+        switchProfitSub(subId2);
+      } else {
+        document.getElementById('content-' + tab)?.classList.remove('hidden');
+      }
       const a = document.getElementById('tab-' + tab);
       if (a) { a.classList.add('pill-tab-active'); a.classList.remove('pill-tab-inactive'); }
       if (tab === 'master') { loadUnitsList(); loadMaterialsList(); loadMasterIdx(currentMidxTab); }
-      if (tab === 'simulation') { loadSimProfitBase(); }
-      if (tab === 'forecast') { loadForecast(); }
-      if (tab === 'dataview') { initDataView(); }
+    }
+
+    function switchDataInputSub(sub) {
+      ['upload','dataview','manual'].forEach(function(s) {
+        var el = document.getElementById('content-' + s);
+        if (el) el.classList.add('hidden');
+        var btn = document.getElementById('di-tab-' + s);
+        if (btn) { btn.classList.remove('pill-tab-active'); btn.classList.add('pill-tab-inactive'); }
+      });
+      var target = document.getElementById('content-' + sub);
+      if (target) target.classList.remove('hidden');
+      var activeBtn = document.getElementById('di-tab-' + sub);
+      if (activeBtn) { activeBtn.classList.add('pill-tab-active'); activeBtn.classList.remove('pill-tab-inactive'); }
+      if (sub === 'dataview') { initDataView(); }
+    }
+
+    function switchProfitSub(sub) {
+      ['forecast','detail','simulation'].forEach(function(s) {
+        var el = document.getElementById('content-' + s);
+        if (el) el.classList.add('hidden');
+        var btn = document.getElementById('pa-tab-' + s);
+        if (btn) { btn.classList.remove('pill-tab-active'); btn.classList.add('pill-tab-inactive'); }
+      });
+      var target = document.getElementById('content-' + sub);
+      if (target) target.classList.remove('hidden');
+      var activeBtn = document.getElementById('pa-tab-' + sub);
+      if (activeBtn) { activeBtn.classList.add('pill-tab-active'); activeBtn.classList.remove('pill-tab-inactive'); }
+      if (sub === 'forecast') { loadForecast(); }
+      if (sub === 'simulation') { loadSimProfitBase(); }
     }
 
     function setUnitFilter(id) {
