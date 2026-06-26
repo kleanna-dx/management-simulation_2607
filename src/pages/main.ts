@@ -1213,7 +1213,12 @@ export function mainPage(): string {
       <!-- 하단: 자재별 상세 (좌: 당월실적 | 중앙: 차월예상 | 우: 손익효과) -->
       <div class="card overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-          <h3 class="text-xs font-semibold text-gray-700"><i class="fas fa-cubes text-primary-400 mr-1.5"></i>자재별 원가 상세</h3>
+          <div class="flex items-center gap-3">
+            <h3 class="text-xs font-semibold text-gray-700"><i class="fas fa-cubes text-primary-400 mr-1.5"></i>자재별 원가 상세</h3>
+            <select id="fc-product-filter" class="border border-gray-200 rounded-lg px-2 py-1 text-[10px] focus:ring-1 focus:ring-emerald-200" onchange="filterFcByProduct()">
+              <option value="">전체 자재</option>
+            </select>
+          </div>
           <div class="flex items-center gap-2">
             <button onclick="downloadFcExcel()" class="text-[10px] px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors"><i class="fas fa-download mr-1"></i>엑셀 다운로드</button>
             <label class="text-[10px] px-2.5 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors cursor-pointer"><i class="fas fa-upload mr-1"></i>엑셀 업로드<input type="file" accept=".xlsx,.xls" class="hidden" onchange="uploadFcExcel(event)"></label>
@@ -3038,6 +3043,7 @@ export function mainPage(): string {
         fcUnitByProduct = results[2];
         renderFcProduction();
         renderFcDetail();
+        populateFcProductFilter();
       } catch(e) { console.error('Forecast load error:', e); }
     }
 
@@ -3119,6 +3125,91 @@ export function mainPage(): string {
       if (el) el.textContent = Math.round(total).toLocaleString();
       // 손익 재계산
       calcFcProfit();
+    }
+
+    function populateFcProductFilter() {
+      var sel = document.getElementById('fc-product-filter');
+      if (!sel || !fcUnitByProduct || !fcUnitByProduct.unitMap) return;
+      // 지종 목록 수집
+      var types = {};
+      for (var mc in fcUnitByProduct.unitMap) {
+        var ptMap = fcUnitByProduct.unitMap[mc];
+        for (var pt in ptMap) {
+          types[pt] = true;
+        }
+      }
+      var typeList = Object.keys(types).sort();
+      var html = '<option value="">전체 자재</option>';
+      typeList.forEach(function(t) {
+        html += '<option value="' + t + '">' + t + ' 연관 자재만</option>';
+      });
+      sel.innerHTML = html;
+    }
+
+    function filterFcByProduct() {
+      var sel = document.getElementById('fc-product-filter');
+      var filterType = sel ? sel.value : '';
+      if (!fcCurData || !fcCurData.rows) return;
+
+      // 필터 대상 자재코드 목록 구하기
+      var allowedCodes = null;
+      if (filterType && fcUnitByProduct && fcUnitByProduct.unitMap) {
+        allowedCodes = {};
+        for (var mc in fcUnitByProduct.unitMap) {
+          var ptMap = fcUnitByProduct.unitMap[mc];
+          if (ptMap[filterType]) {
+            allowedCodes[mc] = true;
+          }
+        }
+      }
+
+      // 테이블 행 순회하면서 보이기/숨기기
+      var tbody = document.getElementById('fc-detail-body');
+      if (!tbody) return;
+      var trs = tbody.querySelectorAll('tr');
+      var rows = fcCurData.rows;
+      var rowIdx = 0;
+      var groupKeys = {};
+      rows.forEach(function(r) {
+        var gk = r.material_group_name || r.material_group_major_name;
+        if (!groupKeys[gk]) groupKeys[gk] = [];
+        groupKeys[gk].push(r.material_code);
+      });
+
+      // 그룹 헤더/소계 포함하여 순회
+      var currentGroupVisible = false;
+      var trIdx = 0;
+      var gkList = Object.keys(groupKeys);
+      var gkIdx = 0;
+      var itemIdx = 0;
+
+      trs.forEach(function(tr) {
+        if (tr.classList.contains('bg-slate-50') && tr.querySelector('td[colspan]')) {
+          // 그룹 헤더행
+          if (allowedCodes === null) {
+            tr.style.display = '';
+          } else {
+            // 이 그룹에 보여줄 자재가 있는지 확인
+            var gk = gkList[gkIdx] || '';
+            var groupCodes = groupKeys[gk] || [];
+            currentGroupVisible = groupCodes.some(function(c) { return allowedCodes[c]; });
+            tr.style.display = currentGroupVisible ? '' : 'none';
+          }
+        } else if (tr.classList.contains('bg-slate-100/70')) {
+          // 그룹 소계행
+          tr.style.display = (allowedCodes === null || currentGroupVisible) ? '' : 'none';
+          gkIdx++;
+        } else {
+          // 자재 데이터행
+          if (allowedCodes === null) {
+            tr.style.display = '';
+          } else {
+            var r = rows[rowIdx];
+            tr.style.display = (r && allowedCodes[r.material_code]) ? '' : 'none';
+          }
+          rowIdx++;
+        }
+      });
     }
 
     function renderFcDetail() {
