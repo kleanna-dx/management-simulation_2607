@@ -1556,27 +1556,7 @@ export function mainPage(): string {
     function renderDashboard() {
       if (!analysisData) return;
       const s = analysisData.summary;
-      // 원단위 카드: analysisData에서 호기별 원단위 계산
-      // total_cur_cost / total_production(톤) / 1000 = 천원/톤
-      var totalCurCost = s.total_cur_cost || 0;
-      var totalCurProd = 0;
-      var pm2Cost = 0, pm2Prod = 0, pm3Cost = 0, pm3Prod = 0;
-      if (analysisData.items) {
-        analysisData.items.forEach(function(item) {
-          var prod = Number(item.cur_production) || 0;
-          var cost = Number(item.cur_material_cost) || 0;
-          totalCurProd += prod;
-          if (item.machine_code === 'PM2') { pm2Cost += cost; pm2Prod += prod; }
-          else if (item.machine_code === 'PM3') { pm3Cost += cost; pm3Prod += prod; }
-        });
-      }
-      var totalUC = totalCurProd > 0 ? totalCurCost / totalCurProd / 1000 : 0;
-      var pm2UC = pm2Prod > 0 ? pm2Cost / pm2Prod / 1000 : 0;
-      var pm3UC = pm3Prod > 0 ? pm3Cost / pm3Prod / 1000 : 0;
-      document.getElementById('s-total-uc').textContent = totalUC > 0 ? totalUC.toFixed(1) : '-';
-      document.getElementById('s-pm2-uc').textContent = pm2UC > 0 ? pm2UC.toFixed(1) : '-';
-      document.getElementById('s-pm3-uc').textContent = pm3UC > 0 ? pm3UC.toFixed(1) : '-';
-
+      // 사용량차이, 단가차이, 재료비종합 → 억원 단위 표시
       setVC('s-qty', s.total_qty_effect);
       setVC('s-price', s.total_price_effect);
       setVC('s-total', s.total_cost_diff);
@@ -1597,6 +1577,26 @@ export function mainPage(): string {
         fetch('/api/dashboard/production-analysis?ym=' + ym).then(r => r.json()),
         fetch('/api/dashboard/mix-effect?ym=' + ym + (mixEffectCategoryFilter !== 'ALL' ? '&category=' + mixEffectCategoryFilter : '')).then(r => r.json())
       ]);
+
+      // 원단위 카드 계산 (overview 데이터 기반 - 이미 톤 단위)
+      var pm2Cost = 0, pm2Prod = 0, pm3Cost = 0, pm3Prod = 0;
+      if (overview && overview.length) {
+        overview.forEach(function(item) {
+          var cost = Number(item.cur_material_cost) || 0;
+          var prod = Number(item.cur_production) || 0;
+          if (item.machine_code === 'PM2') { pm2Cost += cost; pm2Prod += prod; }
+          else if (item.machine_code === 'PM3') { pm3Cost += cost; pm3Prod += prod; }
+        });
+      }
+      var totalCost = pm2Cost + pm3Cost;
+      var totalProd = pm2Prod + pm3Prod;
+      var totalUC = totalProd > 0 ? totalCost / totalProd / 1000 : 0;
+      var pm2UC = pm2Prod > 0 ? pm2Cost / pm2Prod / 1000 : 0;
+      var pm3UC = pm3Prod > 0 ? pm3Cost / pm3Prod / 1000 : 0;
+      document.getElementById('s-total-uc').textContent = totalUC > 0 ? totalUC.toFixed(1) : '-';
+      document.getElementById('s-pm2-uc').textContent = pm2UC > 0 ? pm2UC.toFixed(1) : '-';
+      document.getElementById('s-pm3-uc').textContent = pm3UC > 0 ? pm3UC.toFixed(1) : '-';
+
       renderOverview(overview);
       renderProfitSummary(overview);
       renderMatCostSummary(matCost);
