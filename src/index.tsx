@@ -2053,6 +2053,17 @@ app.post('/api/master/material-mapping', async (c) => {
   return c.json({ success: true })
 })
 
+// ============ 가용 월 목록 API ============
+app.get('/api/available-months', async (c) => {
+  const { env } = c
+  const result = await env.DB.prepare(`
+    SELECT DISTINCT calendar_ym FROM raw_records
+    WHERE calendar_ym != 'CALMONTH' AND calendar_ym IS NOT NULL
+    ORDER BY calendar_ym DESC
+  `).all()
+  return c.json(result.results.map((r: any) => r.calendar_ym))
+})
+
 // ============ 메인 페이지 ============
 app.get('/', (c) => {
   return c.html(mainPage())

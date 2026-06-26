@@ -502,14 +502,10 @@ export function mainPage(): string {
             <thead class="sticky top-0 bg-white z-10">
               <tr>
                 <th rowspan="2" class="!py-2 text-center border-r border-slate-200 w-24">구분</th>
-                <th colspan="3" class="!py-1 text-center bg-sage-50 border-b border-slate-200">당월(전월 2호기 미생산)</th>
                 <th colspan="3" class="!py-1 text-center bg-steel-50 border-b border-slate-200">당월</th>
                 <th colspan="3" class="!py-1 text-center bg-sage-50 border-b border-slate-200">예상</th>
               </tr>
               <tr>
-                <th class="!py-1.5 text-right bg-sage-50 w-20">원단위차이</th>
-                <th class="!py-1.5 text-right bg-sage-50 w-20">수량차이</th>
-                <th class="!py-1.5 text-right bg-sage-50 w-20 border-r border-slate-200">금액효과</th>
                 <th class="!py-1.5 text-right bg-steel-50 w-20">원단위차이</th>
                 <th class="!py-1.5 text-right bg-steel-50 w-20">수량차이</th>
                 <th class="!py-1.5 text-right bg-steel-50 w-20 border-r border-slate-200">금액효과</th>
@@ -1228,6 +1224,19 @@ export function mainPage(): string {
     let unitChartInstance = null, effectChartInstance = null, currentUnitFilter = '', uploadData = [];
 
     document.addEventListener('DOMContentLoaded', async () => {
+      // 가용 월 목록에서 최신 데이터 월을 기본값으로 설정
+      try {
+        var months = await fetch('/api/available-months').then(function(r){return r.json();});
+        if (months && months.length > 0) {
+          var latestYm = months[0]; // 내림차순이므로 첫 번째가 최신
+          var latestYear = latestYm.substring(0, 4);
+          var latestMonth = String(parseInt(latestYm.substring(4, 6)));
+          var yearSel = document.getElementById('analysisYear');
+          var monthSel = document.getElementById('analysisMonth');
+          if (yearSel) yearSel.value = latestYear;
+          if (monthSel) monthSel.value = latestMonth;
+        }
+      } catch(e) { console.warn('가용월 로드 실패:', e); }
       await loadMasterData();
       await loadAnalysis();
     });
@@ -2094,8 +2103,8 @@ export function mainPage(): string {
 
     function renderMixEffect(data) {
       var tbody = document.getElementById('mix-effect-body');
-      if (!data || !data.scenario1) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-gray-400 py-8">\ub370\uc774\ud130\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.</td></tr>';
+      if (!data || !data.scenario2) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 py-8">\ub370\uc774\ud130\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.</td></tr>';
         return;
       }
       var delta = String.fromCharCode(9651);
@@ -2106,7 +2115,6 @@ export function mainPage(): string {
         return '<span class="text-steel-400">' + n.toFixed(1) + '</span>';
       };
 
-      var s1 = data.scenario1;
       var s2 = data.scenario2;
       var s3 = data.scenario3;
       var html = '';
@@ -2114,30 +2122,24 @@ export function mainPage(): string {
       // 호기 믹스 헤더행
       html += '<tr class="bg-sage-50/50 border-t-2 border-sage-200">' +
         '<td class="!py-2 font-bold text-sage-700"><i class="fas fa-exchange-alt mr-1 text-sage-400"></i>\ud638\uae30 \ubbf9\uc2a4</td>' +
-        '<td class="!py-2 text-right font-mono">' + fmtV(s1.machineMix[0]?.col1) + '</td>' +
-        '<td class="!py-2 text-right font-mono">' + fmtV(s1.machineMix[0]?.col2) + '</td>' +
-        '<td class="!py-2 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(s1.machineMix[0]?.col3) + '</td>' +
         '<td class="!py-2 text-right font-mono">' + fmtV(s2.machineMix[0]?.col1) + '</td>' +
         '<td class="!py-2 text-right font-mono">' + fmtV(s2.machineMix[0]?.col2) + '</td>' +
         '<td class="!py-2 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(s2.machineMix[0]?.col3) + '</td>' +
-        '<td class="!py-2 text-right font-mono text-gray-400"> - </td>' +
-        '<td class="!py-2 text-right font-mono text-gray-400"> - </td>' +
-        '<td class="!py-2 text-right font-mono text-gray-400"> - </td>' +
+        '<td class="!py-2 text-right font-mono">' + (s3 ? fmtV(s3.machineMix[0]?.col1) : '<span class="text-gray-400"> - </span>') + '</td>' +
+        '<td class="!py-2 text-right font-mono">' + (s3 ? fmtV(s3.machineMix[0]?.col2) : '<span class="text-gray-400"> - </span>') + '</td>' +
+        '<td class="!py-2 text-right font-mono font-semibold">' + (s3 ? fmtV(s3.machineMix[0]?.col3) : '<span class="text-gray-400"> - </span>') + '</td>' +
         '</tr>';
 
       // 호기 믹스 PM3행 (시나리오2에만)
       if (s2.machineMix.length > 1) {
         html += '<tr class="bg-sage-50/30">' +
           '<td class="!py-1.5 pl-6 text-gray-500 text-[11px]"></td>' +
-          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
-          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
-          '<td class="!py-1.5 text-right font-mono border-r border-slate-200 text-gray-400"> - </td>' +
           '<td class="!py-1.5 text-right font-mono">' + fmtV(s2.machineMix[1]?.col1) + '</td>' +
           '<td class="!py-1.5 text-right font-mono">' + fmtV(s2.machineMix[1]?.col2) + '</td>' +
           '<td class="!py-1.5 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(s2.machineMix[1]?.col3) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
-          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
-          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+          '<td class="!py-1.5 text-right font-mono">' + (s3 && s3.machineMix.length > 1 ? fmtV(s3.machineMix[1]?.col1) : '<span class="text-gray-400"> - </span>') + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + (s3 && s3.machineMix.length > 1 ? fmtV(s3.machineMix[1]?.col2) : '<span class="text-gray-400"> - </span>') + '</td>' +
+          '<td class="!py-1.5 text-right font-mono font-semibold">' + (s3 && s3.machineMix.length > 1 ? fmtV(s3.machineMix[1]?.col3) : '<span class="text-gray-400"> - </span>') + '</td>' +
           '</tr>';
       }
 
@@ -2145,76 +2147,65 @@ export function mainPage(): string {
       html += '<tr class="bg-steel-50/50 border-t-2 border-steel-200">' +
         '<td class="!py-2 font-bold text-steel-500"><i class="fas fa-sitemap mr-1 text-steel-400"></i>\uc9c0\uc885 \ubbf9\uc2a4</td>' +
         '<td colspan="3" class="!py-2 border-r border-slate-200"></td>' +
-        '<td colspan="3" class="!py-2 border-r border-slate-200"></td>' +
         '<td colspan="3" class="!py-2"></td>' +
         '</tr>';
 
       // PM2 지종 믹스
-      var s1pm2 = s1.gradeMix.PM2 || [];
       var s2pm2 = s2.gradeMix.PM2 || [];
+      var s3pm2 = (s3 && s3.gradeMix.PM2) || [];
       var pm2Types = data.pm2Types || [];
       pm2Types.forEach(function(pt, i) {
-        var r1 = s1pm2[i] || { col1:0, col2:0, col3:0 };
         var r2 = s2pm2[i] || { col1:0, col2:0, col3:0 };
+        var r3 = s3pm2[i] || { col1:0, col2:0, col3:0 };
         html += '<tr class="hover:bg-sage-50/30">' +
           '<td class="!py-1.5 pl-4 text-[11px]"><span class="text-gray-400 mr-1">PM2</span>' + pt + '</td>' +
-          '<td class="!py-1.5 text-right font-mono">' + fmtV(r1.col1) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono">' + fmtV(r1.col2) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(r1.col3) + '</td>' +
           '<td class="!py-1.5 text-right font-mono">' + fmtV(r2.col1) + '</td>' +
           '<td class="!py-1.5 text-right font-mono">' + fmtV(r2.col2) + '</td>' +
           '<td class="!py-1.5 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(r2.col3) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
-          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
-          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmtV(r3.col1) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmtV(r3.col2) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono font-semibold">' + fmtV(r3.col3) + '</td>' +
           '</tr>';
       });
 
       // PM2 소계
-      var s1pm2Sum = s1pm2.reduce(function(a,b){ return a + (b.col3||0); }, 0);
       var s2pm2Sum = s2pm2.reduce(function(a,b){ return a + (b.col3||0); }, 0);
+      var s3pm2Sum = s3pm2.reduce(function(a,b){ return a + (b.col3||0); }, 0);
       html += '<tr class="bg-slate-50 font-semibold border-t border-slate-200">' +
         '<td class="!py-1.5 pl-4 text-[11px] text-gray-600">PM2 \uc18c\uacc4</td>' +
         '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
-        '<td class="!py-1.5 text-right font-mono border-r border-slate-200">' + fmtV(s1pm2Sum) + '</td>' +
-        '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
         '<td class="!py-1.5 text-right font-mono border-r border-slate-200">' + fmtV(s2pm2Sum) + '</td>' +
         '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
-        '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+        '<td class="!py-1.5 text-right font-mono">' + fmtV(s3pm2Sum) + '</td>' +
         '</tr>';
 
       // PM3 지종 믹스
-      var s1pm3 = s1.gradeMix.PM3 || [];
       var s2pm3 = s2.gradeMix.PM3 || [];
+      var s3pm3 = (s3 && s3.gradeMix.PM3) || [];
       var pm3Types = data.pm3Types || [];
       pm3Types.forEach(function(pt, i) {
-        var r1 = s1pm3[i] || { col1:0, col2:0, col3:0 };
         var r2 = s2pm3[i] || { col1:0, col2:0, col3:0 };
+        var r3 = s3pm3[i] || { col1:0, col2:0, col3:0 };
         html += '<tr class="hover:bg-sage-50/30">' +
           '<td class="!py-1.5 pl-4 text-[11px]"><span class="text-gray-400 mr-1">PM3</span>' + pt + '</td>' +
-          '<td class="!py-1.5 text-right font-mono">' + fmtV(r1.col1) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono">' + fmtV(r1.col2) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(r1.col3) + '</td>' +
           '<td class="!py-1.5 text-right font-mono">' + fmtV(r2.col1) + '</td>' +
           '<td class="!py-1.5 text-right font-mono">' + fmtV(r2.col2) + '</td>' +
           '<td class="!py-1.5 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(r2.col3) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
-          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
-          '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmtV(r3.col1) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmtV(r3.col2) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono font-semibold">' + fmtV(r3.col3) + '</td>' +
           '</tr>';
       });
 
       // PM3 소계
-      var s1pm3Sum = s1pm3.reduce(function(a,b){ return a + (b.col3||0); }, 0);
       var s2pm3Sum = s2pm3.reduce(function(a,b){ return a + (b.col3||0); }, 0);
+      var s3pm3Sum = s3pm3.reduce(function(a,b){ return a + (b.col3||0); }, 0);
       html += '<tr class="bg-slate-50 font-semibold border-t border-slate-200">' +
         '<td class="!py-1.5 pl-4 text-[11px] text-gray-600">PM3 \uc18c\uacc4</td>' +
         '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
-        '<td class="!py-1.5 text-right font-mono border-r border-slate-200">' + fmtV(s1pm3Sum) + '</td>' +
-        '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
         '<td class="!py-1.5 text-right font-mono border-r border-slate-200">' + fmtV(s2pm3Sum) + '</td>' +
         '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
-        '<td class="!py-1.5 text-right font-mono text-gray-400"> - </td>' +
+        '<td class="!py-1.5 text-right font-mono">' + fmtV(s3pm3Sum) + '</td>' +
         '</tr>';
 
       tbody.innerHTML = html;
