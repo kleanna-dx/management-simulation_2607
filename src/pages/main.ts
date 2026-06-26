@@ -239,10 +239,10 @@ export function mainPage(): string {
                 <i class="fas fa-coins text-sage-600 text-xs"></i>
               </div>
               <div>
-                <div class="text-[10px] text-gray-500 leading-tight"><span id="profit-label">원/부자재 손익</span> <span class="text-gray-400">(전월원단위-당월원단위)×생산량÷1,000</span></div>
+                <div class="text-[10px] text-gray-500 leading-tight"><span id="profit-label">원/부자재 손익</span> <span class="text-gray-400">(전월원단위-당월원단위)×생산량</span></div>
                 <div class="flex items-center gap-1.5">
                   <span id="overview-profit-value" class="text-lg font-bold text-gray-800">-</span>
-                  <span class="text-[10px] text-gray-500">천원</span>
+                  <span class="text-[10px] text-gray-500">억원</span>
                 </div>
               </div>
             </div>
@@ -256,7 +256,7 @@ export function mainPage(): string {
         <div id="profit-detail-section" class="hidden border-b border-slate-100">
           <div class="px-5 py-2.5 bg-slate-50 flex items-center justify-between">
             <h4 class="text-xs font-semibold text-gray-600" id="profit-detail-title"><i class="fas fa-list-alt text-sage-400 mr-1"></i>호기별 지종별 원/부자재 손익 상세</h4>
-            <span class="text-xs text-gray-400">단위: 천원</span>
+            <span class="text-xs text-gray-400">단위: 억원</span>
           </div>
           <div class="overflow-x-auto max-h-[360px] overflow-y-auto">
             <table class="data-table text-xs">
@@ -264,11 +264,11 @@ export function mainPage(): string {
                 <tr>
                   <th class="!py-2">호기</th>
                   <th class="!py-2">지종</th>
-                  <th class="!py-2 text-right">전월 원단위</th>
-                  <th class="!py-2 text-right">당월 원단위</th>
+                  <th class="!py-2 text-right">전월 원단위(천원/톤)</th>
+                  <th class="!py-2 text-right">당월 원단위(천원/톤)</th>
                   <th class="!py-2 text-right">원단위 차이</th>
                   <th class="!py-2 text-right">생산량(당월)</th>
-                  <th class="!py-2 text-right" id="profit-detail-col-header">원/부자재 손익(천원)</th>
+                  <th class="!py-2 text-right" id="profit-detail-col-header">원/부자재 손익(억원)</th>
                 </tr>
               </thead>
               <tbody id="profit-detail-body"></tbody>
@@ -284,28 +284,25 @@ export function mainPage(): string {
               <tr>
                 <th rowspan="2" class="!py-2 text-center border-r border-slate-200">호기</th>
                 <th rowspan="2" class="!py-2 text-center border-r border-slate-200">지종</th>
-                <th colspan="6" class="!py-1 text-center bg-steel-50 border-b border-slate-200">당월</th>
-                <th colspan="6" class="!py-1 text-center bg-amber-50 border-b border-slate-200">전월</th>
-                <th colspan="6" class="!py-1 text-center bg-sage-50 border-b border-slate-200">예상</th>
+                <th colspan="5" class="!py-1 text-center bg-steel-50 border-b border-slate-200">당월</th>
+                <th colspan="5" class="!py-1 text-center bg-amber-50 border-b border-slate-200">전월</th>
+                <th colspan="5" class="!py-1 text-center bg-sage-50 border-b border-slate-200">예상</th>
               </tr>
               <tr>
-                <th class="!py-1.5 text-right bg-steel-50">재료비(원)</th>
+                <th class="!py-1.5 text-right bg-steel-50">재료비(억원)</th>
                 <th class="!py-1.5 text-right bg-steel-50">생산량(톤)</th>
                 <th class="!py-1.5 text-right bg-steel-50">호기비중(%)</th>
-                <th class="!py-1.5 text-right bg-steel-50">원단위(원/kg)</th>
-                <th class="!py-1.5 text-right bg-steel-50">재료비(억원)</th>
+                <th class="!py-1.5 text-right bg-steel-50">원단위(천원/톤)</th>
                 <th class="!py-1.5 text-right bg-steel-50 border-r border-slate-200">전체비중(%)</th>
-                <th class="!py-1.5 text-right bg-amber-50">재료비(원)</th>
+                <th class="!py-1.5 text-right bg-amber-50">재료비(억원)</th>
                 <th class="!py-1.5 text-right bg-amber-50">생산량(톤)</th>
                 <th class="!py-1.5 text-right bg-amber-50">호기비중(%)</th>
-                <th class="!py-1.5 text-right bg-amber-50">원단위(원/kg)</th>
-                <th class="!py-1.5 text-right bg-amber-50">재료비(억원)</th>
+                <th class="!py-1.5 text-right bg-amber-50">원단위(천원/톤)</th>
                 <th class="!py-1.5 text-right bg-amber-50 border-r border-slate-200">전체비중(%)</th>
-                <th class="!py-1.5 text-right bg-sage-50">재료비(원)</th>
+                <th class="!py-1.5 text-right bg-sage-50">재료비(억원)</th>
                 <th class="!py-1.5 text-right bg-sage-50">생산량(톤)</th>
                 <th class="!py-1.5 text-right bg-sage-50">호기비중(%)</th>
-                <th class="!py-1.5 text-right bg-sage-50">원단위(원/kg)</th>
-                <th class="!py-1.5 text-right bg-sage-50">재료비(억원)</th>
+                <th class="!py-1.5 text-right bg-sage-50">원단위(천원/톤)</th>
                 <th class="!py-1.5 text-right bg-sage-50">전체비중(%)</th>
               </tr>
             </thead>
@@ -336,8 +333,8 @@ export function mainPage(): string {
                 <th class="!py-2">호기</th>
                 <th class="!py-2">제품구분(레벨2)</th>
                 <th class="!py-2">자재그룹명</th>
-                <th class="!py-2 text-right">재료비(당월)</th>
-                <th class="!py-2 text-right">재료비(전월)</th>
+                <th class="!py-2 text-right">재료비(억원,당월)</th>
+                <th class="!py-2 text-right">재료비(억원,전월)</th>
                 <th class="!py-2 text-right">전월대비 차이</th>
                 <th class="!py-2 text-right">사용량차이</th>
                 <th class="!py-2 text-right">단가차이</th>
@@ -380,8 +377,8 @@ export function mainPage(): string {
                 <th class="!py-2">호기</th>
                 <th class="!py-2">자재그룹(대분류)명</th>
                 <th class="!py-2">제품구분(레벨2)</th>
-                <th class="!py-2 text-right">재료비(당월)</th>
-                <th class="!py-2 text-right">재료비(전월)</th>
+                <th class="!py-2 text-right">재료비(억원,당월)</th>
+                <th class="!py-2 text-right">재료비(억원,전월)</th>
                 <th class="!py-2 text-right">사용량차이</th>
                 <th class="!py-2 text-right">단가차이</th>
                 <th class="!py-2 text-right">배부수량(당월)</th>
@@ -483,7 +480,7 @@ export function mainPage(): string {
             <button onclick="event.stopPropagation();setMixEffectFilter('ALL')" id="mix-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
             <button onclick="event.stopPropagation();setMixEffectFilter('RAW')" id="mix-filter-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">원재료</button>
             <button onclick="event.stopPropagation();setMixEffectFilter('SUB')" id="mix-filter-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">부재료</button>
-            <span class="text-xs text-gray-400 ml-2">단위: 원단위차이(원/kg), 수량차이(톤), 금액효과(천원)</span>
+            <span class="text-xs text-gray-400 ml-2">단위: 원단위차이(천원/톤), 수량차이(톤), 금액효과(억원)</span>
             <i class="fas fa-chevron-down card-chevron card-chevron-collapsed text-gray-400 ml-2" id="card-mixeffect-chevron"></i>
           </div>
         </div>
@@ -1047,9 +1044,9 @@ export function mainPage(): string {
             <div class="text-xs text-blue-700 space-y-1">
               <p class="font-medium">사용 방법</p>
               <p>1. 기준 데이터를 로드하면 <span class="font-semibold">당월 실적</span>이 기준값으로 설정됩니다.</p>
-              <p>2. <span class="font-semibold text-blue-900">차월 생산량(톤)</span> 또는 <span class="font-semibold text-blue-900">차월 원단위(원/kg)</span>를 계획에 맞게 수정하세요.</p>
+              <p>2. <span class="font-semibold text-blue-900">차월 생산량(톤)</span> 또는 <span class="font-semibold text-blue-900">차월 원단위(천원/톤)</span>를 계획에 맞게 수정하세요.</p>
               <p>3. 수정 즉시 당월 대비 차월 손익이 자동 계산됩니다.</p>
-              <p>4. 손익(천원) = (기준원단위 - 시뮬원단위) × 시뮬생산량 | 양수 = 비용절감, 음수 = 비용증가</p>
+              <p>4. 손익(억원) = (기준원단위 - 시뮬원단위) × 시뮬생산량 | 양수 = 비용절감, 음수 = 비용증가</p>
             </div>
           </div>
         </div>
@@ -1067,17 +1064,17 @@ export function mainPage(): string {
             <p class="text-[10px] text-gray-400 mt-0.5" id="sim-target-label">차월 예상</p>
           </div>
           <div class="summary-card" style="border-color:#c7d2fe; background:linear-gradient(135deg,#eef2ff,#e0e7ff)">
-            <p class="text-[10px] font-medium text-primary-500 uppercase">당월 대비 손익(천원)</p>
+            <p class="text-[10px] font-medium text-primary-500 uppercase">당월 대비 손익(억원)</p>
             <p id="sim-profit-total" class="text-lg font-bold mt-2 stat-value">-</p>
             <p class="text-[10px] text-gray-400 mt-0.5">절감(+) / 증가(-)</p>
           </div>
           <div class="summary-card" style="border-color:#bfdbfe; background:linear-gradient(135deg,#eff6ff,#dbeafe)">
-            <p class="text-[10px] font-medium text-steel-400 uppercase">생산량 효과(천원)</p>
+            <p class="text-[10px] font-medium text-steel-400 uppercase">생산량 효과(억원)</p>
             <p id="sim-prod-effect" class="text-lg font-bold mt-2 stat-value">-</p>
             <p class="text-[10px] text-gray-400 mt-0.5">생산량 변동분</p>
           </div>
           <div class="summary-card" style="border-color:#fde68a; background:linear-gradient(135deg,#fffbeb,#fef3c7)">
-            <p class="text-[10px] font-medium text-amber-600 uppercase">원단위 효과(천원)</p>
+            <p class="text-[10px] font-medium text-amber-600 uppercase">원단위 효과(억원)</p>
             <p id="sim-unit-effect" class="text-lg font-bold mt-2 stat-value">-</p>
             <p class="text-[10px] text-gray-400 mt-0.5">원단위 변동분</p>
           </div>
@@ -1105,14 +1102,14 @@ export function mainPage(): string {
               </tr>
               <tr class="bg-slate-50">
                 <th class="text-right text-[10px]">생산량(톤)</th>
-                <th class="text-right text-[10px]">원단위(원/kg)</th>
-                <th class="text-right text-[10px] !border-r border-slate-200">재료비(천원)</th>
+                <th class="text-right text-[10px]">원단위(천원/톤)</th>
+                <th class="text-right text-[10px] !border-r border-slate-200">재료비(억원)</th>
                 <th class="text-right text-[10px] bg-blue-50/50">생산량(톤)</th>
-                <th class="text-right text-[10px] bg-blue-50/50">원단위(원/kg)</th>
-                <th class="text-right text-[10px] !border-r border-slate-200 bg-blue-50/50">재료비(천원)</th>
+                <th class="text-right text-[10px] bg-blue-50/50">원단위(천원/톤)</th>
+                <th class="text-right text-[10px] !border-r border-slate-200 bg-blue-50/50">재료비(억원)</th>
                 <th class="text-right text-[10px] bg-green-50/50">생산량효과</th>
                 <th class="text-right text-[10px] bg-green-50/50">원단위효과</th>
-                <th class="text-right text-[10px] bg-green-50/50">총손익(천원)</th>
+                <th class="text-right text-[10px] bg-green-50/50">총손익(억원)</th>
               </tr>
             </thead>
             <tbody id="sim-profit-body"></tbody>
@@ -1191,18 +1188,18 @@ export function mainPage(): string {
                 <th class="px-1.5 py-1 text-right border-l border-slate-200">사용량(kg)</th>
                 <th class="px-1.5 py-1 text-right">원단위(kg/톤)</th>
                 <th class="px-1.5 py-1 text-right">사용단가(원/kg)</th>
-                <th class="px-1.5 py-1 text-right">비용(백만원)</th>
-                <th class="px-1.5 py-1 text-right border-r border-slate-300">톤당비용(원/톤)</th>
+                <th class="px-1.5 py-1 text-right">비용(억원)</th>
+                <th class="px-1.5 py-1 text-right border-r border-slate-300">톤당비용(천원/톤)</th>
                 <th class="px-1.5 py-1 text-right">사용량(kg)</th>
                 <th class="px-1.5 py-1 text-right">원단위(kg/톤)</th>
                 <th class="px-1.5 py-1 text-right">입고단가(원/kg)</th>
                 <th class="px-1.5 py-1 text-right">기초재고단가</th>
                 <th class="px-1.5 py-1 text-right">사용단가(원/kg)</th>
-                <th class="px-1.5 py-1 text-right">비용(백만원)</th>
-                <th class="px-1.5 py-1 text-right border-r border-slate-300">톤당비용(원/톤)</th>
-                <th class="px-1.5 py-1 text-right">사용량차이(원)</th>
-                <th class="px-1.5 py-1 text-right">단가차이(원)</th>
-                <th class="px-1.5 py-1 text-right border-r border-slate-300">재료비종합(원)</th>
+                <th class="px-1.5 py-1 text-right">비용(억원)</th>
+                <th class="px-1.5 py-1 text-right border-r border-slate-300">톤당비용(천원/톤)</th>
+                <th class="px-1.5 py-1 text-right">사용량차이(억원)</th>
+                <th class="px-1.5 py-1 text-right">단가차이(억원)</th>
+                <th class="px-1.5 py-1 text-right border-r border-slate-300">재료비종합(억원)</th>
               </tr>
             </thead>
             <tbody id="fc-detail-body"></tbody>
@@ -1621,25 +1618,22 @@ export function mainPage(): string {
 
       const subtotalRow = (mc) => {
         const chipClass = mc === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
-        const mCurUnit = mCurProd > 0 ? mCurCost / (mCurProd * 1000) : 0;
-        const mPrevUnit = mPrevProd > 0 ? mPrevCost / (mPrevProd * 1000) : 0;
-        const mEstUnit = mEstProd > 0 ? mEstCost / (mEstProd * 1000) : 0;
+        const mCurUnit = mCurProd > 0 ? mCurCost / mCurProd / 1000 : 0;
+        const mPrevUnit = mPrevProd > 0 ? mPrevCost / mPrevProd / 1000 : 0;
+        const mEstUnit = mEstProd > 0 ? mEstCost / mEstProd / 1000 : 0;
         return '<tr class="bg-slate-100 font-semibold border-b-2 border-slate-300">' +
           '<td class="!py-1.5 border-r border-slate-200"><span class="unit-chip '+chipClass+'">'+mc+'</span></td>' +
           '<td class="!py-1.5 border-r border-slate-200">\uc694\uc57d</td>' +
-          '<td class="!py-1.5 text-right font-mono">'+fmt(mCurCost)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+eok(mCurCost)+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+fmt(mCurProd)+'</td>' +
           '<td class="!py-1.5 text-right font-mono">100.0</td>' +
           '<td class="!py-1.5 text-right font-mono">'+fmtUnit(mCurUnit)+'</td>' +
-          '<td class="!py-1.5 text-right font-mono">'+eok(mCurCost)+'</td>' +
           '<td class="!py-1.5 text-right font-mono border-r border-slate-200">'+(grandCurCost>0?pct(mCurCost/grandCurCost*100):'-')+'</td>' +
-          '<td class="!py-1.5 text-right font-mono">'+fmt(mPrevCost)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+eok(mPrevCost)+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+fmt(mPrevProd)+'</td>' +
           '<td class="!py-1.5 text-right font-mono">100.0</td>' +
           '<td class="!py-1.5 text-right font-mono">'+fmtUnit(mPrevUnit)+'</td>' +
-          '<td class="!py-1.5 text-right font-mono">'+eok(mPrevCost)+'</td>' +
           '<td class="!py-1.5 text-right font-mono border-r border-slate-200">'+(grandPrevCost>0?pct(mPrevCost/grandPrevCost*100):'-')+'</td>' +
-          '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
           '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
           '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
           '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
@@ -1672,9 +1666,9 @@ export function mainPage(): string {
         // 호기비중: 해당 지종 생산량 / 호기 총생산량 * 100
         const curMachWeight = machineProd[mc] > 0 ? (curProd / machineProd[mc] * 100) : 0;
         const prevMachWeight = machinePrevProd[mc] > 0 ? (prevProd / machinePrevProd[mc] * 100) : 0;
-        // 원단위: 재료비(원) / 생산량(kg) = 원/kg  (생산량은 톤 단위이므로 ×1000)
-        const curUnit = curProd > 0 ? curCost / (curProd * 1000) : 0;
-        const prevUnit = prevProd > 0 ? prevCost / (prevProd * 1000) : 0;
+        // 원단위: 재료비(원) / 생산량(톤) / 1000 = 천원/톤
+        const curUnit = curProd > 0 ? curCost / curProd / 1000 : 0;
+        const prevUnit = prevProd > 0 ? prevCost / prevProd / 1000 : 0;
         // 전체비중: 해당 지종 재료비 / 전체 재료비 * 100
         const curTotalWeight = grandCurCost > 0 ? (curCost / grandCurCost * 100) : 0;
         const prevTotalWeight = grandPrevCost > 0 ? (prevCost / grandPrevCost * 100) : 0;
@@ -1683,21 +1677,18 @@ export function mainPage(): string {
           '<td class="!py-1.5 border-r border-slate-200"><span class="unit-chip '+chipClass+'">'+(d.machine_code||'')+'</span></td>' +
           '<td class="!py-1.5 border-r border-slate-200">'+(d.product_level2_name||'-')+'</td>' +
           // 당월
-          '<td class="!py-1.5 text-right font-mono">'+fmt(curCost)+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+eok(curCost)+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+fmt(curProd)+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+pct(curMachWeight)+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+fmtUnit(curUnit)+'</td>' +
-          '<td class="!py-1.5 text-right font-mono">'+eok(curCost)+'</td>' +
           '<td class="!py-1.5 text-right font-mono border-r border-slate-200">'+pct(curTotalWeight)+'</td>' +
           // 전월
-          '<td class="!py-1.5 text-right font-mono">'+(prevCost?fmt(prevCost):'-')+'</td>' +
+          '<td class="!py-1.5 text-right font-mono">'+(prevCost?eok(prevCost):'-')+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+(prevProd?fmt(prevProd):'-')+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+(prevMachWeight?pct(prevMachWeight):'-')+'</td>' +
           '<td class="!py-1.5 text-right font-mono">'+(prevUnit?fmtUnit(prevUnit):'-')+'</td>' +
-          '<td class="!py-1.5 text-right font-mono">'+(prevCost?eok(prevCost):'-')+'</td>' +
           '<td class="!py-1.5 text-right font-mono border-r border-slate-200">'+(prevTotalWeight?pct(prevTotalWeight):'-')+'</td>' +
           // 예상 (공란)
-          '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
           '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
           '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
           '<td class="!py-1.5 text-right font-mono text-gray-300">-</td>' +
@@ -1710,23 +1701,20 @@ export function mainPage(): string {
       tbody.innerHTML = rows.join('');
 
       // 총합계
-      const grandCurUnit = grandCurProd > 0 ? grandCurCost / (grandCurProd * 1000) : 0;
-      const grandPrevUnit = grandPrevProd > 0 ? grandPrevCost / (grandPrevProd * 1000) : 0;
+      const grandCurUnit = grandCurProd > 0 ? grandCurCost / grandCurProd / 1000 : 0;
+      const grandPrevUnit = grandPrevProd > 0 ? grandPrevCost / grandPrevProd / 1000 : 0;
       tfoot.innerHTML = '<tr>' +
         '<td colspan="2" class="!py-2 text-center border-r border-slate-200 font-bold">\ucd1d\ud569\uacc4</td>' +
-        '<td class="!py-2 text-right font-mono">'+fmt(grandCurCost)+'</td>' +
+        '<td class="!py-2 text-right font-mono">'+eok(grandCurCost)+'</td>' +
         '<td class="!py-2 text-right font-mono">'+fmt(grandCurProd)+'</td>' +
         '<td class="!py-2 text-right font-mono">100.0</td>' +
         '<td class="!py-2 text-right font-mono">'+fmtUnit(grandCurUnit)+'</td>' +
-        '<td class="!py-2 text-right font-mono">'+eok(grandCurCost)+'</td>' +
         '<td class="!py-2 text-right font-mono border-r border-slate-200">100.0</td>' +
-        '<td class="!py-2 text-right font-mono">'+fmt(grandPrevCost)+'</td>' +
+        '<td class="!py-2 text-right font-mono">'+eok(grandPrevCost)+'</td>' +
         '<td class="!py-2 text-right font-mono">'+fmt(grandPrevProd)+'</td>' +
         '<td class="!py-2 text-right font-mono">100.0</td>' +
         '<td class="!py-2 text-right font-mono">'+fmtUnit(grandPrevUnit)+'</td>' +
-        '<td class="!py-2 text-right font-mono">'+eok(grandPrevCost)+'</td>' +
         '<td class="!py-2 text-right font-mono border-r border-slate-200">100.0</td>' +
-        '<td class="!py-2 text-right font-mono text-gray-300">-</td>' +
         '<td class="!py-2 text-right font-mono text-gray-300">-</td>' +
         '<td class="!py-2 text-right font-mono text-gray-300">-</td>' +
         '<td class="!py-2 text-right font-mono text-gray-300">-</td>' +
@@ -1763,7 +1751,7 @@ export function mainPage(): string {
       var titleEl = document.getElementById('profit-detail-title');
       if (titleEl) titleEl.innerHTML = '<i class="fas fa-list-alt text-sage-400 mr-1"></i>\ud638\uae30\ubcc4 \uc9c0\uc885\ubcc4 ' + profitLabel + ' \uc0c1\uc138';
       var colHeader = document.getElementById('profit-detail-col-header');
-      if (colHeader) colHeader.textContent = profitLabel + '(\ucc9c\uc6d0)';
+      if (colHeader) colHeader.textContent = profitLabel + '(\uc5b5\uc6d0)';
 
       const profitEl = document.getElementById('overview-profit-value');
       const tbody = document.getElementById('profit-detail-body');
@@ -1791,10 +1779,10 @@ export function mainPage(): string {
         return '<td class="!py-1.5 text-right font-mono text-steel-400">' + n.toFixed(1) + '</td>';
       };
       const profitCell = (v) => {
-        const n = Math.round(Number(v) || 0);
-        if (n === 0) return '<td class="!py-1.5 text-right font-mono text-gray-400 font-semibold">-</td>';
-        if (n < 0) return '<td class="!py-1.5 text-right font-mono text-red-600 font-semibold">' + String.fromCharCode(9651) + Math.abs(n).toLocaleString() + '</td>';
-        return '<td class="!py-1.5 text-right font-mono text-steel-400 font-semibold">' + n.toLocaleString() + '</td>';
+        const eokV = Number(v) / 100000;  // 천원 → 억원
+        if (Math.abs(eokV) < 0.005) return '<td class="!py-1.5 text-right font-mono text-gray-400 font-semibold">-</td>';
+        if (eokV < 0) return '<td class="!py-1.5 text-right font-mono text-red-600 font-semibold">' + String.fromCharCode(9651) + Math.abs(eokV).toFixed(2) + '</td>';
+        return '<td class="!py-1.5 text-right font-mono text-steel-400 font-semibold">' + eokV.toFixed(2) + '</td>';
       };
 
       let grandProfit = 0;
@@ -1804,9 +1792,9 @@ export function mainPage(): string {
 
       const subtotalRow = (mc) => {
         const chipClass = mc === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
-        const n = Math.round(mProfit);
-        const cls = n < 0 ? 'text-red-600' : (n > 0 ? 'text-steel-400' : 'text-gray-400');
-        const val = n === 0 ? '-' : (n < 0 ? String.fromCharCode(9651) + Math.abs(n).toLocaleString() : n.toLocaleString());
+        const eokV = mProfit / 100000;
+        const cls = eokV < -0.005 ? 'text-red-600' : (eokV > 0.005 ? 'text-steel-400' : 'text-gray-400');
+        const val = Math.abs(eokV) < 0.005 ? '-' : (eokV < 0 ? String.fromCharCode(9651) + Math.abs(eokV).toFixed(2) : eokV.toFixed(2));
         return '<tr class="bg-slate-100 font-semibold border-b border-slate-300">' +
           '<td class="!py-1.5"><span class="unit-chip '+chipClass+'">'+mc+'</span></td>' +
           '<td class="!py-1.5">\uc18c\uacc4</td>' +
@@ -1856,9 +1844,9 @@ export function mainPage(): string {
       tbody.innerHTML = rows.join('');
 
       // 총합계 tfoot
-      const gn = Math.round(grandProfit);
-      const gCls = gn < 0 ? 'text-red-600' : (gn > 0 ? 'text-steel-400' : 'text-gray-400');
-      const gVal = gn === 0 ? '-' : (gn < 0 ? String.fromCharCode(9651) + Math.abs(gn).toLocaleString() : gn.toLocaleString());
+      const gEok = grandProfit / 100000;
+      const gCls = gEok < -0.005 ? 'text-red-600' : (gEok > 0.005 ? 'text-steel-400' : 'text-gray-400');
+      const gVal = Math.abs(gEok) < 0.005 ? '-' : (gEok < 0 ? String.fromCharCode(9651) + Math.abs(gEok).toFixed(2) : gEok.toFixed(2));
       tfoot.innerHTML = '<tr>' +
         '<td colspan="5" class="!py-2 text-center font-bold">\ucd1d\ud569\uacc4</td>' +
         '<td class="!py-2 text-right font-mono">-</td>' +
@@ -1866,8 +1854,8 @@ export function mainPage(): string {
         '</tr>';
 
       // 상단 카드 값 업데이트
-      profitEl.textContent = gn === 0 ? '-' : (gn < 0 ? String.fromCharCode(9651) + Math.abs(gn).toLocaleString() : gn.toLocaleString());
-      profitEl.className = 'text-2xl font-bold ' + (gn < 0 ? 'text-red-600' : (gn > 0 ? 'text-steel-400' : 'text-gray-800'));
+      profitEl.textContent = Math.abs(gEok) < 0.005 ? '-' : (gEok < 0 ? String.fromCharCode(9651) + Math.abs(gEok).toFixed(2) + '\uc5b5' : gEok.toFixed(2) + '\uc5b5');
+      profitEl.className = 'text-2xl font-bold ' + (gEok < -0.005 ? 'text-red-600' : (gEok > 0.005 ? 'text-steel-400' : 'text-gray-800'));
     }
 
     function setMatCostFilter(filter) {
@@ -1891,18 +1879,21 @@ export function mainPage(): string {
         return;
       }
       const fmt = (v) => v != null ? Math.round(Number(v)).toLocaleString() : '-';
+      const eok = (v) => v != null ? (Number(v) / 100000000).toFixed(2) : '-';
       // #,##0 ;[빨강]△#,##0 ; -
       const diffFmt = (v) => {
-        const n = Math.round(Number(v) || 0);
-        if (n === 0) return '-';
-        if (n < 0) return String.fromCharCode(9651) + Math.abs(n).toLocaleString();
-        return n.toLocaleString();
+        const n = Number(v) || 0;
+        if (Math.abs(n) < 1) return '-';
+        const eokV = (Math.abs(n) / 100000000).toFixed(2);
+        if (n < 0) return String.fromCharCode(9651) + eokV;
+        return eokV;
       };
       const diffCell = (v) => {
-        const n = Math.round(Number(v) || 0);
-        if (n === 0) return '<td class="!py-1.5 text-right font-mono text-gray-400">-</td>';
-        if (n < 0) return '<td class="!py-1.5 text-right font-mono text-red-600">' + String.fromCharCode(9651) + Math.abs(n).toLocaleString() + '</td>';
-        return '<td class="!py-1.5 text-right font-mono">' + n.toLocaleString() + '</td>';
+        const n = Number(v) || 0;
+        if (Math.abs(n) < 1) return '<td class="!py-1.5 text-right font-mono text-gray-400">-</td>';
+        const eokV = (Math.abs(n) / 100000000).toFixed(2);
+        if (n < 0) return '<td class="!py-1.5 text-right font-mono text-red-600">' + String.fromCharCode(9651) + eokV + '</td>';
+        return '<td class="!py-1.5 text-right font-mono">' + eokV + '</td>';
       };
       let totalCur = 0, totalPrev = 0, totalUsage = 0, totalPrice = 0, totalRows = 0;
       let prevMachine = '';
@@ -1910,12 +1901,12 @@ export function mainPage(): string {
       const rows = [];
       const subtotalRow = (mc) => {
         const chipClass = mc === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
-        const dEl = (v) => { const n=Math.round(v); if(n===0) return '<td class="!py-1.5 text-right font-mono text-gray-400">-</td>'; if(n<0) return '<td class="!py-1.5 text-right font-mono text-red-600">'+String.fromCharCode(9651)+Math.abs(n).toLocaleString()+'</td>'; return '<td class="!py-1.5 text-right font-mono">'+n.toLocaleString()+'</td>'; };
+        const dEl = (v) => { const n=Number(v); if(Math.abs(n)<1) return '<td class="!py-1.5 text-right font-mono text-gray-400">-</td>'; const ev=(Math.abs(n)/100000000).toFixed(2); if(n<0) return '<td class="!py-1.5 text-right font-mono text-red-600">'+String.fromCharCode(9651)+ev+'</td>'; return '<td class="!py-1.5 text-right font-mono">'+ev+'</td>'; };
         return '<tr class="bg-slate-100 font-semibold">' +
           '<td class="!py-1.5"><span class="unit-chip '+chipClass+'">'+mc+'</span></td>' +
           '<td class="!py-1.5" colspan="2">소계</td>' +
-          '<td class="!py-1.5 text-right font-mono">' + fmt(mCur) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono">' + (mPrev ? fmt(mPrev) : '-') + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + eok(mCur) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono">' + (mPrev ? eok(mPrev) : '-') + '</td>' +
           dEl(mCur - mPrev) +
           dEl(mUsage) +
           dEl(mPrice) +
@@ -1940,8 +1931,8 @@ export function mainPage(): string {
           '<td class="!py-1.5"><span class="unit-chip ' + chipClass + '">' + (d.machine_code||'') + '</span></td>' +
           '<td class="!py-1.5">' + (d.product_level2_name||'-') + '</td>' +
           '<td class="!py-1.5">' + (d.material_group_name||'-') + '</td>' +
-          '<td class="!py-1.5 text-right font-mono font-semibold">' + fmt(curCost) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono text-gray-500">' + (prevCost ? fmt(prevCost) : '-') + '</td>' +
+          '<td class="!py-1.5 text-right font-mono font-semibold">' + eok(curCost) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-500">' + (prevCost ? eok(prevCost) : '-') + '</td>' +
           diffCell(diff) +
           diffCell(usageDiff) +
           diffCell(priceDiff) +
@@ -1950,8 +1941,8 @@ export function mainPage(): string {
       });
       if (prevMachine) rows.push(subtotalRow(prevMachine));
       tbody.innerHTML = rows.join('');
-      document.getElementById('dash-matcost-total-cur').textContent = fmt(totalCur);
-      document.getElementById('dash-matcost-total-prev').textContent = fmt(totalPrev);
+      document.getElementById('dash-matcost-total-cur').textContent = eok(totalCur);
+      document.getElementById('dash-matcost-total-prev').textContent = eok(totalPrev);
       const totalDiff = totalCur - totalPrev;
       const diffEl = document.getElementById('dash-matcost-total-diff');
       diffEl.textContent = diffFmt(totalDiff);
@@ -2233,17 +2224,20 @@ export function mainPage(): string {
         return;
       }
       const fmt = (v) => v != null ? Math.round(Number(v)).toLocaleString() : '-';
+      const eok = (v) => v != null ? (Number(v) / 100000000).toFixed(2) : '-';
       const diffFmt2 = (v) => {
-        const n = Math.round(Number(v) || 0);
-        if (n === 0) return '-';
-        if (n < 0) return String.fromCharCode(9651) + Math.abs(n).toLocaleString();
-        return n.toLocaleString();
+        const n = Number(v) || 0;
+        if (Math.abs(n) < 1) return '-';
+        const ev = (Math.abs(n) / 100000000).toFixed(2);
+        if (n < 0) return String.fromCharCode(9651) + ev;
+        return ev;
       };
       const diffCell2 = (v) => {
-        const n = Math.round(Number(v) || 0);
-        if (n === 0) return '<td class="!py-1.5 text-right font-mono text-gray-400">-</td>';
-        if (n < 0) return '<td class="!py-1.5 text-right font-mono text-red-600">' + String.fromCharCode(9651) + Math.abs(n).toLocaleString() + '</td>';
-        return '<td class="!py-1.5 text-right font-mono">' + n.toLocaleString() + '</td>';
+        const n = Number(v) || 0;
+        if (Math.abs(n) < 1) return '<td class="!py-1.5 text-right font-mono text-gray-400">-</td>';
+        const ev = (Math.abs(n) / 100000000).toFixed(2);
+        if (n < 0) return '<td class="!py-1.5 text-right font-mono text-red-600">' + String.fromCharCode(9651) + ev + '</td>';
+        return '<td class="!py-1.5 text-right font-mono">' + ev + '</td>';
       };
       let tCur=0, tPrev=0, tUsage=0, tPrice=0, tQtyCur=0, tQtyPrev=0;
       let prevGroup = '';
@@ -2263,16 +2257,16 @@ export function mainPage(): string {
           '<td class="!py-1.5"><span class="unit-chip ' + chipClass + '">' + (d.machine_code||'') + '</span></td>' +
           '<td class="!py-1.5">' + (d.material_group_major_name||'-') + '</td>' +
           '<td class="!py-1.5">' + (d.product_level2_name||'-') + '</td>' +
-          '<td class="!py-1.5 text-right font-mono font-semibold">' + fmt(curCost) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono text-gray-500">' + (prevCost ? fmt(prevCost) : '-') + '</td>' +
+          '<td class="!py-1.5 text-right font-mono font-semibold">' + eok(curCost) + '</td>' +
+          '<td class="!py-1.5 text-right font-mono text-gray-500">' + (prevCost ? eok(prevCost) : '-') + '</td>' +
           diffCell2(usageDiff) +
           diffCell2(priceDiff) +
           '<td class="!py-1.5 text-right font-mono">' + fmt(qtyCur) + '</td>' +
           '<td class="!py-1.5 text-right font-mono text-gray-500">' + (qtyPrev ? fmt(qtyPrev) : '-') + '</td>' +
           '</tr>';
       }).join('');
-      document.getElementById('mg-total-cur').textContent = fmt(tCur);
-      document.getElementById('mg-total-prev').textContent = fmt(tPrev);
+      document.getElementById('mg-total-cur').textContent = eok(tCur);
+      document.getElementById('mg-total-prev').textContent = eok(tPrev);
       const usEl = document.getElementById('mg-total-usage'); usEl.textContent = diffFmt2(tUsage); usEl.className = '!py-2 text-right font-mono ' + (tUsage < 0 ? 'text-red-600' : '');
       const prEl = document.getElementById('mg-total-price'); prEl.textContent = diffFmt2(tPrice); prEl.className = '!py-2 text-right font-mono ' + (tPrice < 0 ? 'text-red-600' : '');
       document.getElementById('mg-total-qty-cur').textContent = fmt(tQtyCur);
@@ -3083,8 +3077,8 @@ export function mainPage(): string {
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-l border-slate-200">' + Math.round(r.usage_qty).toLocaleString() + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (r.unit_consumption > 0 ? r.unit_consumption.toFixed(1) : '-') + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (r.unit_price > 0 ? Math.round(r.unit_price).toLocaleString() : '-') + '</td>';
-          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (r.cost_million > 0 ? r.cost_million.toFixed(1) : '-') + '</td>';
-          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-r border-slate-300">' + (r.cost_per_ton > 0 ? Math.round(r.cost_per_ton).toLocaleString() : '-') + '</td>';
+          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (r.cost_million > 0 ? (r.cost_million / 100).toFixed(2) : '-') + '</td>';
+          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-r border-slate-300">' + (r.cost_per_ton > 0 ? (r.cost_per_ton / 1000).toFixed(1) : '-') + '</td>';
           // 차월 예상 7열 (사용량,원단위 자동계산 + 입고단가,기초재고단가 사용자입력 + 사용단가,비용,톤당비용 자동계산)
           html += '<td class="px-1.5 py-0.5 text-right">'
             + '<input type="number" class="w-16 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" id="' + rid + '-nu" data-row="' + rowIdx + '" data-field="next_usage" value="' + Math.round(r.usage_qty) + '" onchange="onFcUsageChange(' + rowIdx + ')">'
@@ -3124,10 +3118,10 @@ export function mainPage(): string {
         html += '<td class="px-1.5 py-1 text-right font-mono text-[10px] border-l border-slate-200">' + Math.round(gUsage).toLocaleString() + '</td>';
         html += '<td class="px-1.5 py-1 text-right text-[10px]">-</td>';
         html += '<td class="px-1.5 py-1 text-right text-[10px]">-</td>';
-        var gCostM = gCost / 1000000;
-        html += '<td class="px-1.5 py-1 text-right font-mono text-[10px]">' + gCostM.toFixed(1) + '</td>';
-        var gCostPerTon = prodTon > 0 ? gCost / prodTon : 0;
-        html += '<td class="px-1.5 py-1 text-right font-mono text-[10px] border-r border-slate-300">' + Math.round(gCostPerTon).toLocaleString() + '</td>';
+        var gCostEok = gCost / 100000000;
+        html += '<td class="px-1.5 py-1 text-right font-mono text-[10px]">' + gCostEok.toFixed(2) + '</td>';
+        var gCostPerTon = prodTon > 0 ? gCost / prodTon / 1000 : 0;
+        html += '<td class="px-1.5 py-1 text-right font-mono text-[10px] border-r border-slate-300">' + gCostPerTon.toFixed(1) + '</td>';
         html += '<td colspan="7" class="border-r border-slate-300"></td>';
         html += '<td colspan="3" class="border-r border-slate-300"></td>';
         html += '<td></td>';
@@ -3240,14 +3234,14 @@ export function mainPage(): string {
 
         // 차월 비용, 톤당비용
         var nextCost = nextUsage * nextPrice;  // 원
-        var nextCostM = nextCost / 1000000;
-        var nextCostPerTon = nextProdTon > 0 ? nextCost / nextProdTon : 0;
+        var nextCostEok = nextCost / 100000000;
+        var nextCostPerTon = nextProdTon > 0 ? nextCost / nextProdTon / 1000 : 0;  // 천원/톤
 
         // 셀 업데이트 (비용/톤당비용은 항상 자동)
         var ncmEl = document.getElementById(rid + '-ncm');
         var nctEl = document.getElementById(rid + '-nct');
-        if (ncmEl) ncmEl.textContent = nextCostM > 0 ? nextCostM.toFixed(1) : '-';
-        if (nctEl) nctEl.textContent = nextCostPerTon > 0 ? Math.round(nextCostPerTon).toLocaleString() : '-';
+        if (ncmEl) ncmEl.textContent = nextCostEok > 0 ? nextCostEok.toFixed(2) : '-';
+        if (nctEl) nctEl.textContent = nextCostPerTon > 0 ? nextCostPerTon.toFixed(1) : '-';
 
         // 손익효과 계산
         // 사용량차이(원) = (당월사용량 - 차월사용량) × 당월사용단가 → 양수=절감
@@ -3267,16 +3261,10 @@ export function mainPage(): string {
 
         function fmtDiff(v) {
           if (!v || Math.abs(v) < 1) return '-';
-          if (v > 0) {
-            if (Math.abs(v) >= 1000000) return '+' + (v/1000000).toFixed(1) + 'M';
-            if (Math.abs(v) >= 1000) return '+' + Math.round(v/1000).toLocaleString() + 'K';
-            return '+' + Math.round(v).toLocaleString();
-          } else {
-            var abs = Math.abs(v);
-            if (abs >= 1000000) return '\u25B3' + (abs/1000000).toFixed(1) + 'M';
-            if (abs >= 1000) return '\u25B3' + Math.round(abs/1000).toLocaleString() + 'K';
-            return '\u25B3' + Math.round(abs).toLocaleString();
-          }
+          var eokV = v / 100000000;
+          if (Math.abs(eokV) < 0.005) return '-';
+          if (eokV > 0) return '+' + eokV.toFixed(2);
+          return '\u25B3' + Math.abs(eokV).toFixed(2);
         }
         function diffColor(v) {
           if (!v || Math.abs(v) < 1) return '';
@@ -3316,8 +3304,8 @@ export function mainPage(): string {
           '당월_사용량(kg)': Math.round(r.usage_qty),
           '당월_원단위(kg/톤)': r.unit_consumption,
           '당월_사용단가(원/kg)': Math.round(r.unit_price),
-          '당월_비용(백만원)': r.cost_million,
-          '당월_톤당비용(원/톤)': r.cost_per_ton,
+          '당월_비용(억원)': r.cost_million ? (r.cost_million / 100).toFixed(2) : '',
+          '당월_톤당비용(천원/톤)': r.cost_per_ton ? (r.cost_per_ton / 1000).toFixed(1) : '',
           '차월_사용량(kg)': nuEl ? Number(nuEl.value) || '' : '',
           '차월_원단위(kg/톤)': nucEl ? Number(nucEl.value) || '' : '',
           '차월_입고단가(원/kg)': incomingEl ? Number(incomingEl.value) || '' : '',
@@ -3533,8 +3521,8 @@ export function mainPage(): string {
         var machineChanged = row.machine_code !== prevMachine;
         prevMachine = row.machine_code;
         var chipClass = row.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
-        var baseCost = row.base_unit_cost * row.base_prod * 1000;  // 원 → 원 (원단위*kg)
-        var baseCostThou = baseCost / 1000;  // 천원
+        var baseCost = row.base_unit_cost * row.base_prod * 1000;  // 원 (원단위*kg)
+        var baseCostEok = baseCost / 100000000;  // 억원
 
         html += '<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-blue-50/20 sim-row" data-id="' + row.id + '">';
         // 호기
@@ -3556,8 +3544,8 @@ export function mainPage(): string {
         html += '<td class="!py-1.5 text-right font-mono text-gray-500">' + (row.base_prod > 0 ? row.base_prod.toFixed(1) : '-') + '</td>';
         // 기준 원단위(원/kg)
         html += '<td class="!py-1.5 text-right font-mono text-gray-500">' + (row.base_unit_cost > 0 ? row.base_unit_cost.toFixed(1) : '-') + '</td>';
-        // 기준 재료비(천원)
-        html += '<td class="!py-1.5 text-right font-mono text-gray-500 !border-r border-slate-200">' + (baseCostThou > 0 ? Math.round(baseCostThou).toLocaleString() : '-') + '</td>';
+        // 기준 재료비(억원)
+        html += '<td class="!py-1.5 text-right font-mono text-gray-500 !border-r border-slate-200">' + (baseCostEok > 0 ? baseCostEok.toFixed(2) : '-') + '</td>';
         // 시뮬 생산량 input
         html += '<td class="!py-1.5 bg-blue-50/30"><input type="number" step="0.1" value="' + (row.sim_prod||'') + '" onchange="onSimInputChange(' + row.id + ',\\'sim_prod\\',this.value)" oninput="onSimInputChange(' + row.id + ',\\'sim_prod\\',this.value)" class="w-20 border border-blue-200 rounded px-2 py-0.5 text-xs text-right font-mono focus:ring-1 focus:ring-blue-300 focus:border-blue-300"></td>';
         // 시뮬 원단위 input
@@ -3576,17 +3564,17 @@ export function mainPage(): string {
     }
 
     function buildEffectCell(v) {
-      var n = Math.round(v);
-      if (n === 0) return '<td class="!py-1.5 text-right font-mono text-gray-400 bg-green-50/30">-</td>';
-      if (n < 0) return '<td class="!py-1.5 text-right font-mono text-red-600 bg-green-50/30">' + String.fromCharCode(9661) + Math.abs(n).toLocaleString() + '</td>';
-      return '<td class="!py-1.5 text-right font-mono text-blue-600 bg-green-50/30">' + String.fromCharCode(9651) + n.toLocaleString() + '</td>';
+      var eokV = v * 1000 / 100000000;
+      if (Math.abs(eokV) < 0.005) return '<td class="!py-1.5 text-right font-mono text-gray-400 bg-green-50/30">-</td>';
+      if (eokV < 0) return '<td class="!py-1.5 text-right font-mono text-red-600 bg-green-50/30">' + String.fromCharCode(9651) + Math.abs(eokV).toFixed(2) + '</td>';
+      return '<td class="!py-1.5 text-right font-mono text-blue-600 bg-green-50/30">+' + eokV.toFixed(2) + '</td>';
     }
 
     function buildProfitCell(v) {
-      var n = Math.round(v);
-      if (n === 0) return '<td class="!py-1.5 text-right font-mono font-semibold text-gray-400 bg-green-50/30">-</td>';
-      if (n < 0) return '<td class="!py-1.5 text-right font-mono font-semibold text-red-600 bg-green-50/30">' + String.fromCharCode(9661) + Math.abs(n).toLocaleString() + '</td>';
-      return '<td class="!py-1.5 text-right font-mono font-semibold text-blue-600 bg-green-50/30">' + String.fromCharCode(9651) + n.toLocaleString() + '</td>';
+      var eokV = v * 1000 / 100000000;
+      if (Math.abs(eokV) < 0.005) return '<td class="!py-1.5 text-right font-mono font-semibold text-gray-400 bg-green-50/30">-</td>';
+      if (eokV < 0) return '<td class="!py-1.5 text-right font-mono font-semibold text-red-600 bg-green-50/30">' + String.fromCharCode(9651) + Math.abs(eokV).toFixed(2) + '</td>';
+      return '<td class="!py-1.5 text-right font-mono font-semibold text-blue-600 bg-green-50/30">+' + eokV.toFixed(2) + '</td>';
     }
 
     function calcSimProfit() {
@@ -3618,32 +3606,33 @@ export function mainPage(): string {
           chartProfits.push(Math.round(profit));
         }
 
-        // 각 행의 손익 결과 셀 업데이트
+        // 각 행의 손익 결과 셀 업데이트 (억원 단위)
         var costEl = document.getElementById('sim-cost-' + row.id);
         var peEl = document.getElementById('sim-pe-' + row.id);
         var ueEl = document.getElementById('sim-ue-' + row.id);
         var prEl = document.getElementById('sim-pr-' + row.id);
 
         if (costEl) {
-          costEl.textContent = simMatCost > 0 ? Math.round(simMatCost).toLocaleString() : '-';
+          var simCostEok = simMatCost * 1000 / 100000000;
+          costEl.textContent = simCostEok > 0 ? simCostEok.toFixed(2) : '-';
         }
         if (peEl) {
-          var peN = Math.round(-pEffect);
-          if (peN === 0) { peEl.textContent = '-'; peEl.className = '!py-1.5 text-right font-mono text-gray-400 bg-green-50/30'; }
-          else if (peN < 0) { peEl.innerHTML = String.fromCharCode(9661) + Math.abs(peN).toLocaleString(); peEl.className = '!py-1.5 text-right font-mono text-red-600 bg-green-50/30'; }
-          else { peEl.innerHTML = String.fromCharCode(9651) + peN.toLocaleString(); peEl.className = '!py-1.5 text-right font-mono text-blue-600 bg-green-50/30'; }
+          var peEok = (-pEffect) * 1000 / 100000000;
+          if (Math.abs(peEok) < 0.005) { peEl.textContent = '-'; peEl.className = '!py-1.5 text-right font-mono text-gray-400 bg-green-50/30'; }
+          else if (peEok < 0) { peEl.innerHTML = String.fromCharCode(9651) + Math.abs(peEok).toFixed(2); peEl.className = '!py-1.5 text-right font-mono text-red-600 bg-green-50/30'; }
+          else { peEl.innerHTML = '+' + peEok.toFixed(2); peEl.className = '!py-1.5 text-right font-mono text-blue-600 bg-green-50/30'; }
         }
         if (ueEl) {
-          var ueN = Math.round(uEffect);
-          if (ueN === 0) { ueEl.textContent = '-'; ueEl.className = '!py-1.5 text-right font-mono text-gray-400 bg-green-50/30'; }
-          else if (ueN < 0) { ueEl.innerHTML = String.fromCharCode(9661) + Math.abs(ueN).toLocaleString(); ueEl.className = '!py-1.5 text-right font-mono text-red-600 bg-green-50/30'; }
-          else { ueEl.innerHTML = String.fromCharCode(9651) + ueN.toLocaleString(); ueEl.className = '!py-1.5 text-right font-mono text-blue-600 bg-green-50/30'; }
+          var ueEok = uEffect * 1000 / 100000000;
+          if (Math.abs(ueEok) < 0.005) { ueEl.textContent = '-'; ueEl.className = '!py-1.5 text-right font-mono text-gray-400 bg-green-50/30'; }
+          else if (ueEok < 0) { ueEl.innerHTML = String.fromCharCode(9651) + Math.abs(ueEok).toFixed(2); ueEl.className = '!py-1.5 text-right font-mono text-red-600 bg-green-50/30'; }
+          else { ueEl.innerHTML = '+' + ueEok.toFixed(2); ueEl.className = '!py-1.5 text-right font-mono text-blue-600 bg-green-50/30'; }
         }
         if (prEl) {
-          var prN = Math.round(profit);
-          if (prN === 0) { prEl.textContent = '-'; prEl.className = '!py-1.5 text-right font-mono font-semibold text-gray-400 bg-green-50/30'; }
-          else if (prN < 0) { prEl.innerHTML = String.fromCharCode(9661) + Math.abs(prN).toLocaleString(); prEl.className = '!py-1.5 text-right font-mono font-semibold text-red-600 bg-green-50/30'; }
-          else { prEl.innerHTML = String.fromCharCode(9651) + prN.toLocaleString(); prEl.className = '!py-1.5 text-right font-mono font-semibold text-blue-600 bg-green-50/30'; }
+          var prEok = profit * 1000 / 100000000;
+          if (Math.abs(prEok) < 0.005) { prEl.textContent = '-'; prEl.className = '!py-1.5 text-right font-mono font-semibold text-gray-400 bg-green-50/30'; }
+          else if (prEok < 0) { prEl.innerHTML = String.fromCharCode(9651) + Math.abs(prEok).toFixed(2); prEl.className = '!py-1.5 text-right font-mono font-semibold text-red-600 bg-green-50/30'; }
+          else { prEl.innerHTML = '+' + prEok.toFixed(2); prEl.className = '!py-1.5 text-right font-mono font-semibold text-blue-600 bg-green-50/30'; }
         }
       });
 
@@ -3654,14 +3643,14 @@ export function mainPage(): string {
       var prodEl = document.getElementById('sim-prod-effect');
       var unitEl = document.getElementById('sim-unit-effect');
 
-      if (baseEl) baseEl.textContent = Math.round(totalBaseMatCost / 1000).toLocaleString() + ' 천원';
-      if (newEl) newEl.textContent = Math.round(totalSimMatCost / 1000).toLocaleString() + ' 천원';
+      if (baseEl) baseEl.textContent = (totalBaseMatCost / 100000000).toFixed(2) + ' 억원';
+      if (newEl) newEl.textContent = (totalSimMatCost / 100000000).toFixed(2) + ' 억원';
 
       var formatCard = function(el, val) {
-        var n = Math.round(val);
-        if (n === 0) { el.textContent = '-'; el.className = 'text-lg font-bold mt-2 stat-value text-gray-400'; }
-        else if (n > 0) { el.textContent = '+' + n.toLocaleString() + ' 천원'; el.className = 'text-lg font-bold mt-2 stat-value text-blue-600'; }
-        else { el.textContent = n.toLocaleString() + ' 천원'; el.className = 'text-lg font-bold mt-2 stat-value text-red-600'; }
+        var eokV = val * 1000 / 100000000;
+        if (Math.abs(eokV) < 0.005) { el.textContent = '-'; el.className = 'text-lg font-bold mt-2 stat-value text-gray-400'; }
+        else if (eokV > 0) { el.textContent = '+' + eokV.toFixed(2) + ' 억원'; el.className = 'text-lg font-bold mt-2 stat-value text-blue-600'; }
+        else { el.textContent = String.fromCharCode(9651) + Math.abs(eokV).toFixed(2) + ' 억원'; el.className = 'text-lg font-bold mt-2 stat-value text-red-600'; }
       };
       if (profitEl) formatCard(profitEl, totalProfit);
       if (prodEl) formatCard(prodEl, -totalProdEffect);
@@ -3670,16 +3659,16 @@ export function mainPage(): string {
       // Footer totals
       var tfoot = document.getElementById('sim-profit-foot');
       if (tfoot) {
-        var totalBaseThou = Math.round(totalBaseMatCost / 1000);
-        var totalSimThou = Math.round(totalSimMatCost / 1000);
+        var totalBaseEok = (totalBaseMatCost / 100000000).toFixed(2);
+        var totalSimEok = (totalSimMatCost / 100000000).toFixed(2);
         tfoot.innerHTML = '<tr class="bg-slate-100 font-semibold border-t-2 border-slate-300">'
           + '<td colspan="2" class="!py-2 text-center font-bold">합계</td>'
           + '<td class="!py-2 text-right font-mono">' + simRows.reduce(function(s,r){return s+r.base_prod;},0).toFixed(1) + '</td>'
           + '<td class="!py-2 text-right font-mono">-</td>'
-          + '<td class="!py-2 text-right font-mono !border-r border-slate-200">' + totalBaseThou.toLocaleString() + '</td>'
+          + '<td class="!py-2 text-right font-mono !border-r border-slate-200">' + totalBaseEok + '</td>'
           + '<td class="!py-2 text-right font-mono bg-blue-50/30">' + simRows.reduce(function(s,r){return s+r.sim_prod;},0).toFixed(1) + '</td>'
           + '<td class="!py-2 text-right font-mono bg-blue-50/30">-</td>'
-          + '<td class="!py-2 text-right font-mono font-medium !border-r border-slate-200 bg-blue-50/30">' + totalSimThou.toLocaleString() + '</td>'
+          + '<td class="!py-2 text-right font-mono font-medium !border-r border-slate-200 bg-blue-50/30">' + totalSimEok + '</td>'
           + buildEffectCell(-totalProdEffect).replace('bg-green-50/30','bg-green-50/50')
           + buildEffectCell(totalUnitEffect).replace('bg-green-50/30','bg-green-50/50')
           + buildProfitCell(totalProfit).replace('bg-green-50/30','bg-green-50/50')
