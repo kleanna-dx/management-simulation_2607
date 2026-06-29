@@ -821,6 +821,7 @@ export function mainPage(): string {
               <i class="fas fa-file-excel mr-1"></i>엑셀 업로드
               <input type="file" accept=".xlsx,.xls" class="hidden" onchange="uploadManualExcel(event)">
             </label>
+            <button onclick="downloadManualTemplate()" class="text-xs px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition font-medium"><i class="fas fa-file-download mr-1"></i>양식 다운로드</button>
             <button onclick="saveManualData()" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition font-medium"><i class="fas fa-save mr-1"></i>저장</button>
             <button onclick="loadManualData()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-gray-600 hover:bg-slate-200 transition font-medium"><i class="fas fa-sync-alt mr-1"></i>불러오기</button>
             <button onclick="toggleManualHistory()" class="text-xs px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 transition font-medium"><i class="fas fa-history mr-1"></i>히스토리</button>
@@ -5592,6 +5593,55 @@ export function mainPage(): string {
 
     // ====== 엑셀 업로드 / 미리보기 / 히스토리 ======
     var mnPreviewData = null; // 엑셀 파싱 결과 임시 저장
+
+    function downloadManualTemplate() {
+      // 자재 목록이 있으면 자재코드/자재명 포함, 없으면 빈 양식
+      var rows = [];
+      if (mnMaterials && mnMaterials.length) {
+        mnMaterials.forEach(function(m) {
+          rows.push({
+            '자재코드': m.code || '',
+            '자재명': m.name || '',
+            '자재그룹': m.group_name || '',
+            '기초재고수량(톤)': '',
+            '기초재고단가(원/kg)': '',
+            '입고수량(톤)': '',
+            '입고단가(원/kg)': '',
+            '사용단가(원/kg)': '',
+            '사용량(kg)': '',
+            '이슈사항': ''
+          });
+        });
+      } else {
+        // 빈 샘플 행 3개
+        for (var i = 0; i < 3; i++) {
+          rows.push({
+            '자재코드': '',
+            '자재명': '',
+            '자재그룹': '',
+            '기초재고수량(톤)': '',
+            '기초재고단가(원/kg)': '',
+            '입고수량(톤)': '',
+            '입고단가(원/kg)': '',
+            '사용단가(원/kg)': '',
+            '사용량(kg)': '',
+            '이슈사항': ''
+          });
+        }
+      }
+      var ws = XLSX.utils.json_to_sheet(rows);
+      // 컬럼 너비 설정
+      ws['!cols'] = [
+        {wch: 14}, {wch: 25}, {wch: 14},
+        {wch: 16}, {wch: 18},
+        {wch: 14}, {wch: 18},
+        {wch: 18}, {wch: 14}, {wch: 20}
+      ];
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '수기입력양식');
+      var filename = '수기입력_양식_' + (mnMachine || 'PM2') + '_' + document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0') + '.xlsx';
+      XLSX.writeFile(wb, filename);
+    }
 
     function uploadManualExcel(event) {
       var file = event.target.files[0];
