@@ -1129,8 +1129,8 @@ export function mainPage(): string {
             <input id="inv-add-mat-type-name" type="text" class="w-32 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="자재유형명">
             <input id="inv-add-mat-code" type="text" class="w-20 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="자재코드">
             <input id="inv-add-mat-name" type="text" class="w-28 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="자재내역">
-            <input id="inv-add-qty" type="number" class="w-24 text-[10px] border border-amber-200 rounded px-1.5 py-1 text-right" placeholder="수량(kg)">
-            <input id="inv-add-price" type="number" class="w-16 text-[10px] border border-amber-200 rounded px-1.5 py-1 text-right" placeholder="단가">
+            <input id="inv-add-qty" type="text" inputmode="numeric" class="w-24 text-[10px] border border-amber-200 rounded px-1.5 py-1 text-right comma-fmt" placeholder="수량(kg)">
+            <input id="inv-add-price" type="text" inputmode="numeric" class="w-16 text-[10px] border border-amber-200 rounded px-1.5 py-1 text-right comma-fmt" placeholder="단가">
             <button onclick="addInventoryRow()" class="text-[10px] px-2 py-1 rounded bg-amber-500 text-white hover:bg-amber-600"><i class="fas fa-plus"></i> 추가</button>
           </div>
         </div>
@@ -1714,6 +1714,25 @@ export function mainPage(): string {
     let productsCache = [], simResultData = null;
     let unitChartInstance = null, effectChartInstance = null, currentUnitFilter = '', uploadData = [];
 
+    // 숫자 입력 필드 천원단위 쉼표 포맷팅 유틸
+    function commaVal(el) {
+      var raw = el.value.replace(/[^0-9.\-]/g, '');
+      if (raw === '' || raw === '-') { el.value = raw; return; }
+      var num = parseFloat(raw);
+      if (isNaN(num)) { el.value = ''; return; }
+      el.value = Math.round(num).toLocaleString('ko-KR');
+    }
+    function parseComma(v) {
+      if (!v) return 0;
+      return parseFloat(String(v).replace(/,/g, '')) || 0;
+    }
+    function setCommaInput(el, val) {
+      if (val == null || val === '') { el.value = ''; return; }
+      var n = parseFloat(String(val).replace(/,/g, ''));
+      if (isNaN(n)) { el.value = ''; return; }
+      el.value = Math.round(n).toLocaleString('ko-KR');
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
       // 가용 월 목록에서 최신 데이터 월을 기본값으로 설정
       try {
@@ -1730,6 +1749,25 @@ export function mainPage(): string {
       } catch(e) { console.warn('가용월 로드 실패:', e); }
       await loadMasterData();
       await loadAnalysis();
+    });
+
+    // 천원단위 쉼표 자동 포맷팅 (blur: 쉼표추가, focus: 쉼표제거)
+    document.addEventListener('focusin', function(e) {
+      var el = e.target;
+      if (!el || el.tagName !== 'INPUT') return;
+      if (!el.classList.contains('comma-fmt')) return;
+      var raw = String(el.value).replace(/,/g, '');
+      el.value = raw;
+    });
+    document.addEventListener('focusout', function(e) {
+      var el = e.target;
+      if (!el || el.tagName !== 'INPUT') return;
+      if (!el.classList.contains('comma-fmt')) return;
+      var raw = String(el.value).replace(/,/g, '');
+      if (raw === '' || raw === '-') return;
+      var n = parseFloat(raw);
+      if (isNaN(n)) return;
+      el.value = Math.round(n).toLocaleString('ko-KR');
     });
 
     function switchTab(tab) {
@@ -3942,22 +3980,22 @@ export function mainPage(): string {
           var defUc = mnUc ? mnUc : (r.unit_consumption > 0 ? r.unit_consumption.toFixed(1) : '');
           var defUp = mnUp ? mnUp : (r.unit_price > 0 ? Math.round(r.unit_price) : '');
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-16 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" id="' + rid + '-nu" data-row="' + rowIdx + '" data-field="next_usage" value="' + defUsage + '" onchange="onFcUsageChange(' + rowIdx + ')">'
+            + '<input type="text" inputmode="numeric" class="w-16 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp comma-fmt" id="' + rid + '-nu" data-row="' + rowIdx + '" data-field="next_usage" value="' + (defUsage ? Math.round(defUsage).toLocaleString() : '') + '" onchange="onFcUsageChange(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
             + '<input type="number" step="0.1" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" id="' + rid + '-nuc" data-row="' + rowIdx + '" data-field="next_uc" value="' + defUc + '" onchange="onFcUcChange(' + rowIdx + ')">'
             + '</td>';
           // 입고단가 (수기입력 저장값 연동)
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" data-row="' + rowIdx + '" data-field="incoming_price" value="' + mnIp + '" placeholder="-" onchange="calcFcRow(' + rowIdx + ')">'
+            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp comma-fmt" data-row="' + rowIdx + '" data-field="incoming_price" value="' + (mnIp ? Math.round(mnIp).toLocaleString() : '') + '" placeholder="-" onchange="calcFcRow(' + rowIdx + ')">'
             + '</td>';
           // 기초재고단가 (수기입력 저장값 연동)
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" data-row="' + rowIdx + '" data-field="stock_price" value="' + mnSp + '" placeholder="-" onchange="calcFcRow(' + rowIdx + ')">'
+            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp comma-fmt" data-row="' + rowIdx + '" data-field="stock_price" value="' + (mnSp ? Math.round(mnSp).toLocaleString() : '') + '" placeholder="-" onchange="calcFcRow(' + rowIdx + ')">'
             + '</td>';
           // 사용단가 (수기입력 가중평균값 연동)
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 bg-emerald-50/50 focus:border-emerald-400 fc-inp" data-row="' + rowIdx + '" data-field="next_unit_price" value="' + defUp + '" placeholder="-" onchange="calcFcRow(' + rowIdx + ')">'
+            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 bg-emerald-50/50 focus:border-emerald-400 fc-inp comma-fmt" data-row="' + rowIdx + '" data-field="next_unit_price" value="' + (defUp ? Math.round(defUp).toLocaleString() : '') + '" placeholder="-" onchange="calcFcRow(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs" id="' + rid + '-ncm">-</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-r border-slate-300" id="' + rid + '-nct">-</td>';
@@ -4009,7 +4047,7 @@ export function mainPage(): string {
       var nuEl = document.getElementById('fc-r-' + idx + '-nu');
       var nucEl = document.getElementById('fc-r-' + idx + '-nuc');
       if (nuEl && nucEl && nextProdTon > 0) {
-        var usage = Number(nuEl.value) || 0;
+        var usage = parseComma(nuEl.value);
         nucEl.value = (usage / nextProdTon).toFixed(1);
       }
       calcFcProfit();
@@ -4026,7 +4064,7 @@ export function mainPage(): string {
       var nucEl = document.getElementById('fc-r-' + idx + '-nuc');
       if (nuEl && nucEl) {
         var uc = Number(nucEl.value) || 0;
-        nuEl.value = Math.round(uc * nextProdTon);
+        nuEl.value = Math.round(uc * nextProdTon).toLocaleString('ko-KR');
       }
       calcFcProfit();
     }
@@ -4064,7 +4102,7 @@ export function mainPage(): string {
 
         if (manualFlag.usage || manualFlag.uc) {
           // 사용자가 직접 수정한 경우: input 값 그대로 사용
-          nextUsage = nuEl ? (Number(nuEl.value) || 0) : 0;
+          nextUsage = nuEl ? parseComma(nuEl.value) : 0;
           nextUC = nucEl ? (Number(nucEl.value) || 0) : 0;
         } else {
           // 자동 계산: 지종별 원단위 기반 보정
@@ -4085,13 +4123,13 @@ export function mainPage(): string {
           nextUC = nextProdTon > 0 ? nextUsage / nextProdTon : 0;
 
           // input 값 동기화
-          if (nuEl) nuEl.value = Math.round(nextUsage);
+          if (nuEl) nuEl.value = Math.round(nextUsage).toLocaleString('ko-KR');
           if (nucEl) nucEl.value = nextUC > 0 ? nextUC.toFixed(1) : '';
         }
 
         // 차월 사용단가 (사용자 입력값 우선)
         var priceInput = document.querySelector('[data-row="' + idx + '"][data-field="next_unit_price"]');
-        var nextPrice = priceInput ? (Number(priceInput.value) || curPrice) : curPrice;
+        var nextPrice = priceInput ? (parseComma(priceInput.value) || curPrice) : curPrice;
 
         // 차월 비용, 톤당비용
         var nextCost = nextUsage * nextPrice;  // 원
@@ -5404,25 +5442,25 @@ export function mainPage(): string {
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-r border-slate-300">' + (prevCostPerTon > 0 ? Math.round(prevCostPerTon).toLocaleString() : '-') + '</td>';
           // 당월 예상 9열 (사용량/원단위/입고수량/입고단가/기초재고수량/기초재고단가/사용단가/비용/톤당비용)
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-16 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 bg-emerald-50/30 focus:border-emerald-400 mn-inp" id="' + rid + '-cu" data-row="' + rowIdx + '" data-field="cur_usage" value="' + (saved.cur_usage || '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
+            + '<input type="text" inputmode="numeric" class="w-16 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 bg-emerald-50/30 focus:border-emerald-400 mn-inp comma-fmt" id="' + rid + '-cu" data-row="' + rowIdx + '" data-field="cur_usage" value="' + (saved.cur_usage ? Math.round(saved.cur_usage).toLocaleString() : '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
             + '<input type="number" step="0.1" class="w-14 text-right text-[10px] font-mono border border-indigo-200 rounded px-0.5 py-0.5 bg-indigo-50/30 focus:border-indigo-400 mn-inp" id="' + rid + '-cuc" data-row="' + rowIdx + '" data-field="cur_uc" data-group="' + (m.group_name || '') + '" value="' + (saved.cur_uc || '') + '" placeholder="-" onchange="onUnitCostInput(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp" id="' + rid + '-iq" data-row="' + rowIdx + '" data-field="incoming_qty" value="' + (saved.incoming_qty || '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
+            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp comma-fmt" id="' + rid + '-iq" data-row="' + rowIdx + '" data-field="incoming_qty" value="' + (saved.incoming_qty ? Math.round(saved.incoming_qty).toLocaleString() : '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp" id="' + rid + '-ip" data-row="' + rowIdx + '" data-field="incoming_price" value="' + (saved.incoming_price || '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
+            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp comma-fmt" id="' + rid + '-ip" data-row="' + rowIdx + '" data-field="incoming_price" value="' + (saved.incoming_price ? Math.round(saved.incoming_price).toLocaleString() : '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp" id="' + rid + '-sq" data-row="' + rowIdx + '" data-field="stock_qty" value="' + (saved.stock_qty || '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
+            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp comma-fmt" id="' + rid + '-sq" data-row="' + rowIdx + '" data-field="stock_qty" value="' + (saved.stock_qty ? Math.round(saved.stock_qty).toLocaleString() : '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp" id="' + rid + '-sp" data-row="' + rowIdx + '" data-field="stock_price" value="' + (saved.stock_price || '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
+            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp comma-fmt" id="' + rid + '-sp" data-row="' + rowIdx + '" data-field="stock_price" value="' + (saved.stock_price ? Math.round(saved.stock_price).toLocaleString() : '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 bg-gray-100 text-gray-600 mn-inp" id="' + rid + '-up" data-row="' + rowIdx + '" data-field="use_price" value="' + (saved.use_price || (prevPrice > 0 ? Math.round(prevPrice) : '')) + '" placeholder="-" readonly title="자동계산 (가중평균)">'
+            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 bg-gray-100 text-gray-600 mn-inp comma-fmt" id="' + rid + '-up" data-row="' + rowIdx + '" data-field="use_price" value="' + ((saved.use_price || (prevPrice > 0 ? Math.round(prevPrice) : '')) ? Math.round(saved.use_price || prevPrice).toLocaleString() : '') + '" placeholder="-" readonly title="자동계산 (가중평균)">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs" id="' + rid + '-cc">-</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-r border-slate-300" id="' + rid + '-ct">-</td>';
@@ -5472,7 +5510,7 @@ export function mainPage(): string {
       var effectiveProd = getEffectiveProduction(idx);
       // 사용량 역산
       var usage = Math.round(unitCost * effectiveProd);
-      cuEl.value = usage > 0 ? usage : '';
+      cuEl.value = usage > 0 ? usage.toLocaleString('ko-KR') : '';
 
       calcManualProfit();
     }
@@ -5533,7 +5571,7 @@ export function mainPage(): string {
 
         // 당월 사용량(kg)
         var cuEl = document.getElementById(rid + '-cu');
-        var curUsage = cuEl ? (Number(cuEl.value) || 0) : 0;
+        var curUsage = cuEl ? parseComma(cuEl.value) : 0;
 
         // 원단위(kg/톤) — 사용량 기반 자동계산 (사용자 수동입력값이 있으면 유지)
         var cucEl = document.getElementById(rid + '-cuc');
@@ -5550,10 +5588,10 @@ export function mainPage(): string {
         var spEl = document.getElementById(rid + '-sp');  // 기초재고단가(원/kg)
         var upEl = document.getElementById(rid + '-up');  // 사용단가(원/kg) - 자동계산 or 수동
 
-        var incomingQty = iqEl ? (Number(iqEl.value) || 0) * 1000 : 0;  // 톤→kg
-        var incomingPrice = ipEl ? (Number(ipEl.value) || 0) : 0;
-        var stockQty = sqEl ? (Number(sqEl.value) || 0) * 1000 : 0;  // 톤→kg
-        var stockPrice = spEl ? (Number(spEl.value) || 0) : 0;
+        var incomingQty = iqEl ? parseComma(iqEl.value) * 1000 : 0;  // 톤→kg
+        var incomingPrice = ipEl ? parseComma(ipEl.value) : 0;
+        var stockQty = sqEl ? parseComma(sqEl.value) * 1000 : 0;  // 톤→kg
+        var stockPrice = spEl ? parseComma(spEl.value) : 0;
 
         // 가중평균 사용단가 자동계산
         var calcPrice = 0;
@@ -5566,10 +5604,10 @@ export function mainPage(): string {
         var curPrice = 0;
         if (calcPrice > 0) {
           curPrice = calcPrice;
-          if (upEl) upEl.value = Math.round(calcPrice);
+          if (upEl) upEl.value = Math.round(calcPrice).toLocaleString('ko-KR');
         } else {
           // 가중평균 계산 불가 시 수동입력값 또는 전월단가 사용
-          curPrice = upEl ? (Number(upEl.value) || prevPrice) : prevPrice;
+          curPrice = upEl ? (parseComma(upEl.value) || prevPrice) : prevPrice;
         }
 
         // 비용(백만원) = 사용량 × 사용단가
@@ -6517,7 +6555,11 @@ export function mainPage(): string {
         ['prev_uc','cur_uc','cur_usage','incoming_qty','incoming_price','stock_qty','stock_price','use_price','issue'].forEach(function(field) {
           var suffix = {prev_uc:'-puc',cur_uc:'-cuc',cur_usage:'-cu',incoming_qty:'-iq',incoming_price:'-ip',stock_qty:'-sq',stock_price:'-sp',use_price:'-up',issue:'-issue'}[field];
           var el = document.getElementById(rid + suffix);
-          if (el) row[field] = el.value;
+          if (el) {
+            var v = el.value;
+            if (field !== 'issue') v = String(v).replace(/,/g, '');
+            row[field] = v;
+          }
         });
         if (Object.values(row).some(function(v){return v !== '';})) {
           materials[m.code] = row;
@@ -6715,8 +6757,8 @@ export function mainPage(): string {
       var matTypeName = document.getElementById('inv-add-mat-type-name').value.trim();
       var matCode = document.getElementById('inv-add-mat-code').value.trim();
       var matName = document.getElementById('inv-add-mat-name').value.trim();
-      var qty = Number(document.getElementById('inv-add-qty').value) || 0;
-      var price = Number(document.getElementById('inv-add-price').value) || 0;
+      var qty = parseComma(document.getElementById('inv-add-qty').value);
+      var price = parseComma(document.getElementById('inv-add-price').value);
 
       if (!month || !matCode) { alert('월과 자재코드는 필수입니다.'); return; }
 
