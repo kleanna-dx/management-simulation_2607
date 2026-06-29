@@ -126,6 +126,7 @@ export function mainPage(): string {
               <option value="2">2월</option>
               <option value="1">1월</option>
             </select>
+            <span id="period-hint" class="text-xs text-blue-600 font-medium ml-1 whitespace-nowrap"></span>
           </div>
         </div>
       </div>
@@ -2166,7 +2167,17 @@ export function mainPage(): string {
         .then(() => loadMasterIdx(tab));
     }
 
+    function updatePeriodHint() {
+      var y = parseInt(document.getElementById('analysisYear').value);
+      var m = parseInt(document.getElementById('analysisMonth').value);
+      var nextM = m === 12 ? 1 : m + 1;
+      var hint = '(' + m + '월 실적 기준 → ' + nextM + '월 예상)';
+      var el = document.getElementById('period-hint');
+      if (el) el.textContent = hint;
+    }
+
     async function loadAnalysis() {
+      updatePeriodHint();
       const year = document.getElementById('analysisYear').value;
       const month = document.getElementById('analysisMonth').value;
       const ym = year + month.padStart(2, '0');
