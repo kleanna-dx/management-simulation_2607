@@ -1368,6 +1368,31 @@ export function mainPage(): string {
           </div>
         </div>
 
+        <!-- 데이터 소스 선택 -->
+        <div class="bg-gradient-to-r from-slate-50 to-blue-50/50 border border-slate-200 rounded-xl p-4 mb-5" id="sim-source-panel">
+          <div class="flex items-center gap-2 mb-3">
+            <i class="fas fa-database text-slate-500"></i>
+            <span class="text-xs font-semibold text-gray-700">시뮬레이션 기준 데이터 소스</span>
+          </div>
+          <div class="flex items-center gap-4">
+            <label class="flex items-center gap-2 cursor-pointer group" id="sim-source-manual-label">
+              <input type="radio" name="sim-source" value="manual" id="sim-source-manual" onchange="onSimSourceChange()" disabled class="accent-emerald-500">
+              <span class="text-xs text-gray-600 group-hover:text-gray-800">
+                <i class="fas fa-pen-to-square text-emerald-500 mr-0.5"></i>수기입력 데이터
+                <span id="sim-source-manual-info" class="text-[10px] text-gray-400 ml-1">(미저장)</span>
+              </span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="radio" name="sim-source" value="actual" id="sim-source-actual" onchange="onSimSourceChange()" checked class="accent-blue-500">
+              <span class="text-xs text-gray-600 group-hover:text-gray-800">
+                <i class="fas fa-chart-bar text-blue-500 mr-0.5"></i>전월 실적 데이터
+                <span class="text-[10px] text-gray-400 ml-1">(raw_records 기반)</span>
+              </span>
+            </label>
+          </div>
+          <p id="sim-source-notice" class="text-[10px] text-amber-600 mt-2 hidden"><i class="fas fa-exclamation-triangle mr-0.5"></i>수기입력 데이터가 미저장 상태입니다. 저장 후 사용 가능합니다.</p>
+        </div>
+
         <!-- Guide -->
         <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5">
           <div class="flex items-start gap-2">
@@ -4157,6 +4182,8 @@ export function mainPage(): string {
     let simRows = [];      // 시뮬레이션 입력 행들
     let simCatFilter = 'ALL';
     let simProfitChart = null;
+    let simManualData = null; // 수기입력 저장 데이터 (시뮬레이션용)
+    let simSource = 'actual'; // 'actual' | 'manual'
 
     function setSimCatFilter(f) {
       simCatFilter = f;
@@ -4164,6 +4191,12 @@ export function mainPage(): string {
         var btn = document.getElementById('sim-cat-' + k);
         if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(k === f.toLowerCase() ? 'pill-tab-active' : 'pill-tab-inactive'); }
       });
+      loadSimProfitBase();
+    }
+
+    function onSimSourceChange() {
+      var manualRadio = document.getElementById('sim-source-manual');
+      simSource = (manualRadio && manualRadio.checked) ? 'manual' : 'actual';
       loadSimProfitBase();
     }
 
@@ -4176,37 +4209,148 @@ export function mainPage(): string {
       var simYear = parseInt(year);
       if (simMonth > 12) { simMonth = 1; simYear++; }
       var simYmLabel = simYear + '년 ' + simMonth + '월';
+      var nextYm = String(simYear) + String(simMonth).padStart(2, '0');
       var simLabelEl = document.getElementById('sim-target-label');
       if (simLabelEl) simLabelEl.textContent = simYmLabel + ' 예상';
       var baseLabelEl = document.getElementById('sim-base-label');
       if (baseLabelEl) baseLabelEl.textContent = year + '년 ' + parseInt(month) + '월 실적';
 
       var catParam = simCatFilter !== 'ALL' ? '&category=' + simCatFilter : '';
+
       try {
-        var res = await fetch('/api/simulation/profit-base?ym=' + ym + catParam);
-        var data = await res.json();
-        simBaseData = data.rows || [];
+        // 기준 데이터 + 수기입력 데이터 동시 로드
+        var results = await Promise.all([
+          fetch('/api/simulation/profit-base?ym=' + ym + catParam).then(function(r){return r.json();}),
+          fetch('/api/manual-input/saved?ym=' + nextYm + '&machine=PM2').then(function(r){return r.json();}),
+          fetch('/api/manual-input/saved?ym=' + nextYm + '&machine=PM3').then(function(r){return r.json();})
+        ]);
+
+        simBaseData = results[0].rows || [];
+
+        // 수기입력 데이터 병합 (PM2+PM3)
+        var pm2Data = (results[1] && results[1].data) ? results[1].data : null;
+        var pm3Data = (results[2] && results[2].data) ? results[2].data : null;
+        simManualData = null;
+
+        if (pm2Data || pm3Data) {
+          simManualData = { production: {}, materials: {}, saved_by: '' };
+          if (pm2Data) {
+            simManualData.production.PM2 = pm2Data.production || {};
+            simManualData.saved_by = results[1].saved_by || '';
+          }
+          if (pm3Data) {
+            simManualData.production.PM3 = pm3Data.production || {};
+            if (!simManualData.saved_by) simManualData.saved_by = results[2].saved_by || '';
+          }
+        }
+
+        // 소스 선택 UI 상태 업데이트
+        updateSimSourcePanel(simManualData, results[1].saved_by, results[1].updated_at);
+
         initSimRows();
         renderSimTable();
         calcSimProfit();
       } catch(e) { console.error('Sim load error:', e); }
     }
 
+    function updateSimSourcePanel(manualData, savedBy, savedAt) {
+      var manualRadio = document.getElementById('sim-source-manual');
+      var manualInfo = document.getElementById('sim-source-manual-info');
+      var notice = document.getElementById('sim-source-notice');
+      var manualLabel = document.getElementById('sim-source-manual-label');
+
+      if (manualData) {
+        // 수기입력 데이터 있음 → 활성화
+        if (manualRadio) { manualRadio.disabled = false; }
+        if (manualLabel) { manualLabel.classList.remove('opacity-50'); }
+        var infoText = savedBy ? ('(' + savedBy + ' 저장') : '(저장됨';
+        if (savedAt) {
+          var dt = new Date(savedAt);
+          infoText += ', ' + (dt.getMonth()+1) + '/' + dt.getDate();
+        }
+        infoText += ') \u2714 \uAD8C\uC7A5';
+        if (manualInfo) { manualInfo.textContent = infoText; manualInfo.classList.remove('text-gray-400'); manualInfo.classList.add('text-emerald-600'); }
+        if (notice) notice.classList.add('hidden');
+        // 수기입력 데이터 있으면 기본 선택을 manual로
+        if (manualRadio && simSource === 'actual') {
+          manualRadio.checked = true;
+          simSource = 'manual';
+        }
+      } else {
+        // 수기입력 데이터 없음 → 비활성화
+        if (manualRadio) { manualRadio.disabled = true; manualRadio.checked = false; }
+        if (manualLabel) { manualLabel.classList.add('opacity-50'); }
+        if (manualInfo) { manualInfo.textContent = '(\uBBF8\uC800\uC7A5)'; manualInfo.classList.remove('text-emerald-600'); manualInfo.classList.add('text-gray-400'); }
+        if (notice) notice.classList.remove('hidden');
+        // 실적 데이터로 강제
+        var actualRadio = document.getElementById('sim-source-actual');
+        if (actualRadio) actualRadio.checked = true;
+        simSource = 'actual';
+      }
+    }
+
     function initSimRows() {
-      // 기준 = 당월(선택된 달) 실적, 시뮬 초기값 = 당월과 동일 (사용자가 차월 계획으로 변경)
-      simRows = simBaseData.map(function(d, i) {
-        return {
-          id: i,
-          machine_code: d.machine_code,
-          product_level2_name: d.product_level2_name,
-          base_prod: d.cur_production_ton,
-          base_unit_cost: d.cur_unit_cost,
-          base_material_cost: d.cur_material_cost,
-          sim_prod: d.cur_production_ton,
-          sim_unit_cost: d.cur_unit_cost,
-          is_new: false
-        };
-      });
+      if (simSource === 'manual' && simManualData) {
+        // 수기입력 기반: 생산량 데이터를 시뮬레이션 행으로 변환
+        simRows = [];
+        var rowId = 0;
+        ['PM2','PM3'].forEach(function(mc) {
+          var prodMap = simManualData.production[mc];
+          if (!prodMap) return;
+          Object.keys(prodMap).forEach(function(pt) {
+            var prodTon = Number(prodMap[pt]) || 0;
+            if (prodTon === 0) return;
+            // 기준 데이터에서 해당 호기/지종의 원단위 찾기
+            var baseRow = simBaseData.find(function(d) { return d.machine_code === mc && d.product_level2_name === pt; });
+            var baseUnitCost = baseRow ? baseRow.cur_unit_cost : 0;
+            var baseProd = baseRow ? baseRow.cur_production_ton : 0;
+            var baseMaterialCost = baseRow ? baseRow.cur_material_cost : 0;
+            simRows.push({
+              id: rowId++,
+              machine_code: mc,
+              product_level2_name: pt,
+              base_prod: baseProd,
+              base_unit_cost: baseUnitCost,
+              base_material_cost: baseMaterialCost,
+              sim_prod: prodTon,
+              sim_unit_cost: baseUnitCost, // 수기입력에선 생산량 기반, 원단위는 동일 유지
+              is_new: false
+            });
+          });
+        });
+        // 수기입력에 없지만 기준데이터에 있는 행도 추가 (잔여)
+        simBaseData.forEach(function(d) {
+          var exists = simRows.find(function(r) { return r.machine_code === d.machine_code && r.product_level2_name === d.product_level2_name; });
+          if (!exists) {
+            simRows.push({
+              id: rowId++,
+              machine_code: d.machine_code,
+              product_level2_name: d.product_level2_name,
+              base_prod: d.cur_production_ton,
+              base_unit_cost: d.cur_unit_cost,
+              base_material_cost: d.cur_material_cost,
+              sim_prod: d.cur_production_ton,
+              sim_unit_cost: d.cur_unit_cost,
+              is_new: false
+            });
+          }
+        });
+      } else {
+        // 전월 실적 기준: 기존 로직
+        simRows = simBaseData.map(function(d, i) {
+          return {
+            id: i,
+            machine_code: d.machine_code,
+            product_level2_name: d.product_level2_name,
+            base_prod: d.cur_production_ton,
+            base_unit_cost: d.cur_unit_cost,
+            base_material_cost: d.cur_material_cost,
+            sim_prod: d.cur_production_ton,
+            sim_unit_cost: d.cur_unit_cost,
+            is_new: false
+          };
+        });
+      }
     }
 
     function resetSimToBase() {
