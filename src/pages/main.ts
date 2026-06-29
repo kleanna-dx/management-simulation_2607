@@ -4608,6 +4608,18 @@ export function mainPage(): string {
         mnPrevProd = results[1].production || {};
         var savedData = results[2] || {};
         mnInputData = savedData.data || {};
+        // 저장된 신규 자재 복원
+        if (mnInputData.new_materials && mnInputData.new_materials.length) {
+          mnInputData.new_materials.forEach(function(nm) {
+            // 이미 목록에 있는지 확인
+            var exists = mnMaterials.some(function(m) {
+              return m.code === nm.code || m.code.replace(/^0+/,'') === nm.code.replace(/^0+/,'');
+            });
+            if (!exists) {
+              mnMaterials.push({ code: nm.code, name: nm.name, group_name: nm.group_name || '신규 추가', usage_qty: 0, unit_price: 0, is_new: true });
+            }
+          });
+        }
         // 마지막 저장 정보 표시
         if (savedData.saved_by || savedData.updated_at) {
           var at = savedData.updated_at || '';
@@ -4725,10 +4737,11 @@ export function mainPage(): string {
           var inputPrevUC = saved.prev_uc !== undefined ? saved.prev_uc : (prevUC > 0 ? prevUC.toFixed(1) : '');
 
           var rid = 'mn-r-' + rowIdx;
-          html += '<tr class="hover:bg-blue-50/30 border-b border-slate-50 mn-mat-row" data-group="' + gk + '">';
+          var rowCls = m.is_new ? 'bg-amber-50/50 hover:bg-amber-100/40 border-b border-amber-100 mn-mat-row' : 'hover:bg-blue-50/30 border-b border-slate-50 mn-mat-row';
+          html += '<tr class="' + rowCls + '" data-group="' + gk + '">';
           // 자재코드/명
-          html += '<td class="px-1.5 py-0.5 text-[10px] font-mono text-gray-400 border-r border-slate-100">' + shortCode + '</td>';
-          html += '<td class="px-1.5 py-0.5 text-xs border-r border-slate-300">' + m.name + '</td>';
+          html += '<td class="px-1.5 py-0.5 text-[10px] font-mono text-gray-400 border-r border-slate-100">' + (m.is_new ? '<span class="text-amber-600 font-semibold">' + shortCode + '</span>' : shortCode) + '</td>';
+          html += '<td class="px-1.5 py-0.5 text-xs border-r border-slate-300">' + m.name + (m.is_new ? ' <span class="text-[9px] px-1 py-0.5 bg-amber-100 text-amber-700 rounded font-semibold">NEW</span>' : '') + '</td>';
           // 전월 실적 5열 (사용량은 표시, 원단위는 입력 가능)
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-l border-slate-200">' + (prevUsage > 0 ? Math.round(prevUsage).toLocaleString() : '-') + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
@@ -4901,7 +4914,7 @@ export function mainPage(): string {
       modal.classList.remove('hidden');
 
       var cols = Object.keys(data[0]);
-      var theadHtml = '';
+      var theadHtml = '<th class="px-2 py-1.5 text-center font-semibold text-gray-600 border-b border-slate-200 w-10">상태</th>';
       cols.forEach(function(col) {
         theadHtml += '<th class="px-2 py-1.5 text-left font-semibold text-gray-600 border-b border-slate-200 whitespace-nowrap">' + col + '</th>';
       });
@@ -4909,9 +4922,33 @@ export function mainPage(): string {
 
       var tbodyHtml = '';
       var maxRows = Math.min(data.length, 100);
+      var matchCount = 0;
+      var newCount = 0;
       for (var i = 0; i < maxRows; i++) {
         var row = data[i];
-        tbodyHtml += '<tr class="border-b border-slate-50 hover:bg-blue-50/30">';
+        var code = String(row['자재코드'] || row['material_code'] || '').trim();
+        var isNew = false;
+        var isMatch = false;
+        if (code && mnMaterials && mnMaterials.length) {
+          var found = mnMaterials.some(function(m) {
+            return m.code === code || m.code.replace(/^0+/,'') === code.replace(/^0+/,'');
+          });
+          if (found) { isMatch = true; matchCount++; }
+          else { isNew = true; newCount++; }
+        } else if (code) {
+          isNew = true; newCount++;
+        }
+
+        var rowClass = isNew ? 'bg-amber-50/60 border-b border-amber-100' : 'border-b border-slate-50 hover:bg-blue-50/30';
+        tbodyHtml += '<tr class="' + rowClass + '">';
+        // 상태 칼럼
+        if (isNew) {
+          tbodyHtml += '<td class="px-2 py-1 text-center"><span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold">신규</span></td>';
+        } else if (isMatch) {
+          tbodyHtml += '<td class="px-2 py-1 text-center"><span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600">매칭</span></td>';
+        } else {
+          tbodyHtml += '<td class="px-2 py-1 text-center"><span class="text-[10px] text-gray-300">-</span></td>';
+        }
         cols.forEach(function(col) {
           var val = row[col] !== undefined && row[col] !== null ? String(row[col]) : '';
           tbodyHtml += '<td class="px-2 py-1 text-xs font-mono whitespace-nowrap">' + val + '</td>';
@@ -4921,20 +4958,13 @@ export function mainPage(): string {
       document.getElementById('mn-preview-tbody').innerHTML = tbodyHtml;
 
       // 요약 정보
-      var matchCount = 0;
-      if (mnMaterials && mnMaterials.length) {
-        data.forEach(function(row) {
-          var code = String(row['자재코드'] || row['material_code'] || '').trim();
-          if (code) {
-            var found = mnMaterials.some(function(m) {
-              return m.code === code || m.code.replace(/^0+/,'') === code.replace(/^0+/,'');
-            });
-            if (found) matchCount++;
-          }
-        });
-      }
-      document.getElementById('mn-preview-summary').innerHTML = '<span class="font-medium text-gray-700">시트: ' + data.length + '행</span> | 컬럼: ' + cols.join(', ').substring(0, 120) + (matchCount > 0 ? ' | <span class="text-emerald-600 font-medium">매칭 자재: ' + matchCount + '건</span>' : ' | <span class="text-amber-600">자재코드 매칭 확인 필요</span>');
-      document.getElementById('mn-preview-count').textContent = '총 ' + data.length + '행 중 ' + maxRows + '행 표시';
+      var summaryParts = ['<span class="font-medium text-gray-700">시트: ' + data.length + '행</span>'];
+      if (matchCount > 0) summaryParts.push('<span class="text-emerald-600 font-medium">기존 매칭: ' + matchCount + '건</span>');
+      if (newCount > 0) summaryParts.push('<span class="text-amber-600 font-semibold"><i class="fas fa-plus-circle mr-0.5"></i>신규 자재: ' + newCount + '건</span>');
+      if (matchCount === 0 && newCount === 0) summaryParts.push('<span class="text-red-500">자재코드 매칭 확인 필요</span>');
+      summaryParts.push('<span class="text-gray-400 text-[10px]">컬럼: ' + cols.join(', ').substring(0, 100) + '</span>');
+      document.getElementById('mn-preview-summary').innerHTML = summaryParts.join(' | ');
+      document.getElementById('mn-preview-count').textContent = '총 ' + data.length + '행 중 ' + maxRows + '행 표시' + (newCount > 0 ? ' (신규 ' + newCount + '건 포함)' : '');
     }
 
     function closeManualPreview() {
@@ -4947,6 +4977,7 @@ export function mainPage(): string {
       if (!mnMaterials || !mnMaterials.length) { alert('먼저 호기를 선택하고 불러오기를 실행해주세요.'); return; }
 
       var applied = 0;
+      var newMaterials = [];
       // 엑셀 데이터 매핑 (자재코드 기준)
       var uploadMap = {};
       mnPreviewData.forEach(function(row) {
@@ -4954,10 +4985,11 @@ export function mainPage(): string {
         if (code) uploadMap[code] = row;
       });
 
+      // 1) 기존 자재 매핑
+      var matchedCodes = {};
       mnMaterials.forEach(function(m, idx) {
         var code = m.code;
         var uploaded = uploadMap[code] || uploadMap[code.replace(/^0+/,'')] || null;
-        // 앞자리 0 제거 매칭 시도
         if (!uploaded) {
           var shortCode = code.replace(/^0+/,'');
           for (var k in uploadMap) {
@@ -4966,38 +4998,83 @@ export function mainPage(): string {
         }
         if (!uploaded) return;
 
+        // 매칭된 코드 기록
+        matchedCodes[code] = true;
+        matchedCodes[code.replace(/^0+/,'')] = true;
+
         var rid = 'mn-r-' + idx;
-        // 사용량
         var cuEl = document.getElementById(rid + '-cu');
         var usageVal = uploaded['사용량(kg)'] || uploaded['당월_사용량(kg)'] || uploaded['cur_usage'] || uploaded['사용량'];
         if (cuEl && usageVal !== undefined) { cuEl.value = Math.round(Number(usageVal)); applied++; }
-        // 입고수량
         var iqEl = document.getElementById(rid + '-iq');
         var iqVal = uploaded['입고수량(톤)'] || uploaded['incoming_qty'] || uploaded['입고수량'];
         if (iqEl && iqVal !== undefined) iqEl.value = Number(iqVal);
-        // 입고단가
         var ipEl = document.getElementById(rid + '-ip');
         var ipVal = uploaded['입고단가(원/kg)'] || uploaded['incoming_price'] || uploaded['입고단가'];
         if (ipEl && ipVal !== undefined) ipEl.value = Math.round(Number(ipVal));
-        // 기초재고수량
         var sqEl = document.getElementById(rid + '-sq');
         var sqVal = uploaded['기초재고수량(톤)'] || uploaded['stock_qty'] || uploaded['기초재고수량'];
         if (sqEl && sqVal !== undefined) sqEl.value = Number(sqVal);
-        // 기초재고단가
         var spEl = document.getElementById(rid + '-sp');
         var spVal = uploaded['기초재고단가(원/kg)'] || uploaded['stock_price'] || uploaded['기초재고단가'];
         if (spEl && spVal !== undefined) spEl.value = Math.round(Number(spVal));
-        // 사용단가
         var upEl = document.getElementById(rid + '-up');
         var upVal = uploaded['사용단가(원/kg)'] || uploaded['use_price'] || uploaded['사용단가'];
         if (upEl && upVal !== undefined) upEl.value = Math.round(Number(upVal));
-        // 이슈사항
         var issueEl = document.getElementById(rid + '-issue');
         var issueVal = uploaded['이슈사항'] || uploaded['issue'] || uploaded['비고'];
         if (issueEl && issueVal !== undefined) issueEl.value = String(issueVal);
       });
 
-      // 생산량 매핑 (엑셀에 '지종' 컬럼 있으면)
+      // 2) 신규 자재 감지 및 추가
+      for (var excelCode in uploadMap) {
+        var shortExcel = excelCode.replace(/^0+/,'');
+        if (matchedCodes[excelCode] || matchedCodes[shortExcel]) continue;
+        // 이 코드는 기존 목록에 없음 → 신규 자재
+        var row = uploadMap[excelCode];
+        var matName = row['자재명'] || row['material_name'] || row['자재 명'] || '신규자재_' + excelCode;
+        var groupName = row['자재그룹'] || row['group_name'] || row['그룹'] || '신규 추가';
+        newMaterials.push({
+          code: excelCode,
+          name: matName,
+          group_name: groupName,
+          usage_qty: 0,
+          unit_price: 0,
+          is_new: true,
+          excel_data: row
+        });
+      }
+
+      // 3) 신규 자재가 있으면 mnMaterials에 추가하고 재렌더링
+      if (newMaterials.length > 0) {
+        newMaterials.forEach(function(nm) { mnMaterials.push(nm); });
+        // mnInputData.materials에 신규 자재 데이터 반영
+        if (!mnInputData.materials) mnInputData.materials = {};
+        newMaterials.forEach(function(nm) {
+          var row = nm.excel_data;
+          var saved = {};
+          var usageVal = row['사용량(kg)'] || row['당월_사용량(kg)'] || row['cur_usage'] || row['사용량'];
+          if (usageVal !== undefined) saved.cur_usage = String(Math.round(Number(usageVal)));
+          var iqVal = row['입고수량(톤)'] || row['incoming_qty'] || row['입고수량'];
+          if (iqVal !== undefined) saved.incoming_qty = String(Number(iqVal));
+          var ipVal = row['입고단가(원/kg)'] || row['incoming_price'] || row['입고단가'];
+          if (ipVal !== undefined) saved.incoming_price = String(Math.round(Number(ipVal)));
+          var sqVal = row['기초재고수량(톤)'] || row['stock_qty'] || row['기초재고수량'];
+          if (sqVal !== undefined) saved.stock_qty = String(Number(sqVal));
+          var spVal = row['기초재고단가(원/kg)'] || row['stock_price'] || row['기초재고단가'];
+          if (spVal !== undefined) saved.stock_price = String(Math.round(Number(spVal)));
+          var upVal = row['사용단가(원/kg)'] || row['use_price'] || row['사용단가'];
+          if (upVal !== undefined) saved.use_price = String(Math.round(Number(upVal)));
+          var issueVal = row['이슈사항'] || row['issue'] || row['비고'];
+          if (issueVal !== undefined) saved.issue = String(issueVal);
+          mnInputData.materials[nm.code] = saved;
+        });
+        // 테이블 재렌더링 (신규 포함)
+        renderManualDetail();
+        applied += newMaterials.length;
+      }
+
+      // 4) 생산량 매핑 (엑셀에 '지종' 컬럼 있으면)
       mnPreviewData.forEach(function(row) {
         var type = row['지종'] || row['product_type'] || '';
         var curProd = row['당월생산량(톤)'] || row['production'] || row['생산량(톤)'];
@@ -5014,7 +5091,10 @@ export function mainPage(): string {
       closeManualPreview();
       calcManualProfit();
       onManualProdChange();
-      alert('엑셀 데이터 적용 완료! (' + applied + '건 매칭)' + String.fromCharCode(10) + '확인 후 [저장] 버튼을 눌러주세요.');
+      var msg = '엑셀 데이터 적용 완료! (기존 매칭: ' + applied + '건';
+      if (newMaterials.length > 0) msg += ', 신규 추가: ' + newMaterials.length + '건';
+      msg += ')' + String.fromCharCode(10) + '확인 후 [저장] 버튼을 눌러주세요.';
+      alert(msg);
     }
 
     // ====== 히스토리 관리 ======
@@ -5122,7 +5202,15 @@ export function mainPage(): string {
         }
       });
 
-      var payload = { ym: ym, machine: mnMachine, data: { production: production, materials: materials }, saved_by: savedBy };
+      // 신규 자재 메타정보 수집
+      var newMaterialsMeta = [];
+      mnMaterials.forEach(function(m) {
+        if (m.is_new) {
+          newMaterialsMeta.push({ code: m.code, name: m.name, group_name: m.group_name });
+        }
+      });
+
+      var payload = { ym: ym, machine: mnMachine, data: { production: production, materials: materials, new_materials: newMaterialsMeta }, saved_by: savedBy };
 
       try {
         var res = await fetch('/api/manual-input/save', {
