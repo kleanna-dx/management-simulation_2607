@@ -1484,7 +1484,10 @@ export function mainPage(): string {
             <button onclick="setFcMachineFilter('PM3')" id="fc-mc-pm3" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">PM3</button>
           </div>
         </div>
-        <span class="text-xs text-gray-400" id="fc-period-label"></span>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-gray-400" id="fc-period-label"></span>
+          <span id="fc-manual-badge" class="hidden text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium"><i class="fas fa-link mr-0.5"></i>수기입력 연동</span>
+        </div>
       </div>
 
       <!-- 상단: 생산량 요약 (당월 실적 + 차월 예상) -->
@@ -3492,6 +3495,7 @@ export function mainPage(): string {
     let fcCurProd = null;  // 당월 생산량
     let fcUnitByProduct = null;  // 자재코드 × 지종별 원단위
     let fcNextInputs = {}; // 차월 사용자 입력값 저장
+    let fcSavedManual = null;  // 수기입력 저장 데이터 (연동)
     let fcManualFlags = {}; // { idx: { usage: true, uc: true } } - 사용자가 직접 수정한 행 추적
 
     function setFcMachineFilter(mc) {
@@ -3526,15 +3530,25 @@ export function mainPage(): string {
       if (detNextH) detNextH.textContent = nextYear + '.' + String(nextMonth).padStart(2,'0') + '월 (예상)';
 
       var mcParam = '&machine=' + fcMachineFilter;
+      // 차월 YM 계산 (수기입력 저장 데이터 조회용)
+      var nextYm = String(nextYear) + String(nextMonth).padStart(2, '0');
       try {
         var results = await Promise.all([
           fetch('/api/forecast/production?ym=' + ym).then(function(r){return r.json();}),
           fetch('/api/forecast/material-detail?ym=' + ym + mcParam).then(function(r){return r.json();}),
-          fetch('/api/forecast/unit-by-product?ym=' + ym + mcParam).then(function(r){return r.json();})
+          fetch('/api/forecast/unit-by-product?ym=' + ym + mcParam).then(function(r){return r.json();}),
+          fetch('/api/manual-input/saved?ym=' + nextYm + '&machine=' + fcMachineFilter).then(function(r){return r.json();})
         ]);
         fcCurProd = results[0];
         fcCurData = results[1];
         fcUnitByProduct = results[2];
+        fcSavedManual = (results[3] && results[3].data) ? results[3].data : null;
+        // 수기입력 연동 상태 표시
+        var badge = document.getElementById('fc-manual-badge');
+        if (badge) {
+          if (fcSavedManual) { badge.classList.remove('hidden'); badge.title = '수기입력 저장 데이터(' + (results[3].saved_by || '') + ') 기반 예상'; }
+          else { badge.classList.add('hidden'); }
+        }
         renderFcProduction();
         renderFcDetail();
         populateFcProductFilter();
@@ -3562,9 +3576,21 @@ export function mainPage(): string {
         typeMap[key] += (Number(d.production_qty) || 0) / 1000;
       });
 
+      // 수기입력 저장 생산량 조회 (차월 예상 기본값)
+      var mnProdMap = null;
+      if (fcSavedManual && fcSavedManual.production) {
+        mnProdMap = fcSavedManual.production;
+      }
+
       var types = Object.keys(typeMap).sort(function(a,b){return typeMap[b]-typeMap[a];});
+      // 수기입력에만 있는 지종도 추가
+      if (mnProdMap) {
+        Object.keys(mnProdMap).forEach(function(t) {
+          if (types.indexOf(t) === -1) types.push(t);
+        });
+      }
       var grandProd = 0;
-      types.forEach(function(t){grandProd += typeMap[t];});
+      types.forEach(function(t){grandProd += typeMap[t] || 0;});
 
       var maxRows = Math.max(types.length, 1);
       var html = '';
@@ -3572,7 +3598,9 @@ export function mainPage(): string {
       // 생산량 행 + 폐품율 행
       for (var i = 0; i < maxRows; i++) {
         var t = types[i] || '';
-        var p = t ? Math.round(typeMap[t]) : 0;
+        var p = t ? Math.round(typeMap[t] || 0) : 0;
+        // 차월 예상: 수기입력 저장값 우선, 없으면 당월실적
+        var nextP = (mnProdMap && mnProdMap[t] != null) ? Math.round(Number(mnProdMap[t])) : p;
         html += '<tr class="border-b border-slate-50 hover:bg-slate-50/30">';
         if (i === 0) {
           html += '<td class="px-2 py-1 text-[10px] text-gray-400 align-top" rowspan="' + (maxRows + 2) + '"></td>';
@@ -3580,20 +3608,27 @@ export function mainPage(): string {
         // 당월 실적
         html += '<td class="px-2 py-0.5 text-xs border-l border-slate-200">' + t + '</td>';
         html += '<td class="px-2 py-0.5 text-xs text-right font-mono">' + (p ? p.toLocaleString() : '') + '</td>';
-        // 차월 예상 (사용자입력)
+        // 차월 예상 (수기입력 저장값 기반)
         html += '<td class="px-2 py-0.5 text-xs border-l border-slate-200">' + t + '</td>';
         html += '<td class="px-2 py-0.5 text-xs text-right">'
-          + '<input type="number" class="w-20 text-right text-xs font-mono border border-slate-200 rounded px-1 py-0.5 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200 fc-next-prod" data-type="' + t + '" value="' + p + '" onchange="onFcProdChange()">'
+          + '<input type="number" class="w-20 text-right text-xs font-mono border border-slate-200 rounded px-1 py-0.5 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200 fc-next-prod" data-type="' + t + '" value="' + nextP + '" onchange="onFcProdChange()">'
           + '</td>';
         html += '</tr>';
       }
+
+      // 차월 합계 계산
+      var grandNextProd = 0;
+      types.forEach(function(t) {
+        var nextV = (mnProdMap && mnProdMap[t] != null) ? Number(mnProdMap[t]) : (typeMap[t] || 0);
+        grandNextProd += nextV;
+      });
 
       // 합계 행
       html += '<tr class="border-t border-slate-200 bg-slate-50/50 font-semibold">';
       html += '<td class="px-2 py-1 text-xs border-l border-slate-200">합계</td>';
       html += '<td class="px-2 py-1 text-xs text-right font-mono">' + Math.round(grandProd).toLocaleString() + '</td>';
       html += '<td class="px-2 py-1 text-xs border-l border-slate-200">합계</td>';
-      html += '<td class="px-2 py-1 text-xs text-right font-mono" id="fc-next-prod-total">' + Math.round(grandProd).toLocaleString() + '</td>';
+      html += '<td class="px-2 py-1 text-xs text-right font-mono" id="fc-next-prod-total">' + Math.round(grandNextProd).toLocaleString() + '</td>';
       html += '</tr>';
 
       // 폐품율 행
@@ -3751,6 +3786,24 @@ export function mainPage(): string {
           grandUsage += r.usage_qty;
           grandCost += r.cost_million * 1000000;
 
+          // 수기입력 저장 데이터에서 차월값 조회
+          var mnSaved = null;
+          if (fcSavedManual && fcSavedManual.materials) {
+            mnSaved = fcSavedManual.materials[r.material_code] || fcSavedManual.materials[shortCode] || null;
+          }
+          var mnUsage = mnSaved ? (mnSaved.cur_usage || '') : '';
+          var mnIp = mnSaved ? (mnSaved.incoming_price || '') : '';
+          var mnSp = mnSaved ? (mnSaved.stock_price || '') : '';
+          var mnUp = mnSaved ? (mnSaved.use_price || '') : '';
+          var mnUc = mnSaved ? (mnSaved.cur_uc || '') : '';
+
+          // 수기입력 데이터가 있으면 manualFlag 세팅 (자동계산 덮어쓰기 방지)
+          if (mnSaved && (mnUsage || mnUc)) {
+            if (!fcManualFlags[rowIdx]) fcManualFlags[rowIdx] = {};
+            if (mnUsage) fcManualFlags[rowIdx].usage = true;
+            if (mnUc) fcManualFlags[rowIdx].uc = true;
+          }
+
           var rid = 'fc-r-' + rowIdx;
           html += '<tr class="hover:bg-blue-50/30 border-b border-slate-50">';
           // 구분/자재
@@ -3762,24 +3815,27 @@ export function mainPage(): string {
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (r.unit_price > 0 ? Math.round(r.unit_price).toLocaleString() : '-') + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (r.cost_million > 0 ? (r.cost_million / 100).toFixed(2) : '-') + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-r border-slate-300">' + (r.cost_per_ton > 0 ? (r.cost_per_ton / 1000).toFixed(1) : '-') + '</td>';
-          // 차월 예상 7열 (사용량,원단위 자동계산 + 입고단가,기초재고단가 사용자입력 + 사용단가,비용,톤당비용 자동계산)
+          // 차월 예상 7열 (수기입력 데이터 연동: 저장값 우선, 없으면 당월실적 기본값)
+          var defUsage = mnUsage ? mnUsage : Math.round(r.usage_qty);
+          var defUc = mnUc ? mnUc : (r.unit_consumption > 0 ? r.unit_consumption.toFixed(1) : '');
+          var defUp = mnUp ? mnUp : (r.unit_price > 0 ? Math.round(r.unit_price) : '');
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-16 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" id="' + rid + '-nu" data-row="' + rowIdx + '" data-field="next_usage" value="' + Math.round(r.usage_qty) + '" onchange="onFcUsageChange(' + rowIdx + ')">'
+            + '<input type="number" class="w-16 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" id="' + rid + '-nu" data-row="' + rowIdx + '" data-field="next_usage" value="' + defUsage + '" onchange="onFcUsageChange(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" step="0.1" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" id="' + rid + '-nuc" data-row="' + rowIdx + '" data-field="next_uc" value="' + (r.unit_consumption > 0 ? r.unit_consumption.toFixed(1) : '') + '" onchange="onFcUcChange(' + rowIdx + ')">'
+            + '<input type="number" step="0.1" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" id="' + rid + '-nuc" data-row="' + rowIdx + '" data-field="next_uc" value="' + defUc + '" onchange="onFcUcChange(' + rowIdx + ')">'
             + '</td>';
-          // 입고단가 (사용자 입력)
+          // 입고단가 (수기입력 저장값 연동)
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" data-row="' + rowIdx + '" data-field="incoming_price" value="" placeholder="-" onchange="calcFcRow(' + rowIdx + ')">'
+            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" data-row="' + rowIdx + '" data-field="incoming_price" value="' + mnIp + '" placeholder="-" onchange="calcFcRow(' + rowIdx + ')">'
             + '</td>';
-          // 기초재고단가 (사용자 입력)
+          // 기초재고단가 (수기입력 저장값 연동)
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" data-row="' + rowIdx + '" data-field="stock_price" value="" placeholder="-" onchange="calcFcRow(' + rowIdx + ')">'
+            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 focus:border-emerald-400 fc-inp" data-row="' + rowIdx + '" data-field="stock_price" value="' + mnSp + '" placeholder="-" onchange="calcFcRow(' + rowIdx + ')">'
             + '</td>';
-          // 사용단가 (자동 or 사용자)
+          // 사용단가 (수기입력 가중평균값 연동)
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 bg-emerald-50/50 focus:border-emerald-400 fc-inp" data-row="' + rowIdx + '" data-field="next_unit_price" value="' + (r.unit_price > 0 ? Math.round(r.unit_price) : '') + '" placeholder="-" onchange="calcFcRow(' + rowIdx + ')">'
+            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 bg-emerald-50/50 focus:border-emerald-400 fc-inp" data-row="' + rowIdx + '" data-field="next_unit_price" value="' + defUp + '" placeholder="-" onchange="calcFcRow(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs" id="' + rid + '-ncm">-</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-r border-slate-300" id="' + rid + '-nct">-</td>';
@@ -6217,8 +6273,8 @@ export function mainPage(): string {
       mnMaterials.forEach(function(m, idx) {
         var rid = 'mn-r-' + idx;
         var row = {};
-        ['prev_uc','cur_usage','incoming_qty','incoming_price','stock_qty','stock_price','use_price','issue'].forEach(function(field) {
-          var suffix = {prev_uc:'-puc',cur_usage:'-cu',incoming_qty:'-iq',incoming_price:'-ip',stock_qty:'-sq',stock_price:'-sp',use_price:'-up',issue:'-issue'}[field];
+        ['prev_uc','cur_uc','cur_usage','incoming_qty','incoming_price','stock_qty','stock_price','use_price','issue'].forEach(function(field) {
+          var suffix = {prev_uc:'-puc',cur_uc:'-cuc',cur_usage:'-cu',incoming_qty:'-iq',incoming_price:'-ip',stock_qty:'-sq',stock_price:'-sp',use_price:'-up',issue:'-issue'}[field];
           var el = document.getElementById(rid + suffix);
           if (el) row[field] = el.value;
         });
