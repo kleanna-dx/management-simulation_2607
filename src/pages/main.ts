@@ -4896,10 +4896,10 @@ export function mainPage(): string {
           // 자재코드/명
           html += '<td class="px-1.5 py-0.5 text-[10px] font-mono text-gray-400 border-r border-slate-100">' + (m.is_new ? '<span class="text-amber-600 font-semibold">' + shortCode + '</span>' : shortCode) + '</td>';
           html += '<td class="px-1.5 py-0.5 text-xs border-r border-slate-300">' + m.name + (m.is_new ? ' <span class="text-[9px] px-1 py-0.5 bg-amber-100 text-amber-700 rounded font-semibold">NEW</span>' : '') + '</td>';
-          // 전월 실적 5열 (사용량은 표시, 원단위는 입력 가능)
+          // 전월 실적 5열 (사용량은 표시, 원단위는 자동계산 readonly)
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-l border-slate-200">' + (prevUsage > 0 ? Math.round(prevUsage).toLocaleString() : '-') + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" step="0.1" class="w-14 text-right text-[10px] font-mono border border-blue-200 rounded px-0.5 py-0.5 bg-blue-50/30 focus:border-blue-400 mn-inp" id="' + rid + '-puc" data-row="' + rowIdx + '" data-field="prev_uc" value="' + inputPrevUC + '" onchange="calcManualRow(' + rowIdx + ')">'
+            + '<input type="number" step="0.1" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 bg-gray-100 text-gray-600 mn-inp" id="' + rid + '-puc" data-row="' + rowIdx + '" data-field="prev_uc" value="' + inputPrevUC + '" readonly title="실적 원단위 (자동계산)">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (prevPrice > 0 ? Math.round(prevPrice).toLocaleString() : '-') + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (prevCostMil > 0 ? Math.round(prevCostMil).toLocaleString() : '-') + '</td>';
