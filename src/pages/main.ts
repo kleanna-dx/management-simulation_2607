@@ -1368,31 +1368,6 @@ export function mainPage(): string {
           </div>
         </div>
 
-        <!-- 데이터 소스 선택 -->
-        <div class="bg-gradient-to-r from-slate-50 to-blue-50/50 border border-slate-200 rounded-xl p-4 mb-5" id="sim-source-panel">
-          <div class="flex items-center gap-2 mb-3">
-            <i class="fas fa-database text-slate-500"></i>
-            <span class="text-xs font-semibold text-gray-700">시뮬레이션 기준 데이터 소스</span>
-          </div>
-          <div class="flex items-center gap-4">
-            <label class="flex items-center gap-2 cursor-pointer group" id="sim-source-manual-label">
-              <input type="radio" name="sim-source" value="manual" id="sim-source-manual" onchange="onSimSourceChange()" disabled class="accent-emerald-500">
-              <span class="text-xs text-gray-600 group-hover:text-gray-800">
-                <i class="fas fa-pen-to-square text-emerald-500 mr-0.5"></i>수기입력 데이터
-                <span id="sim-source-manual-info" class="text-[10px] text-gray-400 ml-1">(미저장)</span>
-              </span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer group">
-              <input type="radio" name="sim-source" value="actual" id="sim-source-actual" onchange="onSimSourceChange()" checked class="accent-blue-500">
-              <span class="text-xs text-gray-600 group-hover:text-gray-800">
-                <i class="fas fa-chart-bar text-blue-500 mr-0.5"></i>전월 실적 데이터
-                <span class="text-[10px] text-gray-400 ml-1">(raw_records 기반)</span>
-              </span>
-            </label>
-          </div>
-          <p id="sim-source-notice" class="text-[10px] text-amber-600 mt-2 hidden"><i class="fas fa-exclamation-triangle mr-0.5"></i>수기입력 데이터가 미저장 상태입니다. 저장 후 사용 가능합니다.</p>
-        </div>
-
         <!-- Guide -->
         <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5">
           <div class="flex items-start gap-2">
@@ -1486,7 +1461,26 @@ export function mainPage(): string {
     <!-- 전월 대비 예상 손익 (메인 탭 래퍼) -->
     <div id="content-profitanalysis" class="hidden fade-in space-y-4">
       <!-- 서브탭 네비게이션 (상단 고정) -->
-      <div class="sticky top-0 z-30 bg-white/95 backdrop-blur-sm py-2 -mx-1 px-1 border-b border-slate-100 shadow-sm">
+      <div class="sticky top-0 z-30 bg-white/95 backdrop-blur-sm pt-2 pb-2 -mx-1 px-1 border-b border-slate-100 shadow-sm" id="pa-sticky-header">
+        <!-- 데이터 소스 선택 (서브탭 위) -->
+        <div class="flex items-center gap-3 mb-2 px-1" id="sim-source-panel">
+          <span class="text-[10px] font-semibold text-gray-500 uppercase"><i class="fas fa-database mr-1"></i>데이터 소스</span>
+          <label class="flex items-center gap-1.5 cursor-pointer group" id="sim-source-manual-label">
+            <input type="radio" name="sim-source" value="manual" id="sim-source-manual" onchange="onSimSourceChange()" disabled class="accent-emerald-500 w-3 h-3">
+            <span class="text-[11px] text-gray-600 group-hover:text-gray-800">
+              <i class="fas fa-pen-to-square text-emerald-500 mr-0.5"></i>수기입력
+              <span id="sim-source-manual-info" class="text-[10px] text-gray-400">(미저장)</span>
+            </span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer group">
+            <input type="radio" name="sim-source" value="actual" id="sim-source-actual" onchange="onSimSourceChange()" checked class="accent-blue-500 w-3 h-3">
+            <span class="text-[11px] text-gray-600 group-hover:text-gray-800">
+              <i class="fas fa-chart-bar text-blue-500 mr-0.5"></i>전월 실적
+            </span>
+          </label>
+          <span id="sim-source-notice" class="text-[10px] text-amber-600 hidden"><i class="fas fa-exclamation-triangle mr-0.5"></i>수기입력 미저장</span>
+        </div>
+        <!-- 서브탭 버튼 -->
         <div class="flex items-center gap-2">
           <button onclick="switchProfitSub('forecast')" id="pa-tab-forecast" class="pill-tab pill-tab-active text-xs !px-4 !py-2">
             <i class="fas fa-chart-area mr-1.5"></i>전월 대비 예상
@@ -1705,6 +1699,9 @@ export function mainPage(): string {
       if (target) target.classList.remove('hidden');
       var activeBtn = document.getElementById('pa-tab-' + sub);
       if (activeBtn) { activeBtn.classList.add('pill-tab-active'); activeBtn.classList.remove('pill-tab-inactive'); }
+      // 상단으로 스크롤
+      var stickyEl = document.getElementById('pa-sticky-header');
+      if (stickyEl) stickyEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
       if (sub === 'forecast') { loadForecast(); }
       if (sub === 'simulation') { loadSimProfitBase(); }
     }
