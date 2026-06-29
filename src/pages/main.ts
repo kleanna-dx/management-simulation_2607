@@ -561,6 +561,9 @@ export function mainPage(): string {
         <button onclick="switchDataInputSub('calcresult')" id="di-tab-calcresult" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
           <i class="fas fa-calculator mr-1.5"></i>계산결과
         </button>
+        <button onclick="switchDataInputSub('inventory')" id="di-tab-inventory" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
+          <i class="fas fa-boxes-stacked mr-1.5"></i>기초재고 입력
+        </button>
       </div>
 
     <!-- 서브: Raw 데이터 입력 (Upload) -->
@@ -1070,6 +1073,89 @@ export function mainPage(): string {
               <tfoot id="cr-detail-foot" class="bg-slate-50 font-semibold border-t-2 border-slate-300"></tfoot>
             </table>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 서브: 기초재고 입력 -->
+    <div id="content-inventory" class="hidden fade-in space-y-4">
+      <div class="card p-6">
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-boxes-stacked text-amber-500 mr-1.5"></i>원부자재 기초재고 입력</h3>
+            <p class="text-xs text-gray-400 mt-1">월별 자재 기초재고 수량 및 단가를 엑셀로 업로드하거나 직접 입력합니다.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="downloadInventoryTemplate()" class="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50"><i class="fas fa-file-download mr-1"></i>양식 다운로드</button>
+            <button onclick="document.getElementById('inv-file-input').click()" class="btn-primary text-xs !py-1.5"><i class="fas fa-file-excel mr-1"></i>엑셀 업로드</button>
+            <input type="file" id="inv-file-input" accept=".xlsx,.xls,.csv" class="hidden" onchange="uploadInventoryFile(event)">
+          </div>
+        </div>
+
+        <!-- 필터 -->
+        <div class="flex items-center gap-3 mb-4">
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-500">월:</label>
+            <select id="inv-month-filter" class="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:border-emerald-400" onchange="loadInventoryData()">
+              <option value="">전체</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-500">플랜트:</label>
+            <select id="inv-plant-filter" class="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:border-emerald-400" onchange="loadInventoryData()">
+              <option value="">전체</option>
+              <option value="P100">P100</option>
+              <option value="P200">P200</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-500">자재유형:</label>
+            <select id="inv-type-filter" class="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:border-emerald-400" onchange="loadInventoryData()">
+              <option value="">전체</option>
+            </select>
+          </div>
+          <button onclick="loadInventoryData()" class="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-gray-600"><i class="fas fa-sync mr-1"></i>새로고침</button>
+          <span id="inv-count" class="text-[10px] text-gray-400 ml-auto"></span>
+        </div>
+
+        <!-- 수동 추가 행 -->
+        <div class="bg-amber-50/50 border border-amber-100 rounded-xl p-3 mb-4">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-[10px] font-semibold text-amber-700"><i class="fas fa-plus-circle mr-0.5"></i>수동 추가:</span>
+            <input id="inv-add-month" type="text" class="w-20 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="26년 5월">
+            <input id="inv-add-plant" type="text" class="w-14 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="P100">
+            <input id="inv-add-mat-type" type="text" class="w-14 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="ROH2">
+            <input id="inv-add-mat-type-name" type="text" class="w-32 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="자재유형명">
+            <input id="inv-add-mat-code" type="text" class="w-20 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="자재코드">
+            <input id="inv-add-mat-name" type="text" class="w-28 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="자재내역">
+            <input id="inv-add-qty" type="number" class="w-24 text-[10px] border border-amber-200 rounded px-1.5 py-1 text-right" placeholder="수량(kg)">
+            <input id="inv-add-price" type="number" class="w-16 text-[10px] border border-amber-200 rounded px-1.5 py-1 text-right" placeholder="단가">
+            <button onclick="addInventoryRow()" class="text-[10px] px-2 py-1 rounded bg-amber-500 text-white hover:bg-amber-600"><i class="fas fa-plus"></i> 추가</button>
+          </div>
+        </div>
+
+        <!-- 테이블 -->
+        <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-gray-100 rounded-xl">
+          <table class="w-full text-xs border-collapse">
+            <thead class="sticky top-0 z-10">
+              <tr class="bg-slate-50 border-b">
+                <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">월</th>
+                <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">플랜트</th>
+                <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">자재유형</th>
+                <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">자재유형명</th>
+                <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">자재코드</th>
+                <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">자재내역</th>
+                <th class="px-2 py-2 text-center font-semibold text-gray-600 whitespace-nowrap">통화</th>
+                <th class="px-2 py-2 text-center font-semibold text-gray-600 whitespace-nowrap">단위</th>
+                <th class="px-2 py-2 text-right font-semibold text-gray-600 whitespace-nowrap">기초재고-수량</th>
+                <th class="px-2 py-2 text-right font-semibold text-gray-600 whitespace-nowrap">기초재고-가격</th>
+                <th class="px-2 py-2 text-center font-semibold text-gray-600 whitespace-nowrap">삭제</th>
+              </tr>
+            </thead>
+            <tbody id="inv-table-body">
+              <tr><td colspan="11" class="text-center text-gray-400 py-8">데이터를 업로드하거나 수동 추가해주세요.</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1673,7 +1759,7 @@ export function mainPage(): string {
     }
 
     function switchDataInputSub(sub) {
-      ['upload','dataview','manual','calcresult'].forEach(function(s) {
+      ['upload','dataview','manual','calcresult','inventory'].forEach(function(s) {
         var el = document.getElementById('content-' + s);
         if (el) el.classList.add('hidden');
         var btn = document.getElementById('di-tab-' + s);
@@ -1686,6 +1772,7 @@ export function mainPage(): string {
       if (sub === 'dataview') { initDataView(); }
       if (sub === 'manual') { loadManualData(); }
       if (sub === 'calcresult') { renderCalcResult(); }
+      if (sub === 'inventory') { loadInventoryData(); }
     }
 
     function switchProfitSub(sub) {
@@ -6466,6 +6553,196 @@ export function mainPage(): string {
       if (byEl) byEl.textContent = savedBy || '(미입력)';
       if (atEl) atEl.textContent = savedAt || '';
     }
+
+    // ============ 기초재고 입력 ============
+    var invData = []; // 기초재고 데이터 배열
+
+    async function loadInventoryData() {
+      var monthFilter = document.getElementById('inv-month-filter') ? document.getElementById('inv-month-filter').value : '';
+      var plantFilter = document.getElementById('inv-plant-filter') ? document.getElementById('inv-plant-filter').value : '';
+      var typeFilter = document.getElementById('inv-type-filter') ? document.getElementById('inv-type-filter').value : '';
+
+      var params = [];
+      if (monthFilter) params.push('month=' + encodeURIComponent(monthFilter));
+      if (plantFilter) params.push('plant=' + encodeURIComponent(plantFilter));
+      if (typeFilter) params.push('material_type=' + encodeURIComponent(typeFilter));
+      var qs = params.length ? '?' + params.join('&') : '';
+
+      try {
+        var res = await fetch('/api/inventory-stock' + qs);
+        var result = await res.json();
+        invData = result.rows || [];
+        renderInventoryTable();
+        updateInvFilters();
+      } catch(e) {
+        console.error('Inventory load error:', e);
+      }
+    }
+
+    function updateInvFilters() {
+      var monthSel = document.getElementById('inv-month-filter');
+      var typeSel = document.getElementById('inv-type-filter');
+      if (!monthSel || !typeSel) return;
+
+      var months = {};
+      var types = {};
+      invData.forEach(function(d) {
+        if (d.month) months[d.month] = true;
+        if (d.material_type) types[d.material_type] = true;
+      });
+
+      var curMonth = monthSel.value;
+      var curType = typeSel.value;
+
+      var mHtml = '<option value="">전체</option>';
+      Object.keys(months).sort().forEach(function(m) { mHtml += '<option value="' + m + '"' + (m === curMonth ? ' selected' : '') + '>' + m + '</option>'; });
+      monthSel.innerHTML = mHtml;
+
+      var tHtml = '<option value="">전체</option>';
+      Object.keys(types).sort().forEach(function(t) { tHtml += '<option value="' + t + '"' + (t === curType ? ' selected' : '') + '>' + t + '</option>'; });
+      typeSel.innerHTML = tHtml;
+    }
+
+    function renderInventoryTable() {
+      var tbody = document.getElementById('inv-table-body');
+      if (!tbody) return;
+
+      var countEl = document.getElementById('inv-count');
+      if (countEl) countEl.textContent = invData.length + '건';
+
+      if (!invData.length) {
+        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-gray-400 py-8">데이터를 업로드하거나 수동 추가해주세요.</td></tr>';
+        return;
+      }
+
+      var html = '';
+      invData.forEach(function(d) {
+        html += '<tr class="border-b border-slate-50 hover:bg-slate-50/50">';
+        html += '<td class="px-2 py-1.5 text-xs whitespace-nowrap">' + (d.month || '') + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs whitespace-nowrap">' + (d.plant || '') + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs font-mono whitespace-nowrap">' + (d.material_type || '') + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs whitespace-nowrap">' + (d.material_type_name || '') + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs font-mono whitespace-nowrap">' + (d.material_code || '') + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs whitespace-nowrap">' + (d.material_name || '') + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs text-center">' + (d.currency || 'KRW') + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs text-center">' + (d.unit || 'KG') + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs text-right font-mono">' + (d.stock_qty != null ? Number(d.stock_qty).toLocaleString(undefined, {maximumFractionDigits:3}) : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs text-right font-mono">' + (d.stock_price != null ? Number(d.stock_price).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center"><button onclick="deleteInventoryRow(' + d.id + ')" class="text-red-400 hover:text-red-600 text-[10px]"><i class="fas fa-trash"></i></button></td>';
+        html += '</tr>';
+      });
+      tbody.innerHTML = html;
+    }
+
+    function downloadInventoryTemplate() {
+      var headers = ['월', '플랜트', '자재유형', '자재유형명', '자재', '자재내역', '통화', '기본단위', '기초재고-수량', '기초재고-가격'];
+      var sample = [
+        ['26년 4월', 'P100', 'ROH2', '고지원자재(깨끗한나라)', '1200000', '화이트레저(B)', 'KRW', 'KG', 3735921, 335],
+        ['26년 5월', 'P100', 'ROH2', '고지원자재(깨끗한나라)', '1200000', '화이트레저(B)', 'KRW', 'KG', 2986394, 331]
+      ];
+      var wsData = [headers].concat(sample);
+      var ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = [{wch:10},{wch:8},{wch:8},{wch:25},{wch:10},{wch:18},{wch:6},{wch:6},{wch:15},{wch:12}];
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '기초재고');
+      XLSX.writeFile(wb, '기초재고_양식.xlsx');
+    }
+
+    async function uploadInventoryFile(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      event.target.value = '';
+
+      var reader = new FileReader();
+      reader.onload = async function(e) {
+        try {
+          var data = new Uint8Array(e.target.result);
+          var workbook = XLSX.read(data, {type: 'array'});
+          var sheet = workbook.Sheets[workbook.SheetNames[0]];
+          var rows = XLSX.utils.sheet_to_json(sheet, {defval: ''});
+
+          if (!rows.length) { alert('데이터가 없습니다.'); return; }
+
+          var mapped = rows.map(function(r) {
+            return {
+              month: r['월'] || r['month'] || '',
+              plant: r['플랜트'] || r['plant'] || '',
+              material_type: r['자재유형'] || r['material_type'] || '',
+              material_type_name: r['자재유형명'] || r['material_type_name'] || '',
+              material_code: String(r['자재'] || r['material_code'] || r['자재코드'] || ''),
+              material_name: r['자재내역'] || r['material_name'] || r['자재명'] || '',
+              currency: r['통화'] || r['currency'] || 'KRW',
+              unit: r['기본단위'] || r['unit'] || 'KG',
+              stock_qty: Number(String(r['기초재고-수량'] || r['stock_qty'] || r['수량'] || 0).replace(/,/g, '')) || 0,
+              stock_price: Number(String(r['기초재고-가격'] || r['stock_price'] || r['가격'] || r['단가'] || 0).replace(/,/g, '')) || 0
+            };
+          });
+
+          var res = await fetch('/api/inventory-stock/bulk', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ rows: mapped })
+          });
+          var result = await res.json();
+          if (result.success) {
+            alert(result.count + '건 업로드 완료');
+            loadInventoryData();
+          } else {
+            alert('업로드 실패: ' + (result.error || ''));
+          }
+        } catch(err) {
+          alert('파일 파싱 오류: ' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    async function addInventoryRow() {
+      var month = document.getElementById('inv-add-month').value.trim();
+      var plant = document.getElementById('inv-add-plant').value.trim();
+      var matType = document.getElementById('inv-add-mat-type').value.trim();
+      var matTypeName = document.getElementById('inv-add-mat-type-name').value.trim();
+      var matCode = document.getElementById('inv-add-mat-code').value.trim();
+      var matName = document.getElementById('inv-add-mat-name').value.trim();
+      var qty = Number(document.getElementById('inv-add-qty').value) || 0;
+      var price = Number(document.getElementById('inv-add-price').value) || 0;
+
+      if (!month || !matCode) { alert('월과 자재코드는 필수입니다.'); return; }
+
+      try {
+        var res = await fetch('/api/inventory-stock', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            month: month, plant: plant, material_type: matType,
+            material_type_name: matTypeName, material_code: matCode,
+            material_name: matName, currency: 'KRW', unit: 'KG',
+            stock_qty: qty, stock_price: price
+          })
+        });
+        var result = await res.json();
+        if (result.success) {
+          ['inv-add-month','inv-add-plant','inv-add-mat-type','inv-add-mat-type-name','inv-add-mat-code','inv-add-mat-name','inv-add-qty','inv-add-price'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.value = '';
+          });
+          loadInventoryData();
+        } else {
+          alert('추가 실패: ' + (result.error || ''));
+        }
+      } catch(e) { alert('오류: ' + e.message); }
+    }
+
+    async function deleteInventoryRow(id) {
+      if (!confirm('삭제하시겠습니까?')) return;
+      try {
+        var res = await fetch('/api/inventory-stock/' + id, { method: 'DELETE' });
+        var result = await res.json();
+        if (result.success) { loadInventoryData(); }
+        else { alert('삭제 실패'); }
+      } catch(e) { alert('오류: ' + e.message); }
+    }
+
   </script>
 </body>
 </html>`;

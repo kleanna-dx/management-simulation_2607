@@ -2482,4 +2482,128 @@ app.delete('/api/materials/:id', async (c) => {
   return c.json({ success: true })
 })
 
+// ============ 기초재고 API ============
+
+// 기초재고 조회
+app.get('/api/inventory-stock', async (c) => {
+  const db = c.env.DB
+  const month = c.req.query('month') || ''
+  const plant = c.req.query('plant') || ''
+  const materialType = c.req.query('material_type') || ''
+
+  // 테이블 생성
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS inventory_stock (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      month TEXT NOT NULL,
+      plant TEXT DEFAULT '',
+      material_type TEXT DEFAULT '',
+      material_type_name TEXT DEFAULT '',
+      material_code TEXT NOT NULL,
+      material_name TEXT DEFAULT '',
+      currency TEXT DEFAULT 'KRW',
+      unit TEXT DEFAULT 'KG',
+      stock_qty REAL DEFAULT 0,
+      stock_price REAL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run()
+
+  let query = 'SELECT * FROM inventory_stock WHERE 1=1'
+  const binds: string[] = []
+
+  if (month) { query += ' AND month = ?'; binds.push(month); }
+  if (plant) { query += ' AND plant = ?'; binds.push(plant); }
+  if (materialType) { query += ' AND material_type = ?'; binds.push(materialType); }
+
+  query += ' ORDER BY month DESC, plant, material_code'
+
+  const stmt = binds.length > 0 ? db.prepare(query).bind(...binds) : db.prepare(query)
+  const result = await stmt.all()
+
+  return c.json({ rows: result.results || [] })
+})
+
+// 기초재고 단건 추가
+app.post('/api/inventory-stock', async (c) => {
+  const db = c.env.DB
+  const body = await c.req.json()
+
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS inventory_stock (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      month TEXT NOT NULL,
+      plant TEXT DEFAULT '',
+      material_type TEXT DEFAULT '',
+      material_type_name TEXT DEFAULT '',
+      material_code TEXT NOT NULL,
+      material_name TEXT DEFAULT '',
+      currency TEXT DEFAULT 'KRW',
+      unit TEXT DEFAULT 'KG',
+      stock_qty REAL DEFAULT 0,
+      stock_price REAL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run()
+
+  await db.prepare(`
+    INSERT INTO inventory_stock (month, plant, material_type, material_type_name, material_code, material_name, currency, unit, stock_qty, stock_price)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    body.month || '', body.plant || '', body.material_type || '', body.material_type_name || '',
+    body.material_code || '', body.material_name || '', body.currency || 'KRW', body.unit || 'KG',
+    body.stock_qty || 0, body.stock_price || 0
+  ).run()
+
+  return c.json({ success: true })
+})
+
+// 기초재고 대량 업로드
+app.post('/api/inventory-stock/bulk', async (c) => {
+  const db = c.env.DB
+  const { rows } = await c.req.json()
+
+  if (!rows || !rows.length) return c.json({ error: 'No data' }, 400)
+
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS inventory_stock (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      month TEXT NOT NULL,
+      plant TEXT DEFAULT '',
+      material_type TEXT DEFAULT '',
+      material_type_name TEXT DEFAULT '',
+      material_code TEXT NOT NULL,
+      material_name TEXT DEFAULT '',
+      currency TEXT DEFAULT 'KRW',
+      unit TEXT DEFAULT 'KG',
+      stock_qty REAL DEFAULT 0,
+      stock_price REAL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run()
+
+  let count = 0
+  for (const row of rows) {
+    await db.prepare(`
+      INSERT INTO inventory_stock (month, plant, material_type, material_type_name, material_code, material_name, currency, unit, stock_qty, stock_price)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      row.month || '', row.plant || '', row.material_type || '', row.material_type_name || '',
+      row.material_code || '', row.material_name || '', row.currency || 'KRW', row.unit || 'KG',
+      row.stock_qty || 0, row.stock_price || 0
+    ).run()
+    count++
+  }
+
+  return c.json({ success: true, count })
+})
+
+// 기초재고 삭제
+app.delete('/api/inventory-stock/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  await db.prepare('DELETE FROM inventory_stock WHERE id = ?').bind(id).run()
+  return c.json({ success: true })
+})
+
 export default app
