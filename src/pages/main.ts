@@ -5,6 +5,7 @@ export function mainPage(): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>원부자재 사전원가 분석</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231e40af'/%3E%3Cpath d='M6 22 L12 16 L18 19 L26 10' stroke='%2393c5fd' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='26' cy='10' r='2' fill='%2393c5fd'/%3E%3Ctext x='7' y='28' font-size='7' fill='%2393c5fd' font-family='sans-serif' font-weight='bold'%3E%E2%82%A9%3C/text%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
@@ -108,7 +109,7 @@ export function mainPage(): string {
             <i class="fas fa-cog mr-1.5"></i>기준정보
           </button>
           <button onclick="switchTab('simflow')" id="tab-simflow" class="pill-tab pill-tab-inactive">
-            <i class="fas fa-project-diagram mr-1.5"></i>시뮬레이션
+            <i class="fas fa-project-diagram mr-1.5"></i>손익 플로우 차트
           </button>
         </div>
         <!-- Filters -->
@@ -1825,6 +1826,17 @@ export function mainPage(): string {
       if (target) target.classList.remove('hidden');
       var activeBtn = document.getElementById('pa-tab-' + sub);
       if (activeBtn) { activeBtn.classList.add('pill-tab-active'); activeBtn.classList.remove('pill-tab-inactive'); }
+
+      // content-detail과 content-simulation은 content-profitanalysis 외부에 있으므로
+      // 서브탭 전환 시 profitanalysis 내부로 이동시켜 sticky 헤더 아래에 표시
+      var container = document.getElementById('content-profitanalysis');
+      if (container && (sub === 'detail' || sub === 'simulation')) {
+        var targetEl = document.getElementById('content-' + sub);
+        if (targetEl && targetEl.parentNode !== container) {
+          container.appendChild(targetEl);
+        }
+      }
+
       // 상단으로 스크롤
       var stickyEl = document.getElementById('pa-sticky-header');
       if (stickyEl) stickyEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
