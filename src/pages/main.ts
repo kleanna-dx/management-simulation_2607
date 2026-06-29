@@ -1485,17 +1485,19 @@ export function mainPage(): string {
 
     <!-- 전월 대비 예상 손익 (메인 탭 래퍼) -->
     <div id="content-profitanalysis" class="hidden fade-in space-y-4">
-      <!-- 서브탭 네비게이션 -->
-      <div class="flex items-center gap-2">
-        <button onclick="switchProfitSub('forecast')" id="pa-tab-forecast" class="pill-tab pill-tab-active text-xs !px-4 !py-2">
-          <i class="fas fa-chart-area mr-1.5"></i>전월 대비 예상
-        </button>
-        <button onclick="switchProfitSub('detail')" id="pa-tab-detail" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
-          <i class="fas fa-table mr-1.5"></i>상세 분석표
-        </button>
-        <button onclick="switchProfitSub('simulation')" id="pa-tab-simulation" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
-          <i class="fas fa-flask mr-1.5"></i>시뮬레이션
-        </button>
+      <!-- 서브탭 네비게이션 (상단 고정) -->
+      <div class="sticky top-0 z-30 bg-white/95 backdrop-blur-sm py-2 -mx-1 px-1 border-b border-slate-100 shadow-sm">
+        <div class="flex items-center gap-2">
+          <button onclick="switchProfitSub('forecast')" id="pa-tab-forecast" class="pill-tab pill-tab-active text-xs !px-4 !py-2">
+            <i class="fas fa-chart-area mr-1.5"></i>전월 대비 예상
+          </button>
+          <button onclick="switchProfitSub('detail')" id="pa-tab-detail" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
+            <i class="fas fa-table mr-1.5"></i>상세 분석표
+          </button>
+          <button onclick="switchProfitSub('simulation')" id="pa-tab-simulation" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
+            <i class="fas fa-flask mr-1.5"></i>시뮬레이션
+          </button>
+        </div>
       </div>
 
     <!-- Forecast Tab (전월 대비 예상 실적) -->
