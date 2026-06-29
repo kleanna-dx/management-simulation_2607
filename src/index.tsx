@@ -2198,13 +2198,26 @@ app.get('/api/manual-input/materials', async (c) => {
   let machineFilter = ''
   if (machine) machineFilter = ` AND machine_code = '${machine}'`
 
-  // 자재별 사용량/단가 집계
-  const matSql = `
+  // 1) 해당 호기의 모든 기간 유니크 자재 목록
+  const allMatSql = `
     SELECT 
       material_code as code,
       material_name as name,
       material_group_name as group_name,
-      material_group_major_name as major_group,
+      material_group_major_name as major_group
+    FROM raw_records
+    WHERE calendar_ym != 'CALMONTH'
+      ${machineFilter}
+    GROUP BY material_code, material_name, material_group_name, material_group_major_name
+    ORDER BY material_group_name, material_code
+  `
+  const allMatResult = await db.prepare(allMatSql).all()
+  const allMaterials = (allMatResult.results || []) as any[]
+
+  // 2) 전월(ym) 사용량/단가 집계
+  const prevMatSql = `
+    SELECT 
+      material_code as code,
       SUM(CAST(actual_alloc_qty AS REAL)) as usage_qty,
       CASE WHEN SUM(CAST(actual_alloc_qty AS REAL)) > 0 
         THEN SUM(CAST(issue_amount AS REAL)) / SUM(CAST(actual_alloc_qty AS REAL))
@@ -2213,10 +2226,26 @@ app.get('/api/manual-input/materials', async (c) => {
     WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
       ${machineFilter}
       AND CAST(actual_alloc_qty AS REAL) != 0
-    GROUP BY material_code, material_name, material_group_name, material_group_major_name
-    ORDER BY material_group_name, material_code
+    GROUP BY material_code
   `
-  const matResult = await db.prepare(matSql).bind(ym).all()
+  const prevMatResult = await db.prepare(prevMatSql).bind(ym).all()
+  const prevMap: Record<string, any> = {}
+  for (const r of (prevMatResult.results || []) as any[]) {
+    prevMap[r.code] = r
+  }
+
+  // 3) 합치기: 모든 자재에 전월 데이터 매핑
+  const materials = allMaterials.map((m: any) => {
+    const prev = prevMap[m.code]
+    return {
+      code: m.code,
+      name: m.name,
+      group_name: m.group_name,
+      major_group: m.major_group,
+      usage_qty: prev ? prev.usage_qty : 0,
+      unit_price: prev ? prev.unit_price : 0
+    }
+  })
 
   // 지종 목록 조회
   const typeSql = `
@@ -2235,7 +2264,7 @@ app.get('/api/manual-input/materials', async (c) => {
   const productTypes = (typeResult.results as any[]).map(r => r.product_type).filter(Boolean)
 
   return c.json({ 
-    materials: matResult.results,
+    materials,
     productTypes
   })
 })
