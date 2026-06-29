@@ -4791,13 +4791,13 @@ export function mainPage(): string {
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs" id="' + rid + '-cuc">-</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp" id="' + rid + '-iq" data-row="' + rowIdx + '" data-field="incoming_qty" value="' + (saved.incoming_qty || '') + '" placeholder="-">'
+            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp" id="' + rid + '-iq" data-row="' + rowIdx + '" data-field="incoming_qty" value="' + (saved.incoming_qty || '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
             + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp" id="' + rid + '-ip" data-row="' + rowIdx + '" data-field="incoming_price" value="' + (saved.incoming_price || '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp" id="' + rid + '-sq" data-row="' + rowIdx + '" data-field="stock_qty" value="' + (saved.stock_qty || '') + '" placeholder="-">'
+            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp" id="' + rid + '-sq" data-row="' + rowIdx + '" data-field="stock_qty" value="' + (saved.stock_qty || '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
             + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp" id="' + rid + '-sp" data-row="' + rowIdx + '" data-field="stock_price" value="' + (saved.stock_price || '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
@@ -4846,41 +4846,66 @@ export function mainPage(): string {
       mnMaterials.forEach(function(m, idx) {
         var rid = 'mn-r-' + idx;
         var prevUsage = m.usage_qty || 0;
-        var prevPrice = m.unit_price || 0;
+        var prevPrice = m.unit_price || 0; // 전월 사용단가
 
         // 전월 원단위 (입력값 우선)
         var pucEl = document.getElementById(rid + '-puc');
         var prevUC = pucEl ? (Number(pucEl.value) || 0) : (prevProdTon > 0 ? prevUsage / prevProdTon : 0);
 
-        // 당월 사용량
+        // 당월 사용량(kg)
         var cuEl = document.getElementById(rid + '-cu');
         var curUsage = cuEl ? (Number(cuEl.value) || 0) : 0;
 
-        // 원단위 자동 계산
+        // 원단위(kg/톤) 자동 계산
         var curUC = curProdTon > 0 ? curUsage / curProdTon : 0;
         var cucEl = document.getElementById(rid + '-cuc');
         if (cucEl) cucEl.textContent = curUC > 0 ? curUC.toFixed(1) : '-';
 
-        // 사용단가
-        var upEl = document.getElementById(rid + '-up');
-        var curPrice = upEl ? (Number(upEl.value) || prevPrice) : prevPrice;
+        // === 핵심 로직: 사용단가 = 가중평균(기초재고 + 입고) ===
+        var iqEl = document.getElementById(rid + '-iq');  // 입고수량(톤) → kg로 변환
+        var ipEl = document.getElementById(rid + '-ip');  // 입고단가(원/kg)
+        var sqEl = document.getElementById(rid + '-sq');  // 기초재고수량(톤) → kg로 변환
+        var spEl = document.getElementById(rid + '-sp');  // 기초재고단가(원/kg)
+        var upEl = document.getElementById(rid + '-up');  // 사용단가(원/kg) - 자동계산 or 수동
 
-        // 비용(백만원)
+        var incomingQty = iqEl ? (Number(iqEl.value) || 0) * 1000 : 0;  // 톤→kg
+        var incomingPrice = ipEl ? (Number(ipEl.value) || 0) : 0;
+        var stockQty = sqEl ? (Number(sqEl.value) || 0) * 1000 : 0;  // 톤→kg
+        var stockPrice = spEl ? (Number(spEl.value) || 0) : 0;
+
+        // 가중평균 사용단가 자동계산
+        var calcPrice = 0;
+        var totalQty = stockQty + incomingQty;
+        if (totalQty > 0 && (stockPrice > 0 || incomingPrice > 0)) {
+          calcPrice = (stockQty * stockPrice + incomingQty * incomingPrice) / totalQty;
+        }
+
+        // 사용단가 필드: 가중평균으로 자동채움 (입고/재고 입력 시)
+        var curPrice = 0;
+        if (calcPrice > 0) {
+          curPrice = calcPrice;
+          if (upEl) upEl.value = Math.round(calcPrice);
+        } else {
+          // 가중평균 계산 불가 시 수동입력값 또는 전월단가 사용
+          curPrice = upEl ? (Number(upEl.value) || prevPrice) : prevPrice;
+        }
+
+        // 비용(백만원) = 사용량 × 사용단가
         var curCost = curUsage * curPrice;
         var curCostMil = curCost / 1000000;
         var ccEl = document.getElementById(rid + '-cc');
         if (ccEl) ccEl.textContent = curCostMil > 0 ? Math.round(curCostMil).toLocaleString() : '-';
 
-        // 톤당비용(원/톤)
+        // 톤당비용 = 원단위 (원/톤) = 비용 / 생산량(톤)
         var curCostPerTon = curProdTon > 0 ? curCost / curProdTon : 0;
         var ctEl = document.getElementById(rid + '-ct');
         if (ctEl) ctEl.textContent = curCostPerTon > 0 ? Math.round(curCostPerTon).toLocaleString() : '-';
 
-        // 손익효과
+        // === 손익효과 ===
         // 사용량차이(원) = (전월사용량 - 당월사용량) × 전월사용단가 → 양수=절감
         var diffUsage = (prevUsage - curUsage) * prevPrice;
-        // 단가차이(원) = (전월사용단가 - 당월사용단가) × 당월사용량 → 양수=절감
-        var diffPrice = (curPrice !== prevPrice && curUsage > 0) ? (prevPrice - curPrice) * curUsage : 0;
+        // 단가차이(원) = (전월사용단가 - 당월사용단가) × 당월사용량 → 양수=절감, 음수=악화
+        var diffPrice = (curUsage > 0 && curPrice > 0) ? (prevPrice - curPrice) * curUsage : 0;
         var diffTotal = diffUsage + diffPrice;
 
         var duEl = document.getElementById(rid + '-du');
