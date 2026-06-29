@@ -107,6 +107,9 @@ export function mainPage(): string {
           <button onclick="switchTab('master')" id="tab-master" class="pill-tab pill-tab-inactive">
             <i class="fas fa-cog mr-1.5"></i>기준정보
           </button>
+          <button onclick="switchTab('simflow')" id="tab-simflow" class="pill-tab pill-tab-inactive">
+            <i class="fas fa-project-diagram mr-1.5"></i>시뮬레이션
+          </button>
         </div>
         <!-- Filters -->
         <div class="flex items-center gap-3">
@@ -1402,6 +1405,42 @@ export function mainPage(): string {
       </div>
     </div>
     </div><!-- /content-profitanalysis -->
+
+    <!-- ========== 시뮬레이션 플로우 탭 ========== -->
+    <div id="content-simflow" class="hidden fade-in">
+      <div class="card px-5 py-4 mb-4">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-project-diagram text-indigo-500 mr-1.5"></i>생산량 변동 시뮬레이션 플로우</h3>
+            <p class="text-[11px] text-gray-400 mt-1">생산량 증감에 따른 원단위·비용·손익 변수들의 연쇄 변화를 시각화합니다.</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-gray-500">호기:</label>
+              <select id="sf-machine" class="text-xs border border-slate-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-indigo-200" onchange="initSimFlow()">
+                <option value="PM2">PM2</option>
+                <option value="PM3" selected>PM3</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-gray-500">생산량 변동:</label>
+              <input type="range" id="sf-prod-slider" min="-30" max="30" value="0" step="1" class="w-40 h-2 accent-indigo-500" oninput="onSimFlowSliderChange()">
+              <span id="sf-prod-pct" class="text-xs font-bold text-indigo-600 w-12 text-center">0%</span>
+            </div>
+            <button onclick="resetSimFlow()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-gray-600 hover:bg-slate-200 transition font-medium"><i class="fas fa-undo mr-1"></i>초기화</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Flow Canvas -->
+      <div class="card overflow-hidden" style="height: calc(100vh - 200px); min-height: 600px;">
+        <div id="sf-canvas" class="w-full h-full relative bg-gradient-to-br from-slate-50 via-white to-indigo-50/30" style="overflow:auto;">
+          <svg id="sf-svg" width="1400" height="800" class="absolute top-0 left-0"></svg>
+          <div id="sf-nodes" class="absolute top-0 left-0 w-full h-full pointer-events-none"></div>
+        </div>
+      </div>
+    </div><!-- /content-simflow -->
+
   </main>
 
   <script>
@@ -1428,7 +1467,7 @@ export function mainPage(): string {
     });
 
     function switchTab(tab) {
-      ['dashboard','detail','upload','dataview','master','simulation','forecast','datainput','manual','profitanalysis'].forEach(t => {
+      ['dashboard','detail','upload','dataview','master','simulation','forecast','datainput','manual','profitanalysis','simflow'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.add('pill-tab-inactive'); }
@@ -1443,6 +1482,9 @@ export function mainPage(): string {
         var activeSub = document.querySelector('[id^="pa-tab-"].pill-tab-active');
         var subId2 = activeSub ? activeSub.id.replace('pa-tab-','') : 'forecast';
         switchProfitSub(subId2);
+      } else if (tab === 'simflow') {
+        document.getElementById('content-simflow')?.classList.remove('hidden');
+        initSimFlow();
       } else {
         document.getElementById('content-' + tab)?.classList.remove('hidden');
       }
@@ -4878,6 +4920,253 @@ export function mainPage(): string {
         }
       });
     }
+
+    // ====== 시뮬레이션 플로우 (React Flow 스타일) ======
+    var sfData = null; // 시뮬레이션 기준 데이터
+    var sfProdChange = 0; // 생산량 변동 %
+
+    async function initSimFlow() {
+      var machine = document.getElementById('sf-machine').value;
+      var year = document.getElementById('analysisYear').value;
+      var month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      var ym = year + month;
+
+      try {
+        var res = await fetch('/api/simulation/profit-base?ym=' + ym + '&machine=' + machine);
+        var result = await res.json();
+        sfData = result;
+        renderSimFlow();
+      } catch(e) {
+        console.error('SimFlow load error:', e);
+      }
+    }
+
+    function onSimFlowSliderChange() {
+      var slider = document.getElementById('sf-prod-slider');
+      sfProdChange = Number(slider.value);
+      document.getElementById('sf-prod-pct').textContent = (sfProdChange >= 0 ? '+' : '') + sfProdChange + '%';
+      renderSimFlow();
+    }
+
+    function resetSimFlow() {
+      document.getElementById('sf-prod-slider').value = 0;
+      sfProdChange = 0;
+      document.getElementById('sf-prod-pct').textContent = '0%';
+      renderSimFlow();
+    }
+
+    function renderSimFlow() {
+      if (!sfData || !sfData.rows || !sfData.rows.length) {
+        document.getElementById('sf-nodes').innerHTML = '<div class="flex items-center justify-center h-full text-gray-400 text-sm pointer-events-auto">데이터를 불러오는 중...</div>';
+        return;
+      }
+
+      var machine = document.getElementById('sf-machine').value;
+      var rows = sfData.rows.filter(function(r) { return r.machine_code === machine; });
+      if (!rows.length) {
+        document.getElementById('sf-nodes').innerHTML = '<div class="flex items-center justify-center h-full text-gray-400 text-sm pointer-events-auto">선택된 호기의 데이터가 없습니다.</div>';
+        return;
+      }
+
+      // 기준값 계산
+      var baseProdTon = 0;
+      rows.forEach(function(r) { baseProdTon += (Number(r.cur_production_ton) || 0); });
+
+      var baseCost = 0;
+      rows.forEach(function(r) { baseCost += (Number(r.cur_material_cost) || 0); });
+
+      var baseUnitCost = baseProdTon > 0 ? baseCost / baseProdTon : 0;
+
+      // 변동 후 값
+      var newProdTon = baseProdTon * (1 + sfProdChange / 100);
+      // 비용은 변동비(재료비) 부분은 생산량에 비례, 고정비 부분은 불변 가정
+      // 간이 모델: 재료비의 70%는 변동비, 30%는 고정비로 가정
+      var variableRatio = 0.7;
+      var fixedCost = baseCost * (1 - variableRatio);
+      var variableCost = baseCost * variableRatio * (1 + sfProdChange / 100);
+      var newCost = fixedCost + variableCost;
+      var newUnitCost = newProdTon > 0 ? newCost / newProdTon : 0;
+
+      // 주요 지종별 원단위 변화
+      var groupMap = {};
+      rows.forEach(function(r) {
+        var g = r.product_level2_name || '기타';
+        if (!groupMap[g]) groupMap[g] = { cost: 0, prod: 0 };
+        groupMap[g].cost += Number(r.cur_material_cost) || 0;
+        groupMap[g].prod += Number(r.cur_production_ton) || 0;
+      });
+
+      var groups = Object.keys(groupMap);
+      var topGroups = groups.slice(0, 6);
+
+      // 손익 효과
+      var profitEffect = (baseUnitCost - newUnitCost) * newProdTon;
+      var profitEffectMil = profitEffect / 1000000;
+
+      // 색상 결정
+      var pctColor = sfProdChange > 0 ? '#059669' : sfProdChange < 0 ? '#dc2626' : '#6366f1';
+      var unitDiff = newUnitCost - baseUnitCost;
+      var unitColor = unitDiff < 0 ? '#059669' : unitDiff > 0 ? '#dc2626' : '#6b7280';
+      var profitColor = profitEffect > 0 ? '#059669' : profitEffect < 0 ? '#dc2626' : '#6b7280';
+
+      // 노드 렌더링
+      var nodesHtml = '';
+      var svgHtml = '';
+
+      // 정의: 노드 위치
+      var nodes = [
+        { id: 'prod', x: 80, y: 60, w: 260, h: 120, title: '생산량', icon: 'fa-industry', color: '#6366f1' },
+        { id: 'cost', x: 540, y: 60, w: 260, h: 120, title: '총 재료비', icon: 'fa-coins', color: '#f59e0b' },
+        { id: 'unit', x: 1000, y: 60, w: 260, h: 120, title: '원단위 (원/톤)', icon: 'fa-balance-scale', color: '#8b5cf6' },
+        { id: 'profit', x: 1000, y: 320, w: 260, h: 120, title: '예상 손익 효과', icon: 'fa-chart-line', color: '#059669' },
+        { id: 'variable', x: 320, y: 320, w: 220, h: 100, title: '변동비 (70%)', icon: 'fa-arrows-alt-v', color: '#3b82f6' },
+        { id: 'fixed', x: 320, y: 480, w: 220, h: 100, title: '고정비 (30%)', icon: 'fa-lock', color: '#6b7280' }
+      ];
+
+      // 그룹 노드 추가
+      topGroups.forEach(function(g, i) {
+        var y = 500 + i * 60;
+        nodes.push({ id: 'grp-' + i, x: 700, y: 250 + i * 75, w: 200, h: 55, title: g, icon: 'fa-cube', color: '#64748b' });
+      });
+
+      // 엣지 정의
+      var edges = [
+        { from: 'prod', to: 'cost', fromSide: 'right', toSide: 'left', label: '생산량 증가 → 변동비 증가' },
+        { from: 'cost', to: 'unit', fromSide: 'right', toSide: 'left', label: '비용 ÷ 생산량' },
+        { from: 'prod', to: 'variable', fromSide: 'bottom', toSide: 'left', label: '비례' },
+        { from: 'variable', to: 'cost', fromSide: 'top', toSide: 'bottom', label: '' },
+        { from: 'fixed', to: 'cost', fromSide: 'top', toSide: 'bottom', label: '' },
+        { from: 'unit', to: 'profit', fromSide: 'bottom', toSide: 'top', label: '원단위 절감 → 손익 개선' }
+      ];
+
+      // SVG 엣지 렌더
+      svgHtml += '<defs>';
+      svgHtml += '<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/></marker>';
+      svgHtml += '<marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#059669"/></marker>';
+      svgHtml += '<marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#dc2626"/></marker>';
+      svgHtml += '</defs>';
+
+      edges.forEach(function(edge) {
+        var fromNode = nodes.find(function(n) { return n.id === edge.from; });
+        var toNode = nodes.find(function(n) { return n.id === edge.to; });
+        if (!fromNode || !toNode) return;
+
+        var x1, y1, x2, y2;
+        if (edge.fromSide === 'right') { x1 = fromNode.x + fromNode.w; y1 = fromNode.y + fromNode.h / 2; }
+        else if (edge.fromSide === 'bottom') { x1 = fromNode.x + fromNode.w / 2; y1 = fromNode.y + fromNode.h; }
+        else { x1 = fromNode.x + fromNode.w / 2; y1 = fromNode.y + fromNode.h; }
+
+        if (edge.toSide === 'left') { x2 = toNode.x; y2 = toNode.y + toNode.h / 2; }
+        else if (edge.toSide === 'top') { x2 = toNode.x + toNode.w / 2; y2 = toNode.y; }
+        else { x2 = toNode.x; y2 = toNode.y + toNode.h / 2; }
+
+        // 베지어 커브
+        var midX = (x1 + x2) / 2;
+        var midY = (y1 + y2) / 2;
+        var cx1 = edge.fromSide === 'right' || edge.fromSide === 'left' ? midX : x1;
+        var cy1 = edge.fromSide === 'bottom' || edge.fromSide === 'top' ? midY : y1;
+        var cx2 = edge.toSide === 'right' || edge.toSide === 'left' ? midX : x2;
+        var cy2 = edge.toSide === 'bottom' || edge.toSide === 'top' ? midY : y2;
+
+        var markerEnd = sfProdChange > 0 ? 'url(#arrow-green)' : sfProdChange < 0 ? 'url(#arrow-red)' : 'url(#arrow)';
+        var strokeColor = sfProdChange !== 0 ? (sfProdChange > 0 ? '#059669' : '#dc2626') : '#94a3b8';
+        var strokeWidth = sfProdChange !== 0 ? '2.5' : '1.5';
+        var animated = sfProdChange !== 0 ? ' stroke-dasharray="8,4" class="sf-edge-animated"' : '';
+
+        svgHtml += '<path d="M' + x1 + ',' + y1 + ' C' + cx1 + ',' + cy1 + ' ' + cx2 + ',' + cy2 + ' ' + x2 + ',' + y2 + '" fill="none" stroke="' + strokeColor + '" stroke-width="' + strokeWidth + '" marker-end="' + markerEnd + '"' + animated + '/>';
+
+        // 엣지 라벨
+        if (edge.label && sfProdChange !== 0) {
+          svgHtml += '<text x="' + midX + '" y="' + (midY - 8) + '" text-anchor="middle" font-size="10" fill="' + strokeColor + '" font-weight="500">' + edge.label + '</text>';
+        }
+      });
+
+      // 그룹 연결선
+      topGroups.forEach(function(g, i) {
+        var grpNode = nodes.find(function(n) { return n.id === 'grp-' + i; });
+        var unitNode = nodes.find(function(n) { return n.id === 'unit'; });
+        if (grpNode && unitNode) {
+          var x1 = grpNode.x + grpNode.w;
+          var y1 = grpNode.y + grpNode.h / 2;
+          var x2 = unitNode.x;
+          var y2 = unitNode.y + unitNode.h;
+          svgHtml += '<path d="M' + x1 + ',' + y1 + ' C' + (x1+40) + ',' + y1 + ' ' + (x2-40) + ',' + y2 + ' ' + x2 + ',' + y2 + '" fill="none" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,3"/>';
+        }
+      });
+
+      document.getElementById('sf-svg').innerHTML = svgHtml;
+
+      // 노드 HTML
+      nodesHtml += renderFlowNode(nodes[0], sfFmtTon(baseProdTon), sfFmtTon(newProdTon), sfProdChange !== 0 ? ((sfProdChange > 0 ? '+' : '') + sfProdChange + '%') : null, pctColor);
+      nodesHtml += renderFlowNode(nodes[1], sfFmtBil(baseCost), sfFmtBil(newCost), sfProdChange !== 0 ? ((newCost - baseCost > 0 ? '+' : '') + sfFmtBil(newCost - baseCost)) : null, newCost > baseCost ? '#dc2626' : '#059669');
+      nodesHtml += renderFlowNode(nodes[2], sfFmtUnit(baseUnitCost), sfFmtUnit(newUnitCost), sfProdChange !== 0 ? ((unitDiff > 0 ? '+' : '') + sfFmtUnit(unitDiff)) : null, unitColor);
+      nodesHtml += renderFlowNode(nodes[3], '-', sfProdChange !== 0 ? ((profitEffectMil >= 0 ? '+' : '') + Math.round(profitEffectMil).toLocaleString() + ' 백만원') : '-', sfProdChange !== 0 ? (profitEffect >= 0 ? '개선' : '악화') : null, profitColor);
+      nodesHtml += renderFlowNode(nodes[4], sfFmtBil(baseCost * variableRatio), sfFmtBil(variableCost), sfProdChange !== 0 ? ((variableCost - baseCost * variableRatio > 0 ? '+' : '') + sfFmtBil(variableCost - baseCost * variableRatio)) : null, '#3b82f6');
+      nodesHtml += renderFlowNode(nodes[5], sfFmtBil(fixedCost), sfFmtBil(fixedCost), '불변', '#6b7280');
+
+      // 그룹별 노드
+      topGroups.forEach(function(g, i) {
+        var grpNode = nodes.find(function(n) { return n.id === 'grp-' + i; });
+        var gData = groupMap[g];
+        var gProdTon = gData.prod;
+        var gUnit = gProdTon > 0 ? gData.cost / gProdTon : 0;
+        var gNewProd = gProdTon * (1 + sfProdChange / 100);
+        var gNewUnit = gNewProd > 0 ? (gData.cost * variableRatio * (1 + sfProdChange / 100) + gData.cost * (1 - variableRatio)) / gNewProd : 0;
+        nodesHtml += renderFlowNodeSmall(grpNode, g, sfFmtUnit(gUnit), sfProdChange !== 0 ? sfFmtUnit(gNewUnit) : null);
+      });
+
+      document.getElementById('sf-nodes').innerHTML = nodesHtml;
+    }
+
+    function renderFlowNode(node, baseVal, newVal, changeLabel, changeColor) {
+      var borderColor = node.color || '#6366f1';
+      var html = '';
+      html += '<div class="absolute pointer-events-auto" style="left:' + node.x + 'px;top:' + node.y + 'px;width:' + node.w + 'px;">';
+      html += '<div class="bg-white rounded-xl shadow-lg border-2 p-4 transition-all hover:shadow-xl" style="border-color:' + borderColor + ';">';
+      html += '<div class="flex items-center gap-2 mb-2">';
+      html += '<div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:' + borderColor + '20;"><i class="fas ' + node.icon + ' text-xs" style="color:' + borderColor + ';"></i></div>';
+      html += '<span class="text-xs font-semibold text-gray-700">' + node.title + '</span>';
+      html += '</div>';
+      html += '<div class="flex items-end justify-between">';
+      html += '<div>';
+      html += '<div class="text-[10px] text-gray-400">기준</div>';
+      html += '<div class="text-sm font-bold text-gray-700">' + baseVal + '</div>';
+      html += '</div>';
+      if (sfProdChange !== 0) {
+        html += '<div class="text-right">';
+        html += '<div class="text-[10px] text-gray-400">변동 후</div>';
+        html += '<div class="text-sm font-bold" style="color:' + (changeColor || '#6366f1') + ';">' + newVal + '</div>';
+        if (changeLabel) html += '<div class="text-[10px] font-semibold mt-0.5 px-1.5 py-0.5 rounded" style="background:' + (changeColor || '#6366f1') + '15;color:' + (changeColor || '#6366f1') + ';">' + changeLabel + '</div>';
+        html += '</div>';
+      }
+      html += '</div>';
+      html += '</div></div>';
+      return html;
+    }
+
+    function renderFlowNodeSmall(node, title, baseVal, newVal) {
+      var html = '';
+      html += '<div class="absolute pointer-events-auto" style="left:' + node.x + 'px;top:' + node.y + 'px;width:' + node.w + 'px;">';
+      html += '<div class="bg-white rounded-lg shadow-sm border border-slate-200 px-3 py-2 hover:shadow-md transition-all">';
+      html += '<div class="flex items-center justify-between">';
+      html += '<span class="text-[10px] font-medium text-gray-600 truncate max-w-[80px]">' + title + '</span>';
+      html += '<div class="text-right">';
+      html += '<span class="text-[10px] font-mono text-gray-500">' + baseVal + '</span>';
+      if (newVal) html += '<span class="text-[10px] font-mono text-indigo-600 ml-1">→ ' + newVal + '</span>';
+      html += '</div></div></div></div>';
+      return html;
+    }
+
+    function sfFmtTon(v) { return Math.round(v).toLocaleString() + ' 톤'; }
+    function sfFmtBil(v) { return (v / 100000000).toFixed(1) + ' 억원'; }
+    function sfFmtUnit(v) { return Math.round(v).toLocaleString() + ' 원/톤'; }
+
+    // 엣지 애니메이션 CSS 추가
+    (function() {
+      var style = document.createElement('style');
+      style.textContent = '@keyframes sf-dash { to { stroke-dashoffset: -24; } } .sf-edge-animated { animation: sf-dash 1s linear infinite; }';
+      document.head.appendChild(style);
+    })();
 
     // ====== 엑셀 업로드 / 미리보기 / 히스토리 ======
     var mnPreviewData = null; // 엑셀 파싱 결과 임시 저장
