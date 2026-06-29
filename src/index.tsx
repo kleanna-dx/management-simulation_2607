@@ -2185,4 +2185,153 @@ app.get('/', (c) => {
   return c.html(mainPage())
 })
 
+// ============ 수기 입력 API ============
+
+// 자재 목록 조회 (전월 실적 기반)
+app.get('/api/manual-input/materials', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym') || ''
+  const machine = c.req.query('machine') || ''
+
+  if (!ym) return c.json({ materials: [], productTypes: [] })
+
+  let machineFilter = ''
+  if (machine) machineFilter = ` AND machine_code = '${machine}'`
+
+  // 자재별 사용량/단가 집계
+  const matSql = `
+    SELECT 
+      material_code as code,
+      material_name as name,
+      material_group_name as group_name,
+      material_group_major_name as major_group,
+      SUM(CAST(actual_alloc_qty AS REAL)) as usage_qty,
+      CASE WHEN SUM(CAST(actual_alloc_qty AS REAL)) > 0 
+        THEN SUM(CAST(issue_amount AS REAL)) / SUM(CAST(actual_alloc_qty AS REAL))
+        ELSE 0 END as unit_price
+    FROM raw_records
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+      ${machineFilter}
+      AND CAST(actual_alloc_qty AS REAL) != 0
+    GROUP BY material_code, material_name, material_group_name, material_group_major_name
+    ORDER BY material_group_name, material_code
+  `
+  const matResult = await db.prepare(matSql).bind(ym).all()
+
+  // 지종 목록 조회
+  const typeSql = `
+    SELECT DISTINCT
+      CASE 
+        WHEN product_level2_name IN ('SC','백판지 기타') AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 300 THEN 'SC저평량'
+        WHEN product_level2_name IN ('SC','백판지 기타') AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 300 THEN 'SC고평량'
+        ELSE product_level2_name
+      END as product_type
+    FROM raw_records
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+      ${machineFilter}
+      AND CAST(production_qty AS REAL) > 0
+  `
+  const typeResult = await db.prepare(typeSql).bind(ym).all()
+  const productTypes = (typeResult.results as any[]).map(r => r.product_type).filter(Boolean)
+
+  return c.json({ 
+    materials: matResult.results,
+    productTypes
+  })
+})
+
+// 생산량 조회 (전월 실적 기반)
+app.get('/api/manual-input/production', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym') || ''
+  const machine = c.req.query('machine') || ''
+
+  if (!ym) return c.json({ production: {} })
+
+  let machineFilter = ''
+  if (machine) machineFilter = ` AND machine_code = '${machine}'`
+
+  const prodSql = `
+    SELECT 
+      CASE 
+        WHEN product_level2_name IN ('SC','백판지 기타') AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 300 THEN 'SC저평량'
+        WHEN product_level2_name IN ('SC','백판지 기타') AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 300 THEN 'SC고평량'
+        ELSE product_level2_name
+      END as product_type,
+      SUM(prod_qty) as production_kg
+    FROM (
+      SELECT product_level2_name, product_level4,
+        MAX(CAST(production_qty AS REAL)) as prod_qty
+      FROM raw_records
+      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+        ${machineFilter}
+        AND CAST(production_qty AS REAL) > 0
+      GROUP BY product_level2_name, product_level4
+    )
+    GROUP BY product_type
+    ORDER BY product_type
+  `
+  const result = await db.prepare(prodSql).bind(ym).all()
+  
+  const production: Record<string, number> = {}
+  for (const r of result.results as any[]) {
+    production[r.product_type] = Number(r.production_kg) || 0
+  }
+
+  return c.json({ production })
+})
+
+// 저장된 수기입력 데이터 조회
+app.get('/api/manual-input/saved', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym') || ''
+  const machine = c.req.query('machine') || ''
+
+  if (!ym || !machine) return c.json({})
+
+  try {
+    const result = await db.prepare(
+      'SELECT data FROM manual_inputs WHERE ym = ? AND machine_code = ?'
+    ).bind(ym, machine).first()
+
+    if (result && result.data) {
+      return c.json({ data: JSON.parse(result.data as string) })
+    }
+  } catch (e) {
+    // 테이블이 없으면 무시
+  }
+
+  return c.json({})
+})
+
+// 수기입력 데이터 저장
+app.post('/api/manual-input/save', async (c) => {
+  const db = c.env.DB
+  const { ym, machine, data } = await c.req.json()
+
+  if (!ym || !machine || !data) return c.json({ error: 'ym, machine, data required' }, 400)
+
+  // 테이블 생성 (없으면)
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS manual_inputs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ym TEXT NOT NULL,
+      machine_code TEXT NOT NULL,
+      data TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(ym, machine_code)
+    )
+  `).run()
+
+  // UPSERT
+  await db.prepare(`
+    INSERT INTO manual_inputs (ym, machine_code, data, updated_at)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(ym, machine_code) DO UPDATE SET data = excluded.data, updated_at = CURRENT_TIMESTAMP
+  `).bind(ym, machine, JSON.stringify(data)).run()
+
+  return c.json({ success: true })
+})
+
 export default app
