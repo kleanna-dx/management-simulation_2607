@@ -813,10 +813,73 @@ export function mainPage(): string {
               <button onclick="setManualMachine('PM3')" id="mn-mc-pm3" class="pill-tab pill-tab-active text-xs !px-3 !py-1">PM3</button>
             </div>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
             <span class="text-xs text-gray-400" id="mn-period-label"></span>
+            <div class="flex items-center gap-1.5 border-r border-slate-200 pr-2">
+              <input type="text" id="mn-user-name" placeholder="이름/계정" class="w-20 text-xs border border-slate-200 rounded px-2 py-1 focus:ring-1 focus:ring-emerald-200 focus:border-emerald-400" value="">
+            </div>
+            <label class="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition cursor-pointer font-medium">
+              <i class="fas fa-file-excel mr-1"></i>엑셀 업로드
+              <input type="file" accept=".xlsx,.xls" class="hidden" onchange="uploadManualExcel(event)">
+            </label>
             <button onclick="saveManualData()" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition font-medium"><i class="fas fa-save mr-1"></i>저장</button>
             <button onclick="loadManualData()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-gray-600 hover:bg-slate-200 transition font-medium"><i class="fas fa-sync-alt mr-1"></i>불러오기</button>
+            <button onclick="toggleManualHistory()" class="text-xs px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 transition font-medium"><i class="fas fa-history mr-1"></i>히스토리</button>
+          </div>
+        </div>
+        <!-- 마지막 저장 정보 표시 -->
+        <div id="mn-last-save-info" class="mt-2 hidden">
+          <span class="text-[10px] text-gray-400"><i class="fas fa-info-circle mr-1"></i>마지막 저장: <span id="mn-last-saved-by"></span> | <span id="mn-last-saved-at"></span></span>
+        </div>
+      </div>
+
+      <!-- 히스토리 패널 -->
+      <div id="mn-history-panel" class="card px-5 py-4 hidden">
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="text-xs font-semibold text-gray-700"><i class="fas fa-history text-amber-400 mr-1.5"></i>저장 히스토리</h4>
+          <button onclick="toggleManualHistory()" class="text-xs text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="overflow-x-auto max-h-48">
+          <table class="w-full text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200">
+                <th class="px-3 py-1.5 text-left font-semibold text-gray-600 w-8">#</th>
+                <th class="px-3 py-1.5 text-left font-semibold text-gray-600">저장자</th>
+                <th class="px-3 py-1.5 text-left font-semibold text-gray-600">저장 시각</th>
+                <th class="px-3 py-1.5 text-center font-semibold text-gray-600 w-20">작업</th>
+              </tr>
+            </thead>
+            <tbody id="mn-history-body">
+              <tr><td colspan="4" class="text-center py-4 text-gray-400">히스토리가 없습니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 엑셀 업로드 미리보기 모달 -->
+      <div id="mn-preview-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40" onclick="if(event.target===this) closeManualPreview()">
+        <div class="bg-white rounded-xl shadow-2xl w-[90vw] max-w-4xl max-h-[80vh] flex flex-col">
+          <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-search text-blue-500 mr-2"></i>엑셀 데이터 미리보기</h3>
+            <button onclick="closeManualPreview()" class="text-gray-400 hover:text-gray-600 text-lg"><i class="fas fa-times"></i></button>
+          </div>
+          <div class="flex-1 overflow-auto p-4">
+            <div id="mn-preview-summary" class="mb-3 text-xs text-gray-500"></div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-[11px] border-collapse" id="mn-preview-table">
+                <thead class="sticky top-0 bg-slate-100">
+                  <tr id="mn-preview-thead"></tr>
+                </thead>
+                <tbody id="mn-preview-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="px-6 py-3 border-t border-slate-200 flex items-center justify-between bg-slate-50 rounded-b-xl">
+            <span class="text-xs text-gray-400" id="mn-preview-count"></span>
+            <div class="flex gap-2">
+              <button onclick="closeManualPreview()" class="text-xs px-4 py-2 rounded-lg bg-slate-100 text-gray-600 hover:bg-slate-200 transition font-medium">취소</button>
+              <button onclick="applyManualPreview()" class="text-xs px-4 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition font-medium"><i class="fas fa-check mr-1"></i>적용하기</button>
+            </div>
           </div>
         </div>
       </div>
@@ -4484,6 +4547,20 @@ export function mainPage(): string {
     var mnPrevProd = {};   // 전월 지종별 생산량(톤)
     var mnInputData = {};  // 사용자 입력 데이터
 
+    // 저장된 사용자 이름 복원
+    (function() {
+      var stored = localStorage.getItem('mn_user_name');
+      if (stored) {
+        var el = document.getElementById('mn-user-name');
+        if (el) el.value = stored;
+      }
+    })();
+    // 이름 변경 시 localStorage 저장
+    (function() {
+      var el = document.getElementById('mn-user-name');
+      if (el) el.addEventListener('change', function() { localStorage.setItem('mn_user_name', el.value); });
+    })();
+
     function setManualMachine(mc) {
       mnMachine = mc;
       ['PM2','PM3'].forEach(function(k) {
@@ -4531,6 +4608,15 @@ export function mainPage(): string {
         mnPrevProd = results[1].production || {};
         var savedData = results[2] || {};
         mnInputData = savedData.data || {};
+        // 마지막 저장 정보 표시
+        if (savedData.saved_by || savedData.updated_at) {
+          var at = savedData.updated_at || '';
+          if (at && at.length > 16) at = at.substring(0, 16).replace('T', ' ');
+          updateLastSaveInfo(savedData.saved_by || '', at);
+        } else {
+          var infoEl = document.getElementById('mn-last-save-info');
+          if (infoEl) infoEl.classList.add('hidden');
+        }
         renderManualProduction();
         renderManualDetail();
       } catch(e) {
@@ -4780,10 +4866,239 @@ export function mainPage(): string {
       });
     }
 
+    // ====== 엑셀 업로드 / 미리보기 / 히스토리 ======
+    var mnPreviewData = null; // 엑셀 파싱 결과 임시 저장
+
+    function uploadManualExcel(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      event.target.value = '';
+
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          var wb = XLSX.read(e.target.result, {type: 'array'});
+          var ws = wb.Sheets[wb.SheetNames[0]];
+          var data = XLSX.utils.sheet_to_json(ws);
+
+          if (!data || !data.length) {
+            alert('엑셀에 데이터가 없습니다.');
+            return;
+          }
+
+          mnPreviewData = data;
+          showManualPreview(data);
+        } catch(ex) {
+          alert('엑셀 파일 읽기 오류: ' + ex.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function showManualPreview(data) {
+      var modal = document.getElementById('mn-preview-modal');
+      if (!modal) return;
+      modal.classList.remove('hidden');
+
+      var cols = Object.keys(data[0]);
+      var theadHtml = '';
+      cols.forEach(function(col) {
+        theadHtml += '<th class="px-2 py-1.5 text-left font-semibold text-gray-600 border-b border-slate-200 whitespace-nowrap">' + col + '</th>';
+      });
+      document.getElementById('mn-preview-thead').innerHTML = theadHtml;
+
+      var tbodyHtml = '';
+      var maxRows = Math.min(data.length, 100);
+      for (var i = 0; i < maxRows; i++) {
+        var row = data[i];
+        tbodyHtml += '<tr class="border-b border-slate-50 hover:bg-blue-50/30">';
+        cols.forEach(function(col) {
+          var val = row[col] !== undefined && row[col] !== null ? String(row[col]) : '';
+          tbodyHtml += '<td class="px-2 py-1 text-xs font-mono whitespace-nowrap">' + val + '</td>';
+        });
+        tbodyHtml += '</tr>';
+      }
+      document.getElementById('mn-preview-tbody').innerHTML = tbodyHtml;
+
+      // 요약 정보
+      var matchCount = 0;
+      if (mnMaterials && mnMaterials.length) {
+        data.forEach(function(row) {
+          var code = String(row['자재코드'] || row['material_code'] || '').trim();
+          if (code) {
+            var found = mnMaterials.some(function(m) {
+              return m.code === code || m.code.replace(/^0+/,'') === code.replace(/^0+/,'');
+            });
+            if (found) matchCount++;
+          }
+        });
+      }
+      document.getElementById('mn-preview-summary').innerHTML = '<span class="font-medium text-gray-700">시트: ' + data.length + '행</span> | 컬럼: ' + cols.join(', ').substring(0, 120) + (matchCount > 0 ? ' | <span class="text-emerald-600 font-medium">매칭 자재: ' + matchCount + '건</span>' : ' | <span class="text-amber-600">자재코드 매칭 확인 필요</span>');
+      document.getElementById('mn-preview-count').textContent = '총 ' + data.length + '행 중 ' + maxRows + '행 표시';
+    }
+
+    function closeManualPreview() {
+      var modal = document.getElementById('mn-preview-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function applyManualPreview() {
+      if (!mnPreviewData || !mnPreviewData.length) { alert('적용할 데이터가 없습니다.'); return; }
+      if (!mnMaterials || !mnMaterials.length) { alert('먼저 호기를 선택하고 불러오기를 실행해주세요.'); return; }
+
+      var applied = 0;
+      // 엑셀 데이터 매핑 (자재코드 기준)
+      var uploadMap = {};
+      mnPreviewData.forEach(function(row) {
+        var code = String(row['자재코드'] || row['material_code'] || '').trim();
+        if (code) uploadMap[code] = row;
+      });
+
+      mnMaterials.forEach(function(m, idx) {
+        var code = m.code;
+        var uploaded = uploadMap[code] || uploadMap[code.replace(/^0+/,'')] || null;
+        // 앞자리 0 제거 매칭 시도
+        if (!uploaded) {
+          var shortCode = code.replace(/^0+/,'');
+          for (var k in uploadMap) {
+            if (k.replace(/^0+/,'') === shortCode) { uploaded = uploadMap[k]; break; }
+          }
+        }
+        if (!uploaded) return;
+
+        var rid = 'mn-r-' + idx;
+        // 사용량
+        var cuEl = document.getElementById(rid + '-cu');
+        var usageVal = uploaded['사용량(kg)'] || uploaded['당월_사용량(kg)'] || uploaded['cur_usage'] || uploaded['사용량'];
+        if (cuEl && usageVal !== undefined) { cuEl.value = Math.round(Number(usageVal)); applied++; }
+        // 입고수량
+        var iqEl = document.getElementById(rid + '-iq');
+        var iqVal = uploaded['입고수량(톤)'] || uploaded['incoming_qty'] || uploaded['입고수량'];
+        if (iqEl && iqVal !== undefined) iqEl.value = Number(iqVal);
+        // 입고단가
+        var ipEl = document.getElementById(rid + '-ip');
+        var ipVal = uploaded['입고단가(원/kg)'] || uploaded['incoming_price'] || uploaded['입고단가'];
+        if (ipEl && ipVal !== undefined) ipEl.value = Math.round(Number(ipVal));
+        // 기초재고수량
+        var sqEl = document.getElementById(rid + '-sq');
+        var sqVal = uploaded['기초재고수량(톤)'] || uploaded['stock_qty'] || uploaded['기초재고수량'];
+        if (sqEl && sqVal !== undefined) sqEl.value = Number(sqVal);
+        // 기초재고단가
+        var spEl = document.getElementById(rid + '-sp');
+        var spVal = uploaded['기초재고단가(원/kg)'] || uploaded['stock_price'] || uploaded['기초재고단가'];
+        if (spEl && spVal !== undefined) spEl.value = Math.round(Number(spVal));
+        // 사용단가
+        var upEl = document.getElementById(rid + '-up');
+        var upVal = uploaded['사용단가(원/kg)'] || uploaded['use_price'] || uploaded['사용단가'];
+        if (upEl && upVal !== undefined) upEl.value = Math.round(Number(upVal));
+        // 이슈사항
+        var issueEl = document.getElementById(rid + '-issue');
+        var issueVal = uploaded['이슈사항'] || uploaded['issue'] || uploaded['비고'];
+        if (issueEl && issueVal !== undefined) issueEl.value = String(issueVal);
+      });
+
+      // 생산량 매핑 (엑셀에 '지종' 컬럼 있으면)
+      mnPreviewData.forEach(function(row) {
+        var type = row['지종'] || row['product_type'] || '';
+        var curProd = row['당월생산량(톤)'] || row['production'] || row['생산량(톤)'];
+        if (type && curProd !== undefined) {
+          var prodInputs = document.querySelectorAll('.mn-cur-prod');
+          prodInputs.forEach(function(inp) {
+            if (inp.getAttribute('data-type') === type) {
+              inp.value = Math.round(Number(curProd));
+            }
+          });
+        }
+      });
+
+      closeManualPreview();
+      calcManualProfit();
+      onManualProdChange();
+      alert('엑셀 데이터 적용 완료! (' + applied + '건 매칭)' + String.fromCharCode(10) + '확인 후 [저장] 버튼을 눌러주세요.');
+    }
+
+    // ====== 히스토리 관리 ======
+    function toggleManualHistory() {
+      var panel = document.getElementById('mn-history-panel');
+      if (!panel) return;
+      if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+        loadManualHistory();
+      } else {
+        panel.classList.add('hidden');
+      }
+    }
+
+    async function loadManualHistory() {
+      var year = document.getElementById('analysisYear').value;
+      var month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      var ym = year + month;
+
+      try {
+        var res = await fetch('/api/manual-input/history?ym=' + ym + '&machine=' + mnMachine);
+        var result = await res.json();
+        var history = result.history || [];
+
+        var tbody = document.getElementById('mn-history-body');
+        if (!tbody) return;
+
+        if (history.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-400">히스토리가 없습니다.</td></tr>';
+          return;
+        }
+
+        var html = '';
+        history.forEach(function(h, idx) {
+          var savedBy = h.saved_by || '(미입력)';
+          var savedAt = h.updated_at || h.created_at || '';
+          // 시간 포맷 (간략)
+          if (savedAt && savedAt.length > 16) savedAt = savedAt.substring(0, 16).replace('T', ' ');
+          html += '<tr class="border-b border-slate-100 hover:bg-amber-50/30">';
+          html += '<td class="px-3 py-1.5 text-xs text-gray-400">' + (idx + 1) + '</td>';
+          html += '<td class="px-3 py-1.5 text-xs font-medium">' + savedBy + '</td>';
+          html += '<td class="px-3 py-1.5 text-xs text-gray-500">' + savedAt + '</td>';
+          html += '<td class="px-3 py-1.5 text-center"><button onclick="restoreManualHistory(' + h.id + ')" class="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 border border-blue-200">복원</button></td>';
+          html += '</tr>';
+        });
+        tbody.innerHTML = html;
+      } catch(e) {
+        console.error('History load error:', e);
+      }
+    }
+
+    async function restoreManualHistory(id) {
+      if (!confirm('선택한 버전으로 복원하시겠습니까? 현재 입력값이 덮어씌워집니다.')) return;
+
+      try {
+        var res = await fetch('/api/manual-input/history/' + id);
+        var result = await res.json();
+        if (result.data) {
+          mnInputData = result.data;
+          renderManualProduction();
+          renderManualDetail();
+          alert('복원 완료! (저장자: ' + (result.saved_by || '-') + ', 시각: ' + (result.updated_at || '-') + ')');
+        } else {
+          alert('복원 실패: 데이터를 찾을 수 없습니다.');
+        }
+      } catch(e) {
+        alert('복원 오류: ' + e.message);
+      }
+    }
+
+    // ====== 저장 (계정 추적 포함) ======
     async function saveManualData() {
       var year = document.getElementById('analysisYear').value;
       var month = document.getElementById('analysisMonth').value.padStart(2, '0');
       var ym = year + month;
+
+      var userNameEl = document.getElementById('mn-user-name');
+      var savedBy = userNameEl ? userNameEl.value.trim() : '';
+      if (!savedBy) {
+        var inputName = prompt('저장자 이름을 입력하세요:');
+        if (inputName === null) return; // 취소
+        savedBy = inputName.trim();
+        if (userNameEl && savedBy) userNameEl.value = savedBy;
+      }
 
       // 생산량 수집
       var production = {};
@@ -4807,7 +5122,7 @@ export function mainPage(): string {
         }
       });
 
-      var payload = { ym: ym, machine: mnMachine, data: { production: production, materials: materials } };
+      var payload = { ym: ym, machine: mnMachine, data: { production: production, materials: materials }, saved_by: savedBy };
 
       try {
         var res = await fetch('/api/manual-input/save', {
@@ -4817,13 +5132,27 @@ export function mainPage(): string {
         });
         var result = await res.json();
         if (result.success) {
-          alert('저장되었습니다.');
+          alert('저장되었습니다. (' + savedBy + ')');
+          // 마지막 저장 정보 업데이트
+          updateLastSaveInfo(savedBy, new Date().toLocaleString('ko-KR'));
+          // 히스토리 패널 열려있으면 갱신
+          var panel = document.getElementById('mn-history-panel');
+          if (panel && !panel.classList.contains('hidden')) loadManualHistory();
         } else {
           alert('저장 실패: ' + (result.error || ''));
         }
       } catch(e) {
         alert('저장 오류: ' + e.message);
       }
+    }
+
+    function updateLastSaveInfo(savedBy, savedAt) {
+      var infoEl = document.getElementById('mn-last-save-info');
+      var byEl = document.getElementById('mn-last-saved-by');
+      var atEl = document.getElementById('mn-last-saved-at');
+      if (infoEl) infoEl.classList.remove('hidden');
+      if (byEl) byEl.textContent = savedBy || '(미입력)';
+      if (atEl) atEl.textContent = savedAt || '';
     }
   </script>
 </body>

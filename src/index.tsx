@@ -2291,11 +2291,11 @@ app.get('/api/manual-input/saved', async (c) => {
 
   try {
     const result = await db.prepare(
-      'SELECT data FROM manual_inputs WHERE ym = ? AND machine_code = ?'
+      'SELECT data, saved_by, updated_at FROM manual_inputs WHERE ym = ? AND machine_code = ? ORDER BY updated_at DESC LIMIT 1'
     ).bind(ym, machine).first()
 
     if (result && result.data) {
-      return c.json({ data: JSON.parse(result.data as string) })
+      return c.json({ data: JSON.parse(result.data as string), saved_by: result.saved_by, updated_at: result.updated_at })
     }
   } catch (e) {
     // 테이블이 없으면 무시
@@ -2307,31 +2307,75 @@ app.get('/api/manual-input/saved', async (c) => {
 // 수기입력 데이터 저장
 app.post('/api/manual-input/save', async (c) => {
   const db = c.env.DB
-  const { ym, machine, data } = await c.req.json()
+  const { ym, machine, data, saved_by } = await c.req.json()
 
   if (!ym || !machine || !data) return c.json({ error: 'ym, machine, data required' }, 400)
 
-  // 테이블 생성 (없으면)
+  // 테이블 생성 (없으면) - 히스토리 지원 (UNIQUE 제거하고 다건 저장)
   await db.prepare(`
     CREATE TABLE IF NOT EXISTS manual_inputs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       ym TEXT NOT NULL,
       machine_code TEXT NOT NULL,
       data TEXT NOT NULL,
+      saved_by TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(ym, machine_code)
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `).run()
 
-  // UPSERT
+  // 기존 테이블에 saved_by 컬럼이 없으면 추가
+  try {
+    await db.prepare(`ALTER TABLE manual_inputs ADD COLUMN saved_by TEXT DEFAULT ''`).run()
+  } catch (e) {
+    // 이미 있으면 무시
+  }
+
+  // INSERT (히스토리 유지를 위해 UPSERT 대신 INSERT)
   await db.prepare(`
-    INSERT INTO manual_inputs (ym, machine_code, data, updated_at)
-    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-    ON CONFLICT(ym, machine_code) DO UPDATE SET data = excluded.data, updated_at = CURRENT_TIMESTAMP
-  `).bind(ym, machine, JSON.stringify(data)).run()
+    INSERT INTO manual_inputs (ym, machine_code, data, saved_by, updated_at)
+    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+  `).bind(ym, machine, JSON.stringify(data), saved_by || '').run()
 
   return c.json({ success: true })
+})
+
+// 수기입력 히스토리 조회
+app.get('/api/manual-input/history', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym') || ''
+  const machine = c.req.query('machine') || ''
+
+  if (!ym || !machine) return c.json({ history: [] })
+
+  try {
+    const results = await db.prepare(
+      'SELECT id, ym, machine_code, saved_by, created_at, updated_at FROM manual_inputs WHERE ym = ? AND machine_code = ? ORDER BY updated_at DESC LIMIT 50'
+    ).bind(ym, machine).all()
+    return c.json({ history: results.results || [] })
+  } catch (e) {
+    return c.json({ history: [] })
+  }
+})
+
+// 히스토리 특정 버전 조회
+app.get('/api/manual-input/history/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+
+  try {
+    const result = await db.prepare(
+      'SELECT * FROM manual_inputs WHERE id = ?'
+    ).bind(id).first()
+
+    if (result && result.data) {
+      return c.json({ data: JSON.parse(result.data as string), saved_by: result.saved_by, updated_at: result.updated_at })
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  return c.json({ error: 'not found' }, 404)
 })
 
 export default app
