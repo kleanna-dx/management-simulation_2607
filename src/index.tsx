@@ -2407,4 +2407,79 @@ app.get('/api/manual-input/history/:id', async (c) => {
   return c.json({ error: 'not found' }, 404)
 })
 
+// ============ 투입제외 규칙 API ============
+
+app.get('/api/exclusion-rules', async (c) => {
+  const db = c.env.DB
+  const machine = c.req.query('machine') || ''
+  let sql = 'SELECT * FROM exclusion_rules'
+  if (machine) sql += ` WHERE machine_code = '${machine}'`
+  sql += ' ORDER BY machine_code, material_group_keyword, excluded_product_type'
+  const results = await db.prepare(sql).all()
+  return c.json(results.results)
+})
+
+app.post('/api/exclusion-rules', async (c) => {
+  const db = c.env.DB
+  const { machine_code, material_group_keyword, excluded_product_type, description } = await c.req.json()
+  if (!machine_code || !material_group_keyword || !excluded_product_type) {
+    return c.json({ error: 'machine_code, material_group_keyword, excluded_product_type are required' }, 400)
+  }
+  const result = await db.prepare(
+    'INSERT INTO exclusion_rules (machine_code, material_group_keyword, excluded_product_type, description) VALUES (?, ?, ?, ?)'
+  ).bind(machine_code, material_group_keyword, excluded_product_type, description || '').run()
+  return c.json({ success: true, id: result.meta.last_row_id })
+})
+
+app.put('/api/exclusion-rules/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  const { machine_code, material_group_keyword, excluded_product_type, description } = await c.req.json()
+  await db.prepare(
+    'UPDATE exclusion_rules SET machine_code=?, material_group_keyword=?, excluded_product_type=?, description=?, updated_at=CURRENT_TIMESTAMP WHERE id=?'
+  ).bind(machine_code, material_group_keyword, excluded_product_type, description || '', id).run()
+  return c.json({ success: true })
+})
+
+app.delete('/api/exclusion-rules/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  await db.prepare('DELETE FROM exclusion_rules WHERE id = ?').bind(id).run()
+  return c.json({ success: true })
+})
+
+// ============ 호기/자재 수정/삭제 API ============
+
+app.put('/api/units/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  const { unit_code, unit_name, description } = await c.req.json()
+  await db.prepare('UPDATE units SET unit_code=?, unit_name=?, description=? WHERE id=?')
+    .bind(unit_code, unit_name, description || '', id).run()
+  return c.json({ success: true })
+})
+
+app.delete('/api/units/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  await db.prepare('UPDATE units SET is_active = 0 WHERE id = ?').bind(id).run()
+  return c.json({ success: true })
+})
+
+app.put('/api/materials/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  const { material_code, material_name, category, unit_of_measure } = await c.req.json()
+  await db.prepare('UPDATE materials SET material_code=?, material_name=?, category=?, unit_of_measure=? WHERE id=?')
+    .bind(material_code, material_name, category || 'RAW', unit_of_measure || 'kg', id).run()
+  return c.json({ success: true })
+})
+
+app.delete('/api/materials/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  await db.prepare('UPDATE materials SET is_active = 0 WHERE id = ?').bind(id).run()
+  return c.json({ success: true })
+})
+
 export default app

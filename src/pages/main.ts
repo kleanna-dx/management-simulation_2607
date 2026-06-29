@@ -1133,11 +1133,55 @@ export function mainPage(): string {
         <!-- Sub tabs for master index -->
         <div class="flex flex-wrap gap-1 mb-4 border-b border-slate-200 pb-3">
           <button onclick="switchMasterIdx('material-mapping')" id="midx-tab-material-mapping" class="pill-tab pill-tab-active text-xs !px-3 !py-1.5"><i class="fas fa-link mr-1"></i>자재구분 매핑</button>
+          <button onclick="switchMasterIdx('exclusion-rules')" id="midx-tab-exclusion-rules" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1.5"><i class="fas fa-ban mr-1"></i>투입제외 규칙</button>
           <button onclick="switchMasterIdx('paper-products')" id="midx-tab-paper-products" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1.5">제지 제품분류</button>
           <button onclick="switchMasterIdx('paper-raw')" id="midx-tab-paper-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1.5">제지 원재료</button>
           <button onclick="switchMasterIdx('paper-sub')" id="midx-tab-paper-sub" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1.5">제지 부재료</button>
           <button onclick="switchMasterIdx('tissue-products')" id="midx-tab-tissue-products" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1.5">화장지 제품</button>
           <button onclick="switchMasterIdx('tissue-raw')" id="midx-tab-tissue-raw" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1.5">화장지 원재료</button>
+        </div>
+
+        <!-- 투입제외 규칙 -->
+        <div id="midx-exclusion-rules" class="midx-section hidden">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <span class="text-xs text-gray-500">호기별 자재그룹이 투입되지 않는 제품 지종을 설정합니다.</span>
+              <p class="text-[10px] text-gray-400 mt-0.5">예: PM3의 신문지 → CB(CCKB)·IV 제외 → 원단위 역산 시 유효생산량에서 차감</p>
+            </div>
+            <button onclick="showExclusionRuleForm()" class="btn-primary text-xs !py-1.5 !px-3"><i class="fas fa-plus mr-1"></i>규칙 추가</button>
+          </div>
+          <!-- 신규 추가 폼 -->
+          <div id="excl-rule-form" class="hidden mb-3 p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+            <div class="flex items-center gap-2 flex-wrap">
+              <select id="excl-machine" class="text-xs border border-slate-200 rounded px-2 py-1.5">
+                <option value="PM2">PM2</option>
+                <option value="PM3">PM3</option>
+              </select>
+              <input type="text" id="excl-keyword" placeholder="자재그룹 키워드 (예: 화이트, 신문지)" class="text-xs border border-slate-200 rounded px-2 py-1.5 w-48">
+              <input type="text" id="excl-product" placeholder="제외 지종 (예: KB, CB, IV)" class="text-xs border border-slate-200 rounded px-2 py-1.5 w-32">
+              <input type="text" id="excl-desc" placeholder="설명 (선택)" class="text-xs border border-slate-200 rounded px-2 py-1.5 w-48">
+              <button onclick="addExclusionRule()" class="text-xs px-3 py-1.5 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition"><i class="fas fa-check mr-1"></i>등록</button>
+              <button onclick="document.getElementById('excl-rule-form').classList.add('hidden')" class="text-xs px-2 py-1.5 text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+          </div>
+          <!-- 규칙 테이블 -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200">
+                  <th class="px-3 py-2 text-left font-semibold text-gray-600 w-8">#</th>
+                  <th class="px-3 py-2 text-left font-semibold text-gray-600">호기</th>
+                  <th class="px-3 py-2 text-left font-semibold text-gray-600">자재그룹 키워드</th>
+                  <th class="px-3 py-2 text-left font-semibold text-gray-600">제외 지종</th>
+                  <th class="px-3 py-2 text-left font-semibold text-gray-600">설명</th>
+                  <th class="px-3 py-2 text-center font-semibold text-gray-600 w-20">작업</th>
+                </tr>
+              </thead>
+              <tbody id="midx-exclusion-rules-body">
+                <tr><td colspan="6" class="text-center text-gray-400 py-6">로딩중...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <!-- 자재구분 매핑 -->
@@ -1655,12 +1699,14 @@ export function mainPage(): string {
       currentMidxTab = tab;
       document.querySelectorAll('.midx-section').forEach(el => el.classList.add('hidden'));
       document.getElementById('midx-' + tab).classList.remove('hidden');
-      ['material-mapping','paper-products','paper-raw','paper-sub','tissue-products','tissue-raw'].forEach(t => {
+      ['material-mapping','exclusion-rules','paper-products','paper-raw','paper-sub','tissue-products','tissue-raw'].forEach(t => {
         const btn = document.getElementById('midx-tab-' + t);
         if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(t === tab ? 'pill-tab-active' : 'pill-tab-inactive'); }
       });
       if (tab === 'material-mapping') {
         loadMaterialMapping('all');
+      } else if (tab === 'exclusion-rules') {
+        loadExclusionRules();
       } else {
         loadMasterIdx(tab);
       }
@@ -1885,6 +1931,97 @@ export function mainPage(): string {
       if (!confirm('\uc0ad\uc81c\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?')) return;
       await fetch('/api/master/' + tab + '/' + id, { method: 'DELETE' });
       loadMasterIdx(tab);
+    }
+
+    // ---- 투입제외 규칙 관리 ----
+    var _exclusionRules = [];
+
+    async function loadExclusionRules() {
+      var res = await fetch('/api/exclusion-rules').then(function(r) { return r.json(); });
+      _exclusionRules = res || [];
+      renderExclusionRules();
+    }
+
+    function renderExclusionRules() {
+      var tbody = document.getElementById('midx-exclusion-rules-body');
+      if (!tbody) return;
+      if (!_exclusionRules.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-6">등록된 규칙이 없습니다.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = _exclusionRules.map(function(r, i) {
+        return '<tr class="hover:bg-indigo-50/30 border-b border-slate-100" id="excl-row-' + r.id + '">' +
+          '<td class="px-3 py-1.5 text-gray-400">' + (i + 1) + '</td>' +
+          '<td class="px-3 py-1.5"><span class="px-2 py-0.5 rounded text-[10px] font-semibold ' + (r.machine_code === 'PM2' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700') + '">' + r.machine_code + '</span></td>' +
+          '<td class="px-3 py-1.5 font-medium">' + r.material_group_keyword + '</td>' +
+          '<td class="px-3 py-1.5"><span class="px-2 py-0.5 bg-red-50 text-red-600 rounded text-[10px] font-medium">' + r.excluded_product_type + '</span></td>' +
+          '<td class="px-3 py-1.5 text-gray-500">' + (r.description || '-') + '</td>' +
+          '<td class="px-3 py-1.5 text-center">' +
+            '<button onclick="editExclusionRule(' + r.id + ')" class="text-blue-400 hover:text-blue-600 mr-2"><i class="fas fa-pen text-[10px]"></i></button>' +
+            '<button onclick="deleteExclusionRule(' + r.id + ')" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button>' +
+          '</td></tr>';
+      }).join('');
+    }
+
+    function showExclusionRuleForm() {
+      document.getElementById('excl-rule-form').classList.remove('hidden');
+    }
+
+    async function addExclusionRule() {
+      var machine = document.getElementById('excl-machine').value;
+      var keyword = document.getElementById('excl-keyword').value.trim();
+      var product = document.getElementById('excl-product').value.trim();
+      var desc = document.getElementById('excl-desc').value.trim();
+      if (!keyword || !product) { alert('자재그룹 키워드와 제외 지종을 입력하세요.'); return; }
+      await fetch('/api/exclusion-rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ machine_code: machine, material_group_keyword: keyword, excluded_product_type: product, description: desc })
+      });
+      document.getElementById('excl-keyword').value = '';
+      document.getElementById('excl-product').value = '';
+      document.getElementById('excl-desc').value = '';
+      document.getElementById('excl-rule-form').classList.add('hidden');
+      loadExclusionRules();
+    }
+
+    async function editExclusionRule(id) {
+      var rule = _exclusionRules.find(function(r) { return r.id === id; });
+      if (!rule) return;
+      var tr = document.getElementById('excl-row-' + id);
+      if (!tr) return;
+      var inp = function(val, name, w) {
+        return '<input type="text" value="' + (val || '').replace(/"/g, '&quot;') + '" data-field="' + name + '" class="border border-blue-300 rounded px-1.5 py-0.5 text-xs focus:ring-1 focus:ring-blue-400 ' + (w || 'w-full') + '">';
+      };
+      tr.innerHTML =
+        '<td class="px-3 py-1.5 text-gray-400">-</td>' +
+        '<td class="px-3 py-1.5"><select data-field="machine_code" class="text-xs border border-blue-300 rounded px-1.5 py-0.5"><option value="PM2"' + (rule.machine_code === 'PM2' ? ' selected' : '') + '>PM2</option><option value="PM3"' + (rule.machine_code === 'PM3' ? ' selected' : '') + '>PM3</option></select></td>' +
+        '<td class="px-3 py-1.5">' + inp(rule.material_group_keyword, 'material_group_keyword', 'w-32') + '</td>' +
+        '<td class="px-3 py-1.5">' + inp(rule.excluded_product_type, 'excluded_product_type', 'w-20') + '</td>' +
+        '<td class="px-3 py-1.5">' + inp(rule.description, 'description', 'w-40') + '</td>' +
+        '<td class="px-3 py-1.5 text-center"><button onclick="saveExclusionRule(' + id + ')" class="text-green-600 hover:text-green-800 mr-1"><i class="fas fa-check"></i></button><button onclick="loadExclusionRules()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-undo"></i></button></td>';
+      tr.classList.add('bg-blue-50/50');
+    }
+
+    async function saveExclusionRule(id) {
+      var tr = document.getElementById('excl-row-' + id);
+      if (!tr) return;
+      var body = {};
+      tr.querySelectorAll('[data-field]').forEach(function(el) {
+        body[el.getAttribute('data-field')] = el.value || el.textContent;
+      });
+      await fetch('/api/exclusion-rules/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      loadExclusionRules();
+    }
+
+    async function deleteExclusionRule(id) {
+      if (!confirm('이 규칙을 삭제하시겠습니까?')) return;
+      await fetch('/api/exclusion-rules/' + id, { method: 'DELETE' });
+      loadExclusionRules();
     }
 
     async function clearMasterTable(tab) {
@@ -3247,28 +3384,80 @@ export function mainPage(): string {
     async function loadUnitsList() {
       const units=await fetch('/api/units').then(r=>r.json());
       document.getElementById('units-list').innerHTML = units.map(u=>\`
-        <div class="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
+        <div class="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors" id="unit-item-\${u.id}">
           <div class="flex items-center gap-3">
             <span class="unit-chip \${getCC(u.unit_code)}">\${u.unit_name}</span>
             <span class="text-xs font-mono text-gray-400">\${u.unit_code}</span>
             <span class="text-xs text-gray-400">\${u.description||''}</span>
           </div>
-          <span class="text-[10px] px-2 py-0.5 bg-sage-50 text-green-600 rounded-full font-medium">활성</span>
+          <div class="flex items-center gap-1">
+            <button onclick="editUnit(\${u.id}, '\${u.unit_code}', '\${u.unit_name}', '\${(u.description||'').replace(/'/g,"\\\\'")}' )" class="text-blue-400 hover:text-blue-600 px-1.5"><i class="fas fa-pen text-[10px]"></i></button>
+            <button onclick="deleteUnit(\${u.id})" class="text-red-400 hover:text-red-600 px-1.5"><i class="fas fa-times text-xs"></i></button>
+          </div>
         </div>
       \`).join('');
     }
     async function loadMaterialsList() {
       const mats=await fetch('/api/materials').then(r=>r.json());
       document.getElementById('materials-list').innerHTML = mats.map(m=>\`
-        <div class="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
+        <div class="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors" id="mat-item-\${m.id}">
           <div class="flex items-center gap-3">
             <span class="text-[10px] px-2 py-0.5 rounded font-medium \${m.category==='RAW'?'bg-steel-50 text-steel-400':'bg-sage-50 text-sage-600'}">\${m.category==='RAW'?'원자재':'부자재'}</span>
             <span class="text-sm font-medium text-gray-700">\${m.material_name}</span>
             <span class="text-xs font-mono text-gray-400">\${m.material_code}</span>
           </div>
-          <span class="text-xs text-gray-400">\${m.unit_of_measure}</span>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-400">\${m.unit_of_measure}</span>
+            <button onclick="editMaterial(\${m.id})" class="text-blue-400 hover:text-blue-600 px-1.5"><i class="fas fa-pen text-[10px]"></i></button>
+            <button onclick="deleteMaterial(\${m.id})" class="text-red-400 hover:text-red-600 px-1.5"><i class="fas fa-times text-xs"></i></button>
+          </div>
         </div>
       \`).join('');
+    }
+
+    // ---- 호기/자재 수정/삭제 ----
+    function editUnit(id, code, name, desc) {
+      var newCode = prompt('호기 코드:', code);
+      if (newCode === null) return;
+      var newName = prompt('호기명:', name);
+      if (newName === null) return;
+      var newDesc = prompt('설명:', desc || '');
+      if (newDesc === null) newDesc = '';
+      fetch('/api/units/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unit_code: newCode, unit_name: newName, description: newDesc })
+      }).then(function() { loadUnitsList(); });
+    }
+
+    function deleteUnit(id) {
+      if (!confirm('이 호기를 비활성화(삭제)하시겠습니까?')) return;
+      fetch('/api/units/' + id, { method: 'DELETE' }).then(function() { loadUnitsList(); });
+    }
+
+    function editMaterial(id) {
+      fetch('/api/materials').then(function(r) { return r.json(); }).then(function(mats) {
+        var m = mats.find(function(x) { return x.id === id; });
+        if (!m) return;
+        var newCode = prompt('자재코드:', m.material_code);
+        if (newCode === null) return;
+        var newName = prompt('자재명:', m.material_name);
+        if (newName === null) return;
+        var newCat = prompt('분류 (RAW/SUB):', m.category);
+        if (newCat === null) return;
+        var newUom = prompt('단위:', m.unit_of_measure);
+        if (newUom === null) return;
+        fetch('/api/materials/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ material_code: newCode, material_name: newName, category: newCat, unit_of_measure: newUom })
+        }).then(function() { loadMaterialsList(); });
+      });
+    }
+
+    function deleteMaterial(id) {
+      if (!confirm('이 자재를 비활성화(삭제)하시겠습니까?')) return;
+      fetch('/api/materials/' + id, { method: 'DELETE' }).then(function() { loadMaterialsList(); });
     }
 
     // Utilities
@@ -4700,6 +4889,7 @@ export function mainPage(): string {
     var mnProdTypes = [];  // 지종 목록
     var mnPrevProd = {};   // 전월 지종별 생산량(톤)
     var mnInputData = {};  // 사용자 입력 데이터
+    var mnExclusionRules = [];  // 투입제외 규칙 (DB에서 로드)
 
     // 저장된 사용자 이름 복원
     (function() {
@@ -4755,13 +4945,15 @@ export function mainPage(): string {
         var results = await Promise.all([
           fetch('/api/manual-input/materials?ym=' + prevYm + '&machine=' + mnMachine).then(function(r){return r.json();}),
           fetch('/api/manual-input/production?ym=' + prevYm + '&machine=' + mnMachine).then(function(r){return r.json();}),
-          fetch('/api/manual-input/saved?ym=' + ym + '&machine=' + mnMachine).then(function(r){return r.json();})
+          fetch('/api/manual-input/saved?ym=' + ym + '&machine=' + mnMachine).then(function(r){return r.json();}),
+          fetch('/api/exclusion-rules?machine=' + mnMachine).then(function(r){return r.json();})
         ]);
         mnMaterials = results[0].materials || [];
         mnProdTypes = results[0].productTypes || [];
         mnPrevProd = results[1].production || {};
         var savedData = results[2] || {};
         mnInputData = savedData.data || {};
+        mnExclusionRules = results[3] || [];
         // 저장된 신규 자재 복원
         if (mnInputData.new_materials && mnInputData.new_materials.length) {
           mnInputData.new_materials.forEach(function(nm) {
@@ -4988,7 +5180,7 @@ export function mainPage(): string {
       calcManualProfit();
     }
 
-    // 호기·자재그룹에 따른 유효 생산량(톤) 계산
+    // 호기·자재그룹에 따른 유효 생산량(톤) 계산 — DB 규칙 기반
     function getEffectiveProduction(idx) {
       var m = mnMaterials[idx];
       var groupName = m ? (m.group_name || '') : '';
@@ -5004,18 +5196,15 @@ export function mainPage(): string {
         totalProd += v;
       });
 
-      // 제외 지종 판단
+      // DB 규칙에서 제외 지종 확인
       var excludeProd = 0;
-      if (mnMachine === 'PM2') {
-        // PM2: 화이트레저 → KB 지종에 투입X
-        if (groupName.indexOf('화이트') >= 0) {
-          excludeProd = prodByType['KB'] || 0;
-        }
-      } else if (mnMachine === 'PM3') {
-        // PM3: 신문지/마닐라 → CB(CCKB), IV 지종에 투입X
-        if (groupName.indexOf('신문지') >= 0 || groupName.indexOf('마닐라') >= 0) {
-          excludeProd = (prodByType['CB'] || 0) + (prodByType['IV'] || 0);
-        }
+      if (mnExclusionRules && mnExclusionRules.length && groupName) {
+        mnExclusionRules.forEach(function(rule) {
+          // 자재그룹에 키워드가 포함되면 해당 지종 제외
+          if (groupName.indexOf(rule.material_group_keyword) >= 0) {
+            excludeProd += prodByType[rule.excluded_product_type] || 0;
+          }
+        });
       }
 
       var effectiveProd = totalProd - excludeProd;
