@@ -149,13 +149,13 @@ app.get('/api/analysis/unit-summary', async (c) => {
   const prevYm = String(prevYear) + String(prevMonth).padStart(2, '0')
 
   // raw_records 기반: 호기별 자재별 비용 집계 (전월/당월)
-  // 전월 데이터 (issue_amount = 출고금액, 실제 비용)
+  // 비용 = 배부수량 × 사용단가 (actual_alloc_qty × actual_unit_price)
   const prevData = await db.prepare(`
     SELECT machine_code,
       material_code,
       SUM(CAST(actual_alloc_qty AS REAL)) as usage_qty,
       AVG(CAST(actual_unit_price AS REAL)) as unit_price,
-      SUM(CAST(issue_amount AS REAL)) as total_cost
+      SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as total_cost
     FROM raw_records
     WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
     GROUP BY machine_code, material_code
@@ -167,7 +167,7 @@ app.get('/api/analysis/unit-summary', async (c) => {
       material_code,
       SUM(CAST(actual_alloc_qty AS REAL)) as usage_qty,
       AVG(CAST(actual_unit_price AS REAL)) as unit_price,
-      SUM(CAST(issue_amount AS REAL)) as total_cost,
+      SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as total_cost,
       MAX(CAST(production_qty AS REAL)) as production_qty
     FROM raw_records
     WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'

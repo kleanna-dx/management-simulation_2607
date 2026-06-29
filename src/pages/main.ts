@@ -2386,19 +2386,26 @@ export function mainPage(): string {
       if (!unitSummaryData?.length) return;
       const ctx = document.getElementById('unitChart').getContext('2d');
       if (unitChartInstance) unitChartInstance.destroy();
+      // 원단위 = 총비용(원) ÷ 생산량(kg) ÷ 1000 = 천원/톤
       unitChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
           labels: unitSummaryData.map(u=>u.unit_name),
           datasets: [
-            { label: '전월', data: unitSummaryData.map(u=>u.prev_total_cost), backgroundColor: '#c7d2fe', borderRadius: 6, barPercentage: 0.6 },
-            { label: '당월', data: unitSummaryData.map(u=>u.cur_total_cost), backgroundColor: '#4f46e5', borderRadius: 6, barPercentage: 0.6 }
+            { label: '전월', data: unitSummaryData.map(u => {
+              var prodTon = (u.prev_production_qty || 0) / 1000;
+              return prodTon > 0 ? u.prev_total_cost / prodTon / 1000 : 0;
+            }), backgroundColor: '#c7d2fe', borderRadius: 6, barPercentage: 0.6 },
+            { label: '당월', data: unitSummaryData.map(u => {
+              var prodTon = (u.production_qty || 0) / 1000;
+              return prodTon > 0 ? u.cur_total_cost / prodTon / 1000 : 0;
+            }), backgroundColor: '#4f46e5', borderRadius: 6, barPercentage: 0.6 }
           ]
         },
         options: {
           responsive: true, maintainAspectRatio: false,
           plugins: { legend: { position:'top', align:'end', labels: { boxWidth:8, usePointStyle:true, pointStyle:'circle', font:{size:11} } } },
-          scales: { y: { beginAtZero:true, grid:{color:'#f1f5f9'}, ticks:{font:{size:10}, callback:v=>(v/100000000).toFixed(1)+'억'} }, x: { grid:{display:false}, ticks:{font:{size:11}} } }
+          scales: { y: { beginAtZero:true, grid:{color:'#f1f5f9'}, ticks:{font:{size:10}, callback:v=>Math.round(v).toLocaleString()} }, x: { grid:{display:false}, ticks:{font:{size:11}} } }
         }
       });
     }
