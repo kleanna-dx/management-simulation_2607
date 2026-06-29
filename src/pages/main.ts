@@ -4829,6 +4829,15 @@ export function mainPage(): string {
       inputs.forEach(function(inp) { total += Number(inp.value) || 0; });
       var el = document.getElementById('mn-cur-prod-total');
       if (el) el.textContent = total > 0 ? Math.round(total).toLocaleString() : '-';
+      // 생산량 변경 시 → 수동 원단위 설정된 행들의 사용량 재역산
+      if (mnMaterials && mnMaterials.length) {
+        mnMaterials.forEach(function(m, idx) {
+          var cucEl = document.getElementById('mn-r-' + idx + '-cuc');
+          if (cucEl && cucEl.getAttribute('data-manual') === '1') {
+            onUnitCostInput(idx);
+          }
+        });
+      }
       calcManualProfit();
     }
 
@@ -4908,7 +4917,9 @@ export function mainPage(): string {
           html += '<td class="px-1.5 py-0.5 text-right">'
             + '<input type="number" class="w-16 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 bg-emerald-50/30 focus:border-emerald-400 mn-inp" id="' + rid + '-cu" data-row="' + rowIdx + '" data-field="cur_usage" value="' + (saved.cur_usage || '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
             + '</td>';
-          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs" id="' + rid + '-cuc">-</td>';
+          html += '<td class="px-1.5 py-0.5 text-right">'
+            + '<input type="number" step="0.1" class="w-14 text-right text-[10px] font-mono border border-indigo-200 rounded px-0.5 py-0.5 bg-indigo-50/30 focus:border-indigo-400 mn-inp" id="' + rid + '-cuc" data-row="' + rowIdx + '" data-field="cur_uc" data-group="' + (m.group_name || '') + '" value="' + (saved.cur_uc || '') + '" placeholder="-" onchange="onUnitCostInput(' + rowIdx + ')">'
+            + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
             + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp" id="' + rid + '-iq" data-row="' + rowIdx + '" data-field="incoming_qty" value="' + (saved.incoming_qty || '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
             + '</td>';
@@ -4945,7 +4956,70 @@ export function mainPage(): string {
     }
 
     function calcManualRow(idx) {
+      // 사용량 변경 시 → 원단위 수동플래그 해제 (자동계산 모드로)
+      var cucEl = document.getElementById('mn-r-' + idx + '-cuc');
+      if (cucEl) cucEl.removeAttribute('data-manual');
       calcManualProfit();
+    }
+
+    // 원단위 입력 → 사용량 역산
+    // 공식: 사용량(kg) = 원단위(kg/톤) × 유효생산량(톤)
+    // 유효생산량 = 전체생산량 - 제외지종 생산량
+    // PM2: 화이트레저 → KB 제외
+    // PM3: 신문지·마닐라 → CB(CCKB)·IV 제외
+    function onUnitCostInput(idx) {
+      var rid = 'mn-r-' + idx;
+      var cucEl = document.getElementById(rid + '-cuc');
+      var cuEl = document.getElementById(rid + '-cu');
+      if (!cucEl || !cuEl) return;
+
+      var unitCost = Number(cucEl.value) || 0;
+      if (unitCost <= 0) { cucEl.removeAttribute('data-manual'); calcManualProfit(); return; }
+
+      // 수동입력 플래그 설정
+      cucEl.setAttribute('data-manual', '1');
+
+      // 유효 생산량 계산
+      var effectiveProd = getEffectiveProduction(idx);
+      // 사용량 역산
+      var usage = Math.round(unitCost * effectiveProd);
+      cuEl.value = usage > 0 ? usage : '';
+
+      calcManualProfit();
+    }
+
+    // 호기·자재그룹에 따른 유효 생산량(톤) 계산
+    function getEffectiveProduction(idx) {
+      var m = mnMaterials[idx];
+      var groupName = m ? (m.group_name || '') : '';
+
+      // 당월 지종별 생산량 수집 (톤 단위)
+      var prodByType = {};
+      var totalProd = 0;
+      var inputs = document.querySelectorAll('.mn-cur-prod');
+      inputs.forEach(function(inp) {
+        var t = inp.getAttribute('data-type') || '';
+        var v = Number(inp.value) || 0;
+        prodByType[t] = v;
+        totalProd += v;
+      });
+
+      // 제외 지종 판단
+      var excludeProd = 0;
+      if (mnMachine === 'PM2') {
+        // PM2: 화이트레저 → KB 지종에 투입X
+        if (groupName.indexOf('화이트') >= 0) {
+          excludeProd = prodByType['KB'] || 0;
+        }
+      } else if (mnMachine === 'PM3') {
+        // PM3: 신문지/마닐라 → CB(CCKB), IV 지종에 투입X
+        if (groupName.indexOf('신문지') >= 0 || groupName.indexOf('마닐라') >= 0) {
+          excludeProd = (prodByType['CB'] || 0) + (prodByType['IV'] || 0);
+        }
+      }
+
+      var effectiveProd = totalProd - excludeProd;
+      return effectiveProd > 0 ? effectiveProd : (totalProd > 0 ? totalProd : 1);
     }
 
     function calcManualProfit() {
@@ -4975,10 +5049,13 @@ export function mainPage(): string {
         var cuEl = document.getElementById(rid + '-cu');
         var curUsage = cuEl ? (Number(cuEl.value) || 0) : 0;
 
-        // 원단위(kg/톤) 자동 계산
-        var curUC = curProdTon > 0 ? curUsage / curProdTon : 0;
+        // 원단위(kg/톤) — 사용량 기반 자동계산 (사용자 수동입력값이 있으면 유지)
         var cucEl = document.getElementById(rid + '-cuc');
-        if (cucEl) cucEl.textContent = curUC > 0 ? curUC.toFixed(1) : '-';
+        var cucManualVal = cucEl ? Number(cucEl.getAttribute('data-manual')) : 0;
+        if (!cucManualVal && curUsage > 0 && curProdTon > 0) {
+          var autoUC = curUsage / curProdTon;
+          if (cucEl) cucEl.value = autoUC.toFixed(1);
+        }
 
         // === 핵심 로직: 사용단가 = 가중평균(기초재고 + 입고) ===
         var iqEl = document.getElementById(rid + '-iq');  // 입고수량(톤) → kg로 변환
