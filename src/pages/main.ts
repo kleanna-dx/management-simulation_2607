@@ -554,10 +554,10 @@ export function mainPage(): string {
       <!-- 서브탭 네비게이션 -->
       <div class="flex items-center gap-2">
         <button onclick="switchDataInputSub('upload')" id="di-tab-upload" class="pill-tab pill-tab-active text-xs !px-4 !py-2">
-          <i class="fas fa-file-excel mr-1.5"></i>Raw 데이터 입력
+          <i class="fas fa-file-excel mr-1.5"></i>원/부자재 실적 데이터 입력
         </button>
         <button onclick="switchDataInputSub('dataview')" id="di-tab-dataview" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
-          <i class="fas fa-database mr-1.5"></i>데이터 조회
+          <i class="fas fa-database mr-1.5"></i>원/부자재 실적 데이터 조회
         </button>
         <button onclick="switchDataInputSub('manual')" id="di-tab-manual" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
           <i class="fas fa-edit mr-1.5"></i>부서 수기 입력
