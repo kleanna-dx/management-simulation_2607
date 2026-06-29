@@ -558,6 +558,9 @@ export function mainPage(): string {
         <button onclick="switchDataInputSub('manual')" id="di-tab-manual" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
           <i class="fas fa-edit mr-1.5"></i>부서 수기 입력
         </button>
+        <button onclick="switchDataInputSub('calcresult')" id="di-tab-calcresult" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
+          <i class="fas fa-calculator mr-1.5"></i>계산결과
+        </button>
       </div>
 
     <!-- 서브: Raw 데이터 입력 (Upload) -->
@@ -952,6 +955,120 @@ export function mainPage(): string {
               <tr><td colspan="20" class="text-center py-8 text-gray-400"><i class="fas fa-arrow-up mr-2"></i>호기 선택 후 불러오기를 클릭하세요</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 서브: 계산결과 -->
+    <div id="content-calcresult" class="hidden fade-in space-y-4">
+      <!-- 안내 메시지 (데이터 미로드 시) -->
+      <div id="cr-empty-msg" class="card p-8 text-center">
+        <i class="fas fa-info-circle text-3xl text-slate-300 mb-3"></i>
+        <p class="text-sm text-gray-500">수기 입력 데이터를 먼저 불러온 후 확인할 수 있습니다.</p>
+        <p class="text-xs text-gray-400 mt-1">데이터 입력 &gt; 부서 수기 입력 탭에서 호기 선택 후 불러오기를 실행해주세요.</p>
+      </div>
+
+      <!-- 요약 대시보드 -->
+      <div id="cr-dashboard" class="hidden">
+        <!-- 기간/호기 정보 -->
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <span id="cr-period-label" class="text-sm font-semibold text-gray-700"></span>
+            <span id="cr-machine-label" class="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full font-medium"></span>
+          </div>
+          <button onclick="exportCalcResultExcel()" class="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
+            <i class="fas fa-file-excel mr-1"></i>엑셀 다운로드
+          </button>
+        </div>
+
+        <!-- 요약 카드 4개 -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <div class="card p-4 border-l-4 border-l-blue-500">
+            <p class="text-xs text-gray-500 mb-1">당월 총 재료비</p>
+            <p id="cr-total-cost" class="text-lg font-bold text-gray-800">-</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">백만원</p>
+          </div>
+          <div class="card p-4 border-l-4 border-l-indigo-500">
+            <p class="text-xs text-gray-500 mb-1">평균 원단위</p>
+            <p id="cr-avg-unitcost" class="text-lg font-bold text-gray-800">-</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">원/톤</p>
+          </div>
+          <div class="card p-4 border-l-4 border-l-emerald-500">
+            <p class="text-xs text-gray-500 mb-1">단가 절감 효과</p>
+            <p id="cr-saving-effect" class="text-lg font-bold text-blue-600">-</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">원 (양수=절감)</p>
+          </div>
+          <div class="card p-4 border-l-4 border-l-rose-500">
+            <p class="text-xs text-gray-500 mb-1">단가 악화 효과</p>
+            <p id="cr-worse-effect" class="text-lg font-bold text-red-500">-</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">원 (음수=악화)</p>
+          </div>
+        </div>
+
+        <!-- 그룹별 요약 -->
+        <div class="card p-4 mb-4">
+          <h4 class="text-xs font-semibold text-gray-600 mb-3"><i class="fas fa-layer-group mr-1.5"></i>자재그룹별 요약</h4>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="bg-slate-50 text-gray-600 border-b border-slate-200">
+                  <th class="px-2 py-2 text-left font-semibold">그룹명</th>
+                  <th class="px-2 py-2 text-right font-semibold">자재수</th>
+                  <th class="px-2 py-2 text-right font-semibold">당월 재료비(백만원)</th>
+                  <th class="px-2 py-2 text-right font-semibold">원단위(원/톤)</th>
+                  <th class="px-2 py-2 text-right font-semibold">단가 절감</th>
+                  <th class="px-2 py-2 text-right font-semibold">단가 악화</th>
+                  <th class="px-2 py-2 text-right font-semibold">순 손익효과</th>
+                </tr>
+              </thead>
+              <tbody id="cr-group-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 자재별 상세 결과 테이블 -->
+        <div class="card p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-xs font-semibold text-gray-600"><i class="fas fa-table mr-1.5"></i>자재별 계산 상세</h4>
+            <div class="flex items-center gap-2">
+              <select id="cr-group-filter" onchange="filterCalcResult()" class="text-xs border border-slate-200 rounded px-2 py-1">
+                <option value="">전체 그룹</option>
+              </select>
+              <select id="cr-sort" onchange="renderCalcResultTable()" class="text-xs border border-slate-200 rounded px-2 py-1">
+                <option value="effect-desc">손익효과순 (악화 먼저)</option>
+                <option value="effect-asc">손익효과순 (절감 먼저)</option>
+                <option value="cost-desc">재료비순 (높은순)</option>
+                <option value="name-asc">자재명순</option>
+              </select>
+            </div>
+          </div>
+          <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
+            <table class="w-full text-xs">
+              <thead class="sticky top-0 z-10">
+                <tr class="bg-slate-100 text-gray-600 border-b border-slate-300">
+                  <th class="px-2 py-2 text-left font-semibold whitespace-nowrap">No</th>
+                  <th class="px-2 py-2 text-left font-semibold whitespace-nowrap">자재코드</th>
+                  <th class="px-2 py-2 text-left font-semibold whitespace-nowrap">자재명</th>
+                  <th class="px-2 py-2 text-left font-semibold whitespace-nowrap">그룹</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">기초재고(톤)</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">기초단가</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">입고(톤)</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">입고단가</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap bg-amber-50">가중평균단가</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">전월단가</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap bg-orange-50">단가차이</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">당월사용량(kg)</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">재료비(백만원)</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">원단위(원/톤)</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap bg-blue-50">사용량 효과</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap bg-blue-50">단가 효과</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap bg-blue-50">총 손익효과</th>
+                </tr>
+              </thead>
+              <tbody id="cr-detail-body"></tbody>
+              <tfoot id="cr-detail-foot" class="bg-slate-50 font-semibold border-t-2 border-slate-300"></tfoot>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -1460,7 +1577,7 @@ export function mainPage(): string {
     });
 
     function switchTab(tab) {
-      ['dashboard','detail','upload','dataview','master','simulation','forecast','datainput','manual','profitanalysis','simflow'].forEach(t => {
+      ['dashboard','detail','upload','dataview','master','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.add('pill-tab-inactive'); }
@@ -1487,7 +1604,7 @@ export function mainPage(): string {
     }
 
     function switchDataInputSub(sub) {
-      ['upload','dataview','manual'].forEach(function(s) {
+      ['upload','dataview','manual','calcresult'].forEach(function(s) {
         var el = document.getElementById('content-' + s);
         if (el) el.classList.add('hidden');
         var btn = document.getElementById('di-tab-' + s);
@@ -1499,6 +1616,7 @@ export function mainPage(): string {
       if (activeBtn) { activeBtn.classList.add('pill-tab-active'); activeBtn.classList.remove('pill-tab-inactive'); }
       if (sub === 'dataview') { initDataView(); }
       if (sub === 'manual') { loadManualData(); }
+      if (sub === 'calcresult') { renderCalcResult(); }
     }
 
     function switchProfitSub(sub) {
@@ -4937,6 +5055,292 @@ export function mainPage(): string {
           tr.style.display = 'none';
         }
       });
+    }
+
+    // ====== 계산결과 탭 ======
+    var crData = []; // 계산결과 배열
+
+    function renderCalcResult() {
+      var emptyEl = document.getElementById('cr-empty-msg');
+      var dashEl = document.getElementById('cr-dashboard');
+      if (!mnMaterials || !mnMaterials.length) {
+        if (emptyEl) emptyEl.classList.remove('hidden');
+        if (dashEl) dashEl.classList.add('hidden');
+        return;
+      }
+      if (emptyEl) emptyEl.classList.add('hidden');
+      if (dashEl) dashEl.classList.remove('hidden');
+
+      // 기간/호기 표시
+      var year = document.getElementById('analysisYear').value;
+      var month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      var curLabel = year.substring(2) + '.' + month + '월 (예상)';
+      var prevMonth = parseInt(month) - 1;
+      var prevYear = parseInt(year);
+      if (prevMonth < 1) { prevMonth = 12; prevYear--; }
+      var prevLabel = String(prevYear).substring(2) + '.' + String(prevMonth).padStart(2,'0') + '월 (실적)';
+
+      var plEl = document.getElementById('cr-period-label');
+      if (plEl) plEl.textContent = prevLabel + ' vs ' + curLabel;
+      var mlEl = document.getElementById('cr-machine-label');
+      if (mlEl) mlEl.textContent = mnMachine || 'PM2';
+
+      // 당월 총 생산량(톤)
+      var curProdInputs = document.querySelectorAll('.mn-cur-prod');
+      var curProdTon = 0;
+      curProdInputs.forEach(function(inp) { curProdTon += Number(inp.value) || 0; });
+      if (curProdTon === 0) curProdTon = 1;
+
+      // 전월 총 생산량(톤)
+      var prevProdTon = 0;
+      for (var k in mnPrevProd) { prevProdTon += (mnPrevProd[k] || 0) / 1000; }
+      if (prevProdTon === 0) prevProdTon = 1;
+
+      // 자재별 계산
+      crData = [];
+      var groups = {};
+      var totalCost = 0;
+      var totalSaving = 0;
+      var totalWorse = 0;
+
+      mnMaterials.forEach(function(m, idx) {
+        var rid = 'mn-r-' + idx;
+        var prevUsage = m.usage_qty || 0;
+        var prevPrice = m.unit_price || 0;
+
+        // DOM에서 입력값 읽기
+        var sqEl = document.getElementById(rid + '-sq');
+        var spEl = document.getElementById(rid + '-sp');
+        var iqEl = document.getElementById(rid + '-iq');
+        var ipEl = document.getElementById(rid + '-ip');
+        var upEl = document.getElementById(rid + '-up');
+        var cuEl = document.getElementById(rid + '-cu');
+
+        var stockQty = sqEl ? (Number(sqEl.value) || 0) : 0;
+        var stockPrice = spEl ? (Number(spEl.value) || 0) : 0;
+        var incomingQty = iqEl ? (Number(iqEl.value) || 0) : 0;
+        var incomingPrice = ipEl ? (Number(ipEl.value) || 0) : 0;
+        var curUsage = cuEl ? (Number(cuEl.value) || 0) : 0;
+
+        // 가중평균 사용단가
+        var stockQtyKg = stockQty * 1000;
+        var incomingQtyKg = incomingQty * 1000;
+        var totalQtyKg = stockQtyKg + incomingQtyKg;
+        var calcPrice = 0;
+        if (totalQtyKg > 0 && (stockPrice > 0 || incomingPrice > 0)) {
+          calcPrice = (stockQtyKg * stockPrice + incomingQtyKg * incomingPrice) / totalQtyKg;
+        }
+        var curPrice = calcPrice > 0 ? calcPrice : (upEl ? (Number(upEl.value) || prevPrice) : prevPrice);
+
+        // 비용
+        var curCost = curUsage * curPrice;
+        var curCostMil = curCost / 1000000;
+        totalCost += curCostMil;
+
+        // 원단위
+        var unitCost = curProdTon > 0 ? curCost / curProdTon : 0;
+
+        // 손익효과
+        var diffUsage = (prevUsage - curUsage) * prevPrice;
+        var diffPrice = (curUsage > 0 && curPrice > 0) ? (prevPrice - curPrice) * curUsage : 0;
+        var diffTotal = diffUsage + diffPrice;
+
+        if (diffPrice > 0) totalSaving += diffPrice;
+        if (diffPrice < 0) totalWorse += diffPrice;
+
+        var groupName = m.group_name || '기타';
+        if (!groups[groupName]) {
+          groups[groupName] = { count: 0, cost: 0, saving: 0, worse: 0, unitCostSum: 0 };
+        }
+        groups[groupName].count++;
+        groups[groupName].cost += curCostMil;
+        groups[groupName].unitCostSum += unitCost;
+        if (diffPrice > 0) groups[groupName].saving += diffPrice;
+        if (diffPrice < 0) groups[groupName].worse += diffPrice;
+
+        crData.push({
+          code: m.code,
+          name: m.name,
+          group: groupName,
+          stockQty: stockQty,
+          stockPrice: stockPrice,
+          incomingQty: incomingQty,
+          incomingPrice: incomingPrice,
+          calcPrice: calcPrice,
+          curPrice: curPrice,
+          prevPrice: prevPrice,
+          priceDiff: curPrice - prevPrice,
+          curUsage: curUsage,
+          curCostMil: curCostMil,
+          unitCost: unitCost,
+          diffUsage: diffUsage,
+          diffPrice: diffPrice,
+          diffTotal: diffTotal
+        });
+      });
+
+      // 요약 카드 업데이트
+      var tcEl = document.getElementById('cr-total-cost');
+      if (tcEl) tcEl.textContent = totalCost > 0 ? Math.round(totalCost).toLocaleString() : '-';
+      var avgUC = curProdTon > 0 ? (totalCost * 1000000 / curProdTon) : 0;
+      var auEl = document.getElementById('cr-avg-unitcost');
+      if (auEl) auEl.textContent = avgUC > 0 ? Math.round(avgUC).toLocaleString() : '-';
+      var seEl = document.getElementById('cr-saving-effect');
+      if (seEl) seEl.textContent = totalSaving > 0 ? '+' + Math.round(totalSaving).toLocaleString() : '-';
+      var weEl = document.getElementById('cr-worse-effect');
+      if (weEl) weEl.textContent = totalWorse < 0 ? Math.round(totalWorse).toLocaleString() : '-';
+
+      // 그룹 필터 옵션 업데이트
+      var filterEl = document.getElementById('cr-group-filter');
+      if (filterEl) {
+        var prevVal = filterEl.value;
+        var optHtml = '<option value="">전체 그룹</option>';
+        Object.keys(groups).sort().forEach(function(g) {
+          optHtml += '<option value="' + g + '">' + g + ' (' + groups[g].count + ')</option>';
+        });
+        filterEl.innerHTML = optHtml;
+        if (prevVal) filterEl.value = prevVal;
+      }
+
+      // 그룹 요약 테이블
+      var gbBody = document.getElementById('cr-group-body');
+      if (gbBody) {
+        var gHtml = '';
+        var gKeys = Object.keys(groups).sort();
+        gKeys.forEach(function(g) {
+          var gi = groups[g];
+          var gUnitCost = gi.count > 0 ? gi.unitCostSum / gi.count : 0;
+          var gNetEffect = gi.saving + gi.worse;
+          gHtml += '<tr class="border-b border-slate-100 hover:bg-slate-50/50">';
+          gHtml += '<td class="px-2 py-1.5 font-medium text-gray-700">' + g + '</td>';
+          gHtml += '<td class="px-2 py-1.5 text-right text-gray-600">' + gi.count + '</td>';
+          gHtml += '<td class="px-2 py-1.5 text-right font-mono">' + (gi.cost > 0 ? Math.round(gi.cost).toLocaleString() : '-') + '</td>';
+          gHtml += '<td class="px-2 py-1.5 text-right font-mono">' + (gUnitCost > 0 ? Math.round(gUnitCost).toLocaleString() : '-') + '</td>';
+          gHtml += '<td class="px-2 py-1.5 text-right font-mono text-blue-600">' + (gi.saving > 0 ? '+' + Math.round(gi.saving).toLocaleString() : '-') + '</td>';
+          gHtml += '<td class="px-2 py-1.5 text-right font-mono text-red-500">' + (gi.worse < 0 ? Math.round(gi.worse).toLocaleString() : '-') + '</td>';
+          gHtml += '<td class="px-2 py-1.5 text-right font-mono ' + (gNetEffect >= 0 ? 'text-blue-600' : 'text-red-500') + '">' + (gNetEffect !== 0 ? (gNetEffect > 0 ? '+' : '') + Math.round(gNetEffect).toLocaleString() : '-') + '</td>';
+          gHtml += '</tr>';
+        });
+        // 합계 행
+        var netTotal = totalSaving + totalWorse;
+        gHtml += '<tr class="bg-slate-50 font-semibold border-t border-slate-300">';
+        gHtml += '<td class="px-2 py-2 text-gray-800">합계</td>';
+        gHtml += '<td class="px-2 py-2 text-right text-gray-800">' + crData.length + '</td>';
+        gHtml += '<td class="px-2 py-2 text-right font-mono text-gray-800">' + Math.round(totalCost).toLocaleString() + '</td>';
+        gHtml += '<td class="px-2 py-2 text-right font-mono text-gray-800">' + Math.round(avgUC).toLocaleString() + '</td>';
+        gHtml += '<td class="px-2 py-2 text-right font-mono text-blue-600">' + (totalSaving > 0 ? '+' + Math.round(totalSaving).toLocaleString() : '-') + '</td>';
+        gHtml += '<td class="px-2 py-2 text-right font-mono text-red-500">' + (totalWorse < 0 ? Math.round(totalWorse).toLocaleString() : '-') + '</td>';
+        gHtml += '<td class="px-2 py-2 text-right font-mono ' + (netTotal >= 0 ? 'text-blue-600' : 'text-red-500') + '">' + (netTotal !== 0 ? (netTotal > 0 ? '+' : '') + Math.round(netTotal).toLocaleString() : '-') + '</td>';
+        gHtml += '</tr>';
+        gbBody.innerHTML = gHtml;
+      }
+
+      // 상세 테이블 렌더링
+      renderCalcResultTable();
+    }
+
+    function renderCalcResultTable() {
+      var sortSel = document.getElementById('cr-sort');
+      var sortVal = sortSel ? sortSel.value : 'effect-desc';
+      var filterSel = document.getElementById('cr-group-filter');
+      var filterGroup = filterSel ? filterSel.value : '';
+
+      var filtered = crData.filter(function(d) {
+        if (!filterGroup) return true;
+        return d.group === filterGroup;
+      });
+
+      // 정렬
+      filtered.sort(function(a, b) {
+        if (sortVal === 'effect-desc') return a.diffTotal - b.diffTotal;
+        if (sortVal === 'effect-asc') return b.diffTotal - a.diffTotal;
+        if (sortVal === 'cost-desc') return b.curCostMil - a.curCostMil;
+        if (sortVal === 'name-asc') return (a.name || '').localeCompare(b.name || '');
+        return 0;
+      });
+
+      var tbody = document.getElementById('cr-detail-body');
+      var tfoot = document.getElementById('cr-detail-foot');
+      if (!tbody) return;
+
+      var html = '';
+      var sumCost = 0, sumSaving = 0, sumWorse = 0, sumDiffUsage = 0;
+
+      filtered.forEach(function(d, idx) {
+        var priceDiffColor = d.priceDiff > 0 ? 'text-red-500' : (d.priceDiff < 0 ? 'text-blue-600' : 'text-gray-500');
+        var effectColor = d.diffTotal > 0 ? 'text-blue-600' : (d.diffTotal < 0 ? 'text-red-500' : 'text-gray-400');
+
+        sumCost += d.curCostMil;
+        sumDiffUsage += d.diffUsage;
+        if (d.diffPrice > 0) sumSaving += d.diffPrice;
+        if (d.diffPrice < 0) sumWorse += d.diffPrice;
+
+        html += '<tr class="border-b border-slate-100 hover:bg-slate-50/30">';
+        html += '<td class="px-2 py-1.5 text-gray-400">' + (idx + 1) + '</td>';
+        html += '<td class="px-2 py-1.5 font-mono text-gray-500">' + (d.code || '') + '</td>';
+        html += '<td class="px-2 py-1.5 font-medium text-gray-700 whitespace-nowrap max-w-[150px] truncate" title="' + (d.name || '') + '">' + (d.name || '') + '</td>';
+        html += '<td class="px-2 py-1.5 text-gray-500">' + (d.group || '') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono">' + (d.stockQty > 0 ? d.stockQty.toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono">' + (d.stockPrice > 0 ? Math.round(d.stockPrice).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono">' + (d.incomingQty > 0 ? d.incomingQty.toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono">' + (d.incomingPrice > 0 ? Math.round(d.incomingPrice).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono bg-amber-50 font-semibold">' + (d.calcPrice > 0 ? Math.round(d.calcPrice).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono">' + (d.prevPrice > 0 ? Math.round(d.prevPrice).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono bg-orange-50 ' + priceDiffColor + '">' + (d.priceDiff !== 0 ? (d.priceDiff > 0 ? '+' : '') + Math.round(d.priceDiff).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono">' + (d.curUsage > 0 ? Math.round(d.curUsage).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono">' + (d.curCostMil > 0 ? Math.round(d.curCostMil).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono">' + (d.unitCost > 0 ? Math.round(d.unitCost).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono bg-blue-50 ' + (d.diffUsage > 0 ? 'text-blue-600' : (d.diffUsage < 0 ? 'text-red-500' : 'text-gray-400')) + '">' + crFmtEffect(d.diffUsage) + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono bg-blue-50 ' + (d.diffPrice > 0 ? 'text-blue-600' : (d.diffPrice < 0 ? 'text-red-500' : 'text-gray-400')) + '">' + crFmtEffect(d.diffPrice) + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono bg-blue-50 font-semibold ' + effectColor + '">' + crFmtEffect(d.diffTotal) + '</td>';
+        html += '</tr>';
+      });
+      tbody.innerHTML = html;
+
+      // 합계 footer
+      if (tfoot) {
+        var sumNet = sumSaving + sumWorse;
+        var fHtml = '<tr>';
+        fHtml += '<td colspan="4" class="px-2 py-2 text-gray-700">합계 (' + filtered.length + '건)</td>';
+        fHtml += '<td colspan="8"></td>';
+        fHtml += '<td class="px-2 py-2 text-right font-mono">' + Math.round(sumCost).toLocaleString() + '</td>';
+        fHtml += '<td class="px-2 py-2 text-right font-mono">-</td>';
+        fHtml += '<td class="px-2 py-2 text-right font-mono bg-blue-50 ' + (sumDiffUsage >= 0 ? 'text-blue-600' : 'text-red-500') + '">' + crFmtEffect(sumDiffUsage) + '</td>';
+        fHtml += '<td class="px-2 py-2 text-right font-mono bg-blue-50 ' + (sumNet >= 0 ? 'text-blue-600' : 'text-red-500') + '">' + crFmtEffect(sumSaving + sumWorse) + '</td>';
+        fHtml += '<td class="px-2 py-2 text-right font-mono bg-blue-50 font-bold ' + (sumNet + sumDiffUsage >= 0 ? 'text-blue-600' : 'text-red-500') + '">' + crFmtEffect(sumDiffUsage + sumNet) + '</td>';
+        fHtml += '</tr>';
+        tfoot.innerHTML = fHtml;
+      }
+    }
+
+    function crFmtEffect(v) {
+      if (!v || Math.abs(v) < 1) return '-';
+      var abs = Math.round(Math.abs(v)).toLocaleString();
+      if (v > 0) return '+' + abs;
+      return '-' + abs;
+    }
+
+    function filterCalcResult() {
+      renderCalcResultTable();
+    }
+
+    function exportCalcResultExcel() {
+      if (!crData || !crData.length) { alert('계산결과 데이터가 없습니다.'); return; }
+      // CSV export
+      var csvRows = [];
+      csvRows.push('No,자재코드,자재명,그룹,기초재고(톤),기초단가,입고(톤),입고단가,가중평균단가,전월단가,단가차이,당월사용량(kg),재료비(백만원),원단위(원/톤),사용량효과,단가효과,총손익효과');
+      crData.forEach(function(d, idx) {
+        csvRows.push([idx + 1, d.code, d.name, d.group, d.stockQty, Math.round(d.stockPrice), d.incomingQty, Math.round(d.incomingPrice), Math.round(d.calcPrice), Math.round(d.prevPrice), Math.round(d.priceDiff), Math.round(d.curUsage), Math.round(d.curCostMil), Math.round(d.unitCost), Math.round(d.diffUsage), Math.round(d.diffPrice), Math.round(d.diffTotal)].join(','));
+      });
+      var csvContent = csvRows.join(String.fromCharCode(10));
+      var BOM = String.fromCharCode(0xFEFF);
+      var blob = new Blob([BOM + csvContent], {type: 'text/csv;charset=utf-8;'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'calc_result_' + (mnMachine || 'PM2') + '_' + document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0') + '.csv';
+      a.click();
+      URL.revokeObjectURL(url);
     }
 
     // ====== 시뮬레이션 플로우 (React Flow 스타일) ======
