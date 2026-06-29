@@ -141,23 +141,139 @@ app.get('/api/analysis/unit-summary', async (c) => {
   const db = c.env.DB
   const { year, month } = c.req.query()
   if (!year || !month) return c.json({ error: 'year and month are required' }, 400)
-  const currentYear = parseInt(year), currentMonth = parseInt(month)
+  const currentMonth = parseInt(month)
+  const currentYear = parseInt(year)
   const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1
   const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear
+  const curYm = String(currentYear) + String(currentMonth).padStart(2, '0')
+  const prevYm = String(prevYear) + String(prevMonth).padStart(2, '0')
 
-  const results = await db.prepare(`
-    SELECT u.id as unit_id, u.unit_code, u.unit_name,
-      SUM(COALESCE(prev.total_cost,0)) as prev_total_cost, SUM(cur.total_cost) as cur_total_cost,
-      SUM(cur.total_cost-COALESCE(prev.total_cost,0)) as cost_diff,
-      SUM((cur.usage_qty-COALESCE(prev.usage_qty,0))*COALESCE(prev.unit_price,0)) as total_qty_effect,
-      SUM((cur.unit_price-COALESCE(prev.unit_price,0))*cur.usage_qty) as total_price_effect,
-      COUNT(cur.id) as material_count, MAX(cur.production_qty) as production_qty
-    FROM monthly_records cur JOIN units u ON cur.unit_id=u.id
-    LEFT JOIN monthly_records prev ON cur.unit_id=prev.unit_id AND cur.material_id=prev.material_id AND prev.year=? AND prev.month=?
-    WHERE cur.year=? AND cur.month=?
-    GROUP BY u.id, u.unit_code, u.unit_name ORDER BY u.id
-  `).bind(prevYear, prevMonth, currentYear, currentMonth).all()
-  return c.json(results.results)
+  // raw_records 기반: 호기별 자재별 비용 집계 (전월/당월)
+  // 전월 데이터 (issue_amount = 출고금액, 실제 비용)
+  const prevData = await db.prepare(`
+    SELECT machine_code,
+      material_code,
+      SUM(CAST(actual_alloc_qty AS REAL)) as usage_qty,
+      AVG(CAST(actual_unit_price AS REAL)) as unit_price,
+      SUM(CAST(issue_amount AS REAL)) as total_cost
+    FROM raw_records
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+    GROUP BY machine_code, material_code
+  `).bind(prevYm).all()
+
+  // 당월 데이터
+  const curData = await db.prepare(`
+    SELECT machine_code,
+      material_code,
+      SUM(CAST(actual_alloc_qty AS REAL)) as usage_qty,
+      AVG(CAST(actual_unit_price AS REAL)) as unit_price,
+      SUM(CAST(issue_amount AS REAL)) as total_cost,
+      MAX(CAST(production_qty AS REAL)) as production_qty
+    FROM raw_records
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+    GROUP BY machine_code, material_code
+  `).bind(curYm).all()
+
+  // 호기별 생산량 (전월/당월) - 생산량은 지종별 MAX로 합산
+  const prevProdResult = await db.prepare(`
+    SELECT machine_code, SUM(prod) as total_prod FROM (
+      SELECT machine_code, product_level4, MAX(CAST(production_qty AS REAL)) as prod
+      FROM raw_records WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND CAST(production_qty AS REAL) > 0
+      GROUP BY machine_code, product_level4
+    ) GROUP BY machine_code
+  `).bind(prevYm).all()
+  const prevProdMap: Record<string, number> = {}
+  for (const r of prevProdResult.results as any[]) {
+    prevProdMap[r.machine_code] = Number(r.total_prod) || 0
+  }
+
+  const curProdResult = await db.prepare(`
+    SELECT machine_code, SUM(prod) as total_prod FROM (
+      SELECT machine_code, product_level4, MAX(CAST(production_qty AS REAL)) as prod
+      FROM raw_records WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND CAST(production_qty AS REAL) > 0
+      GROUP BY machine_code, product_level4
+    ) GROUP BY machine_code
+  `).bind(curYm).all()
+  const curProdMap: Record<string, number> = {}
+  for (const r of curProdResult.results as any[]) {
+    curProdMap[r.machine_code] = Number(r.total_prod) || 0
+  }
+
+  // material_code 정규화 (앞의 0 제거하여 비교)
+  const normCode = (code: string) => code.replace(/^0+/, '') || code
+
+  // 전월 자재별 맵 구성 (정규화된 코드로 키)
+  const prevMap: Record<string, Record<string, { usage_qty: number, unit_price: number, total_cost: number }>> = {}
+  for (const r of prevData.results as any[]) {
+    if (!prevMap[r.machine_code]) prevMap[r.machine_code] = {}
+    prevMap[r.machine_code][normCode(r.material_code)] = {
+      usage_qty: Number(r.usage_qty) || 0,
+      unit_price: Number(r.unit_price) || 0,
+      total_cost: Number(r.total_cost) || 0
+    }
+  }
+
+  // 호기별 집계
+  const summaryMap: Record<string, { prev_total_cost: number, cur_total_cost: number, cost_diff: number, total_qty_effect: number, total_price_effect: number, material_count: number, production_qty: number }> = {}
+
+  for (const r of curData.results as any[]) {
+    const mc = r.machine_code as string
+    if (!summaryMap[mc]) summaryMap[mc] = { prev_total_cost: 0, cur_total_cost: 0, cost_diff: 0, total_qty_effect: 0, total_price_effect: 0, material_count: 0, production_qty: 0 }
+
+    const curUsage = Number(r.usage_qty) || 0
+    const curPrice = Number(r.unit_price) || 0
+    const curCost = Number(r.total_cost) || 0
+    const prodQty = Number(r.production_qty) || 0
+
+    const prev = prevMap[mc]?.[normCode(r.material_code)]
+    const prevUsage = prev?.usage_qty || 0
+    const prevPrice = prev?.unit_price || 0
+    const prevCost = prev?.total_cost || 0
+
+    // 손익효과: 사용량차이 = (전월사용량 - 당월사용량) × 전월단가, 단가차이 = (전월단가 - 당월단가) × 당월사용량
+    const qtyEffect = (prevUsage - curUsage) * prevPrice
+    const priceEffect = (prevPrice - curPrice) * curUsage
+
+    summaryMap[mc].prev_total_cost += prevCost
+    summaryMap[mc].cur_total_cost += curCost
+    summaryMap[mc].cost_diff += (curCost - prevCost)
+    summaryMap[mc].total_qty_effect += qtyEffect
+    summaryMap[mc].total_price_effect += priceEffect
+    summaryMap[mc].material_count++
+    if (prodQty > summaryMap[mc].production_qty) summaryMap[mc].production_qty = prodQty
+  }
+
+  // 전월에만 있고 당월에 없는 자재의 비용도 전월 합계에 포함
+  const curNormCodes: Record<string, Set<string>> = {}
+  for (const r of curData.results as any[]) {
+    const mc = r.machine_code as string
+    if (!curNormCodes[mc]) curNormCodes[mc] = new Set()
+    curNormCodes[mc].add(normCode(r.material_code))
+  }
+  for (const mc in prevMap) {
+    if (!summaryMap[mc]) summaryMap[mc] = { prev_total_cost: 0, cur_total_cost: 0, cost_diff: 0, total_qty_effect: 0, total_price_effect: 0, material_count: 0, production_qty: 0 }
+    for (const normMatCode in prevMap[mc]) {
+      if (!curNormCodes[mc]?.has(normMatCode)) {
+        summaryMap[mc].prev_total_cost += prevMap[mc][normMatCode].total_cost
+      }
+    }
+  }
+
+  const results = Object.entries(summaryMap).map(([mc, s], idx) => ({
+    unit_id: idx + 1,
+    unit_code: mc,
+    unit_name: mc,
+    prev_total_cost: s.prev_total_cost,
+    cur_total_cost: s.cur_total_cost,
+    cost_diff: s.cost_diff,
+    total_qty_effect: s.total_qty_effect,
+    total_price_effect: s.total_price_effect,
+    material_count: s.material_count,
+    production_qty: curProdMap[mc] || 0,
+    prev_production_qty: prevProdMap[mc] || 0
+  })).sort((a, b) => a.unit_code.localeCompare(b.unit_code))
+
+  return c.json(results)
 })
 
 // ============ 제품 API ============
