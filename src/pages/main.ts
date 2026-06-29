@@ -4922,7 +4922,7 @@ export function mainPage(): string {
             + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp" id="' + rid + '-sp" data-row="' + rowIdx + '" data-field="stock_price" value="' + (saved.stock_price || '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 bg-slate-50 focus:border-emerald-400 mn-inp" id="' + rid + '-up" data-row="' + rowIdx + '" data-field="use_price" value="' + (saved.use_price || (prevPrice > 0 ? Math.round(prevPrice) : '')) + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
+            + '<input type="number" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 bg-gray-100 text-gray-600 mn-inp" id="' + rid + '-up" data-row="' + rowIdx + '" data-field="use_price" value="' + (saved.use_price || (prevPrice > 0 ? Math.round(prevPrice) : '')) + '" placeholder="-" readonly title="자동계산 (가중평균)">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs" id="' + rid + '-cc">-</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-r border-slate-300" id="' + rid + '-ct">-</td>';
@@ -5607,7 +5607,6 @@ export function mainPage(): string {
             '기초재고단가(원/kg)': '',
             '입고수량(톤)': '',
             '입고단가(원/kg)': '',
-            '사용단가(원/kg)': '',
             '사용량(kg)': '',
             '이슈사항': ''
           });
@@ -5623,7 +5622,6 @@ export function mainPage(): string {
             '기초재고단가(원/kg)': '',
             '입고수량(톤)': '',
             '입고단가(원/kg)': '',
-            '사용단가(원/kg)': '',
             '사용량(kg)': '',
             '이슈사항': ''
           });
@@ -5635,7 +5633,7 @@ export function mainPage(): string {
         {wch: 14}, {wch: 25}, {wch: 14},
         {wch: 16}, {wch: 18},
         {wch: 14}, {wch: 18},
-        {wch: 18}, {wch: 14}, {wch: 20}
+        {wch: 14}, {wch: 20}
       ];
       var wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, '수기입력양식');
