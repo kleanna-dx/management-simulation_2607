@@ -1966,6 +1966,12 @@ export function mainPage(): string {
       loadMaterialMapping(currentMappingFilter);
     }
 
+    // 자재구분 매핑 모달 닫기
+    function closeMappingModal() {
+      var modal = document.getElementById('mapping-upload-modal');
+      if (modal) modal.remove();
+    }
+
     // 자재구분 매핑 엑셀 업로드
     async function uploadMappingExcel(event) {
       var file = event.target.files[0];
@@ -2004,7 +2010,7 @@ export function mainPage(): string {
           previewHtml += '<div class="p-4 border-b flex items-center justify-between">';
           previewHtml += '<div><h3 class="font-bold text-sm">자재구분 매핑 엑셀 업로드 미리보기</h3>';
           previewHtml += '<p class="text-xs text-gray-500 mt-0.5">총 ' + rows.length + '건 | 컬럼: ' + keys.join(', ') + '</p></div>';
-          previewHtml += '<button onclick="document.getElementById(\'mapping-upload-modal\').remove()" class="text-gray-400 hover:text-gray-600 text-lg"><i class="fas fa-times"></i></button></div>';
+          previewHtml += '<button onclick="closeMappingModal()" class="text-gray-400 hover:text-gray-600 text-lg"><i class="fas fa-times"></i></button></div>';
 
           // 컬럼 매핑 설정
           previewHtml += '<div class="p-4 bg-slate-50 border-b">';
@@ -2063,7 +2069,7 @@ export function mainPage(): string {
 
           // 버튼
           previewHtml += '<div class="p-4 border-t flex justify-end gap-2">';
-          previewHtml += '<button onclick="document.getElementById(\'mapping-upload-modal\').remove()" class="px-4 py-2 text-xs text-gray-600 border rounded-lg hover:bg-gray-50">취소</button>';
+          previewHtml += '<button onclick="closeMappingModal()" class="px-4 py-2 text-xs text-gray-600 border rounded-lg hover:bg-gray-50">취소</button>';
           previewHtml += '<button onclick="confirmMappingUpload()" class="px-4 py-2 text-xs bg-sage-600 text-white rounded-lg hover:bg-sage-700 font-medium"><i class="fas fa-upload mr-1"></i>업로드 확인 (' + rows.length + '건)</button>';
           previewHtml += '</div></div></div>';
 
