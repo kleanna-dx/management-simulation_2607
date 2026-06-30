@@ -1757,17 +1757,23 @@ export function mainPage(): string {
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      // 가용 월 목록에서 최신 데이터 월을 기본값으로 설정
+      // 가용 월 목록에서 최신 데이터 월의 다음 달을 기본값으로 설정
+      // (시스템 로직: 선택월 = 예상월, 실적 = 선택월-1)
+      // 따라서 최신 데이터가 202605이면 → 분석월을 6으로 설정 (5월 실적 → 6월 예상)
       try {
         var months = await fetch('/api/available-months').then(function(r){return r.json();});
         if (months && months.length > 0) {
           var latestYm = months[0]; // 내림차순이므로 첫 번째가 최신
-          var latestYear = latestYm.substring(0, 4);
-          var latestMonth = String(parseInt(latestYm.substring(4, 6)));
+          var latestYear = parseInt(latestYm.substring(0, 4));
+          var latestMonth = parseInt(latestYm.substring(4, 6));
+          // 다음 달로 설정 (예상월)
+          var targetMonth = latestMonth + 1;
+          var targetYear = latestYear;
+          if (targetMonth > 12) { targetMonth = 1; targetYear++; }
           var yearSel = document.getElementById('analysisYear');
           var monthSel = document.getElementById('analysisMonth');
-          if (yearSel) yearSel.value = latestYear;
-          if (monthSel) monthSel.value = latestMonth;
+          if (yearSel) yearSel.value = String(targetYear);
+          if (monthSel) monthSel.value = String(targetMonth);
         }
       } catch(e) { console.warn('가용월 로드 실패:', e); }
       await loadMasterData();
@@ -3727,15 +3733,20 @@ export function mainPage(): string {
             '스킵: ' + (mainResult?.summary?.skipped || 0) + '건\\n' +
             '(동일 호기/자재/월 데이터는 합산됨)');
           resetUpload();
-          // 업로드한 데이터 기준월로 드롭다운 자동 변경
+          // 업로드한 데이터 기준으로 분석월을 다음 달로 설정
+          // (시스템 로직: 선택월 = 예상월, 업로드 데이터 = 실적)
           if (rawData.length > 0 && rawData[0].calendar_ym) {
             var uploadedYm = rawData[0].calendar_ym;
-            var uploadedYear = uploadedYm.substring(0, 4);
-            var uploadedMonth = String(parseInt(uploadedYm.substring(4, 6)));
+            var uploadedYear = parseInt(uploadedYm.substring(0, 4));
+            var uploadedMonth = parseInt(uploadedYm.substring(4, 6));
+            // 다음 달을 분석월로 설정 (실적 데이터의 다음월 = 예상월)
+            var nextMonth = uploadedMonth + 1;
+            var nextYear = uploadedYear;
+            if (nextMonth > 12) { nextMonth = 1; nextYear++; }
             var yearSel = document.getElementById('analysisYear');
             var monthSel = document.getElementById('analysisMonth');
-            if (yearSel) yearSel.value = uploadedYear;
-            if (monthSel) monthSel.value = uploadedMonth;
+            if (yearSel) yearSel.value = String(nextYear);
+            if (monthSel) monthSel.value = String(nextMonth);
           }
           loadAnalysis();
           switchTab('dashboard');
