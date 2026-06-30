@@ -2380,11 +2380,11 @@ app.get('/api/manual-input/production', async (c) => {
       SUM(prod_qty) as production_kg
     FROM (
       SELECT product_level2_name, product_level4,
-        MAX(CAST(production_qty AS REAL)) as prod_qty
+        MAX(CAST(total_production AS REAL)) as prod_qty
       FROM raw_records
       WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
         ${machineFilter}
-        AND CAST(production_qty AS REAL) > 0
+        AND CAST(total_production AS REAL) > 0
       GROUP BY product_level2_name, product_level4
     )
     GROUP BY product_type
