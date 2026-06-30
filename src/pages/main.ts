@@ -970,11 +970,26 @@ export function mainPage(): string {
 
     <!-- 서브: 계산결과 -->
     <div id="content-calcresult" class="hidden fade-in space-y-4">
+      <!-- 호기 선택 -->
+      <div class="card p-4">
+        <div class="flex items-center gap-4">
+          <label class="text-xs font-semibold text-gray-600"><i class="fas fa-industry mr-1.5 text-indigo-500"></i>호기 선택</label>
+          <select id="cr-machine-select" onchange="loadCalcResultData()" class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200">
+            <option value="PM2">PM2 (제지 2호기)</option>
+            <option value="PM3">PM3 (제지 3호기)</option>
+          </select>
+          <button onclick="loadCalcResultData()" class="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
+            <i class="fas fa-sync-alt mr-1"></i>불러오기
+          </button>
+          <span id="cr-load-status" class="text-xs text-gray-400"></span>
+        </div>
+      </div>
+
       <!-- 안내 메시지 (데이터 미로드 시) -->
       <div id="cr-empty-msg" class="card p-8 text-center">
         <i class="fas fa-info-circle text-3xl text-slate-300 mb-3"></i>
-        <p class="text-sm text-gray-500">수기 입력 데이터를 먼저 불러온 후 확인할 수 있습니다.</p>
-        <p class="text-xs text-gray-400 mt-1">데이터 입력 &gt; 부서 수기 입력 탭에서 호기 선택 후 불러오기를 실행해주세요.</p>
+        <p class="text-sm text-gray-500">호기를 선택하고 불러오기를 클릭하세요.</p>
+        <p class="text-xs text-gray-400 mt-1">부서 수기 입력 탭에서 저장된 데이터를 기반으로 계산합니다.</p>
       </div>
 
       <!-- 요약 대시보드 -->
@@ -5992,20 +6007,81 @@ export function mainPage(): string {
     // ====== 계산결과 탭 ======
     var crData = []; // 계산결과 배열
 
-    function renderCalcResult() {
+    async function loadCalcResultData() {
+      var year = document.getElementById('analysisYear').value;
+      var month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      var ym = year + month;
+      var machine = document.getElementById('cr-machine-select').value;
+
+      var statusEl = document.getElementById('cr-load-status');
+      if (statusEl) statusEl.textContent = '로딩 중...';
+
+      try {
+        // 1) 저장된 수기입력 최신 데이터 로드
+        var histRes = await fetch('/api/manual-input/history?ym=' + ym + '&machine=' + machine);
+        var histJson = await histRes.json();
+        if (!histJson.history || !histJson.history.length) {
+          if (statusEl) statusEl.textContent = '저장된 데이터 없음';
+          document.getElementById('cr-empty-msg').classList.remove('hidden');
+          document.getElementById('cr-dashboard').classList.add('hidden');
+          return;
+        }
+        // 최신 버전 로드
+        var latestId = histJson.history[0].id;
+        var dataRes = await fetch('/api/manual-input/history/' + latestId);
+        var dataJson = await dataRes.json();
+        if (!dataJson.data) {
+          if (statusEl) statusEl.textContent = '데이터 파싱 실패';
+          return;
+        }
+
+        var savedData = dataJson.data; // { production: {...}, materials: {...} }
+        var savedBy = dataJson.saved_by || '';
+        var savedAt = dataJson.updated_at || '';
+
+        // 2) 해당 호기 자재 목록 로드 (전월 실적 기반)
+        var prevYm = getPrevYm(ym);
+        var machineName = machine === 'PM2' ? '제지 2호기' : '제지 3호기';
+        var matRes = await fetch('/api/manual-input/materials?ym=' + prevYm + '&machine=' + encodeURIComponent(machineName));
+        var matJson = await matRes.json();
+        var materials = matJson.materials || [];
+
+        if (!materials.length) {
+          if (statusEl) statusEl.textContent = '자재 목록 없음 (전월 데이터 필요)';
+          document.getElementById('cr-empty-msg').classList.remove('hidden');
+          document.getElementById('cr-dashboard').classList.add('hidden');
+          return;
+        }
+
+        // 3) 생산량 로드
+        var prodRes = await fetch('/api/manual-input/production?ym=' + prevYm + '&machine=' + encodeURIComponent(machineName));
+        var prodJson = await prodRes.json();
+        var prevProd = prodJson.production || {};
+
+        // 4) 계산결과 렌더링
+        renderCalcResultFromSaved(machine, ym, materials, savedData, prevProd, savedBy, savedAt);
+        if (statusEl) statusEl.textContent = '저장자: ' + (savedBy || '-') + ' | ' + (savedAt ? new Date(savedAt).toLocaleString('ko-KR') : '');
+      } catch(e) {
+        if (statusEl) statusEl.textContent = '오류: ' + e.message;
+      }
+    }
+
+    function getPrevYm(ym) {
+      var y = parseInt(ym.substring(0,4));
+      var m = parseInt(ym.substring(4,6)) - 1;
+      if (m < 1) { m = 12; y--; }
+      return String(y) + String(m).padStart(2,'0');
+    }
+
+    function renderCalcResultFromSaved(machine, ym, materials, savedData, prevProd, savedBy, savedAt) {
       var emptyEl = document.getElementById('cr-empty-msg');
       var dashEl = document.getElementById('cr-dashboard');
-      if (!mnMaterials || !mnMaterials.length) {
-        if (emptyEl) emptyEl.classList.remove('hidden');
-        if (dashEl) dashEl.classList.add('hidden');
-        return;
-      }
       if (emptyEl) emptyEl.classList.add('hidden');
       if (dashEl) dashEl.classList.remove('hidden');
 
       // 기간/호기 표시
-      var year = document.getElementById('analysisYear').value;
-      var month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      var year = ym.substring(0,4);
+      var month = ym.substring(4,6);
       var curLabel = year.substring(2) + '.' + month + '월 (예상)';
       var prevMonth = parseInt(month) - 1;
       var prevYear = parseInt(year);
@@ -6015,44 +6091,36 @@ export function mainPage(): string {
       var plEl = document.getElementById('cr-period-label');
       if (plEl) plEl.textContent = prevLabel + ' vs ' + curLabel;
       var mlEl = document.getElementById('cr-machine-label');
-      if (mlEl) mlEl.textContent = mnMachine || 'PM2';
+      if (mlEl) mlEl.textContent = machine;
 
-      // 당월 총 생산량(톤)
-      var curProdInputs = document.querySelectorAll('.mn-cur-prod');
+      // 당월 생산량(톤) - 저장된 생산량
       var curProdTon = 0;
-      curProdInputs.forEach(function(inp) { curProdTon += Number(inp.value) || 0; });
+      var savedProd = savedData.production || {};
+      for (var pt in savedProd) { curProdTon += Number(savedProd[pt]) || 0; }
       if (curProdTon === 0) curProdTon = 1;
 
-      // 전월 총 생산량(톤)
+      // 전월 생산량(톤)
       var prevProdTon = 0;
-      for (var k in mnPrevProd) { prevProdTon += (mnPrevProd[k] || 0) / 1000; }
+      for (var k in prevProd) { prevProdTon += (prevProd[k] || 0) / 1000; }
       if (prevProdTon === 0) prevProdTon = 1;
+
+      // 저장된 자재별 입력 데이터
+      var savedMats = savedData.materials || {};
 
       // 자재별 계산
       crData = [];
-      var groups = {};
-      var totalCost = 0;
-      var totalSaving = 0;
-      var totalWorse = 0;
+      var totalCost = 0, totalSaving = 0, totalWorse = 0;
 
-      mnMaterials.forEach(function(m, idx) {
-        var rid = 'mn-r-' + idx;
+      materials.forEach(function(m) {
+        var saved = savedMats[m.code] || {};
         var prevUsage = m.usage_qty || 0;
         var prevPrice = m.unit_price || 0;
 
-        // DOM에서 입력값 읽기
-        var sqEl = document.getElementById(rid + '-sq');
-        var spEl = document.getElementById(rid + '-sp');
-        var iqEl = document.getElementById(rid + '-iq');
-        var ipEl = document.getElementById(rid + '-ip');
-        var upEl = document.getElementById(rid + '-up');
-        var cuEl = document.getElementById(rid + '-cu');
-
-        var stockQty = sqEl ? (Number(sqEl.value) || 0) : 0;
-        var stockPrice = spEl ? (Number(spEl.value) || 0) : 0;
-        var incomingQty = iqEl ? (Number(iqEl.value) || 0) : 0;
-        var incomingPrice = ipEl ? (Number(ipEl.value) || 0) : 0;
-        var curUsage = cuEl ? (Number(cuEl.value) || 0) : 0;
+        var stockQty = Number(saved.stock_qty) || 0;
+        var stockPrice = Number(saved.stock_price) || 0;
+        var incomingQty = Number(saved.incoming_qty) || 0;
+        var incomingPrice = Number(saved.incoming_price) || 0;
+        var curUsage = Number(saved.cur_usage) || 0;
 
         // 가중평균 사용단가
         var stockQtyKg = stockQty * 1000;
@@ -6062,38 +6130,22 @@ export function mainPage(): string {
         if (totalQtyKg > 0 && (stockPrice > 0 || incomingPrice > 0)) {
           calcPrice = (stockQtyKg * stockPrice + incomingQtyKg * incomingPrice) / totalQtyKg;
         }
-        var curPrice = calcPrice > 0 ? calcPrice : (upEl ? (Number(upEl.value) || prevPrice) : prevPrice);
+        var curPrice = calcPrice > 0 ? calcPrice : (Number(saved.use_price) || prevPrice);
 
         // 비용
         var curCost = curUsage * curPrice;
         var curCostMil = curCost / 1000000;
         totalCost += curCostMil;
 
-        // 원단위
-        var unitCost = curProdTon > 0 ? curCost / curProdTon : 0;
-
-        // 손익효과
-        var diffUsage = (prevUsage - curUsage) * prevPrice;
-        var diffPrice = (curUsage > 0 && curPrice > 0) ? (prevPrice - curPrice) * curUsage : 0;
-        var diffTotal = diffUsage + diffPrice;
-
+        // 손익효과: (전월단가 - 당월가중평균단가) × 당월사용량
+        var diffPrice = (curUsage > 0 && curPrice > 0 && prevPrice > 0) ? (prevPrice - curPrice) * curUsage : 0;
         if (diffPrice > 0) totalSaving += diffPrice;
         if (diffPrice < 0) totalWorse += diffPrice;
-
-        var groupName = m.group_name || '기타';
-        if (!groups[groupName]) {
-          groups[groupName] = { count: 0, cost: 0, saving: 0, worse: 0, unitCostSum: 0 };
-        }
-        groups[groupName].count++;
-        groups[groupName].cost += curCostMil;
-        groups[groupName].unitCostSum += unitCost;
-        if (diffPrice > 0) groups[groupName].saving += diffPrice;
-        if (diffPrice < 0) groups[groupName].worse += diffPrice;
 
         crData.push({
           code: m.code,
           name: m.name,
-          group: groupName,
+          group: m.group_name || '기타',
           stockQty: stockQty,
           stockPrice: stockPrice,
           incomingQty: incomingQty,
@@ -6101,13 +6153,9 @@ export function mainPage(): string {
           calcPrice: calcPrice,
           curPrice: curPrice,
           prevPrice: prevPrice,
-          priceDiff: curPrice - prevPrice,
           curUsage: curUsage,
           curCostMil: curCostMil,
-          unitCost: unitCost,
-          diffUsage: diffUsage,
-          diffPrice: diffPrice,
-          diffTotal: diffTotal
+          diffTotal: diffPrice
         });
       });
 
@@ -6123,6 +6171,11 @@ export function mainPage(): string {
       if (weEl) weEl.textContent = totalWorse < 0 ? Math.round(totalWorse).toLocaleString() : '-';
 
       // 그룹 필터 옵션 업데이트
+      var groups = {};
+      crData.forEach(function(d) {
+        if (!groups[d.group]) groups[d.group] = { count: 0 };
+        groups[d.group].count++;
+      });
       var filterEl = document.getElementById('cr-group-filter');
       if (filterEl) {
         var prevVal = filterEl.value;
@@ -6136,6 +6189,15 @@ export function mainPage(): string {
 
       // 상세 테이블 렌더링
       renderCalcResultTable();
+    }
+
+    // 기존 renderCalcResult: 수기입력 탭에서 직접 호출 시 (하위 호환)
+    function renderCalcResult() {
+      // 수기입력 탭 데이터가 있으면 계산결과 탭도 갱신
+      if (mnMaterials && mnMaterials.length && mnMachine) {
+        var crMachineEl = document.getElementById('cr-machine-select');
+        if (crMachineEl) crMachineEl.value = mnMachine;
+      }
     }
 
     function renderCalcResultTable() {
