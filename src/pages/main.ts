@@ -4777,6 +4777,7 @@ export function mainPage(): string {
     let dvCurrentPage = 0;
     let dvTotal = 0;
     let dvPageData = [];
+    let dvSummary = null;
 
     async function initDataView() {
       await loadMatGroupOptions();
@@ -4813,6 +4814,7 @@ export function mainPage(): string {
       const resp = await fetch(url).then(r => r.json());
       dvTotal = resp.total;
       dvPageData = resp.data || [];
+      dvSummary = resp.summary || null;
 
       renderDataViewTable();
     }
@@ -4821,14 +4823,20 @@ export function mainPage(): string {
       const limit = parseInt(document.getElementById('dv-page-size').value);
       const start = dvCurrentPage * limit;
 
-      // Summary
+      // Summary (전체 조회조건 기준 TOTAL)
       document.getElementById('dv-total-count').textContent = dvTotal.toLocaleString() + '건';
-      const totalQty = dvPageData.reduce((s, d) => s + (d.issue_qty || 0), 0);
-      const totalAmt = dvPageData.reduce((s, d) => s + (d.issue_amount || 0), 0);
-      const matSet = new Set(dvPageData.map(d => d.material_code));
-      document.getElementById('dv-total-qty').textContent = Math.round(totalQty).toLocaleString();
-      document.getElementById('dv-total-cost').textContent = (totalAmt / 100000000).toFixed(1) + '억';
-      document.getElementById('dv-mat-count').textContent = matSet.size + '종';
+      if (dvSummary) {
+        document.getElementById('dv-total-qty').textContent = Math.round(dvSummary.total_issue_qty).toLocaleString();
+        document.getElementById('dv-total-cost').textContent = (dvSummary.total_issue_amount / 100000000).toFixed(1) + '억';
+        document.getElementById('dv-mat-count').textContent = dvSummary.material_count + '종';
+      } else {
+        const totalQty = dvPageData.reduce((s, d) => s + (d.issue_qty || 0), 0);
+        const totalAmt = dvPageData.reduce((s, d) => s + (d.issue_amount || 0), 0);
+        const matSet = new Set(dvPageData.map(d => d.material_code));
+        document.getElementById('dv-total-qty').textContent = Math.round(totalQty).toLocaleString();
+        document.getElementById('dv-total-cost').textContent = (totalAmt / 100000000).toFixed(1) + '억';
+        document.getElementById('dv-mat-count').textContent = matSet.size + '종';
+      }
 
       // Table body
       const tbody = document.getElementById('dv-tbody');

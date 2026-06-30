@@ -1761,6 +1761,14 @@ app.get('/api/raw-records', async (c) => {
   const countResult = await db.prepare(`SELECT COUNT(*) as cnt FROM raw_records WHERE ${where}`).bind(...params).first() as any
   const total = countResult?.cnt || 0
 
+  // 전체 합계 (조회조건 기준 TOTAL - 페이지 무관)
+  const sumParams = [...params] // limit/offset 추가 전의 params 복사
+  const sumResult = await db.prepare(`SELECT 
+    COALESCE(SUM(CAST(issue_qty AS REAL)), 0) as total_issue_qty,
+    COALESCE(SUM(CAST(issue_amount AS REAL)), 0) as total_issue_amount,
+    COUNT(DISTINCT material_code) as material_count
+  FROM raw_records WHERE ${where}`).bind(...sumParams).first() as any
+
   // Data
   params.push(limit, page * limit)
   const dataResult = await db.prepare(`SELECT * FROM raw_records WHERE ${where} ORDER BY machine_code, material_group_name, material_name LIMIT ? OFFSET ?`).bind(...params).all()
@@ -1781,7 +1789,17 @@ app.get('/api/raw-records', async (c) => {
     filteredTotal = mappedData.length
   }
 
-  return c.json({ total: matGroup ? filteredTotal : total, page, limit, data: mappedData })
+  return c.json({ 
+    total: matGroup ? filteredTotal : total, 
+    page, 
+    limit, 
+    data: mappedData,
+    summary: {
+      total_issue_qty: sumResult?.total_issue_qty || 0,
+      total_issue_amount: sumResult?.total_issue_amount || 0,
+      material_count: sumResult?.material_count || 0
+    }
+  })
 })
 
 // 자재구분 목록 (드롭다운용)
