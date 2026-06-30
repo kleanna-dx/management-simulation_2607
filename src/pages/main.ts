@@ -4226,7 +4226,7 @@ export function mainPage(): string {
         allowedCodes = {};
         for (var mc in fcUnitByProduct.unitMap) {
           var ptMap = fcUnitByProduct.unitMap[mc];
-          if (ptMap[filterType]) {
+          if (filterType in ptMap) {
             allowedCodes[mc] = true;
           }
         }

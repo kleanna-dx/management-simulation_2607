@@ -674,7 +674,7 @@ app.get('/api/forecast/material-detail', async (c) => {
     ORDER BY machine_code, material_group_major_name, material_group_name, material_code
   `
 
-  // 호기별 총생산량 (kg → 톤 변환용)
+  // 호기별 총생산량 (kg → 톤 변환용) — total_production 사용 (production_qty는 0인 경우 많음)
   const prodSql = `
     SELECT 
       machine_code,
@@ -683,10 +683,10 @@ app.get('/api/forecast/material-detail', async (c) => {
       SELECT 
         machine_code,
         product_level4,
-        MAX(CAST(production_qty AS REAL)) as prod_qty
+        MAX(CAST(total_production AS REAL)) as prod_qty
       FROM raw_records
       WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
-        AND CAST(production_qty AS REAL) > 0
+        AND CAST(total_production AS REAL) > 0
         ${machineFilter}
       GROUP BY machine_code, product_level4
     )
@@ -775,7 +775,7 @@ app.get('/api/forecast/unit-by-product', async (c) => {
 
   const result = await db.prepare(sql).bind(ym).all()
 
-  // 지종별 실제 생산량(톤) 조회 (원단위 계산의 분모)
+  // 지종별 실제 생산량(톤) 조회 (원단위 계산의 분모) — total_production 사용
   const prodSql = `
     SELECT 
       CASE 
@@ -786,10 +786,10 @@ app.get('/api/forecast/unit-by-product', async (c) => {
       SUM(prod_qty) as production
     FROM (
       SELECT product_level2_name, product_level4,
-        MAX(CAST(production_qty AS REAL)) as prod_qty
+        MAX(CAST(total_production AS REAL)) as prod_qty
       FROM raw_records
       WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
-        AND CAST(production_qty AS REAL) > 0
+        AND CAST(total_production AS REAL) > 0
         ${machineFilter}
       GROUP BY product_level2_name, product_level4
     )
