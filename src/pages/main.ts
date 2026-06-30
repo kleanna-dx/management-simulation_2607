@@ -638,8 +638,8 @@ export function mainPage(): string {
           
           <div class="p-4 bg-sage-50 border border-sage-200 rounded-xl">
             <div class="flex items-center gap-2 mb-2">
-              <span class="inline-flex items-center px-2 py-0.5 rounded bg-steel-50 text-steel-400 text-xs font-bold">기본 형식</span>
-              <span class="text-xs text-steel-400 font-medium">'양식 다운로드' 참고</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded bg-steel-50 text-steel-400 text-xs font-bold">SAP BW 주요 컬럼</span>
+              <span class="text-xs text-steel-400 font-medium">자동 매핑</span>
             </div>
             <div class="overflow-x-auto">
               <table class="text-xs w-full">
@@ -650,17 +650,19 @@ export function mainPage(): string {
                   <th class="py-2 text-left font-semibold text-gray-500">필수</th>
                 </tr></thead>
                 <tbody>
-                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">호기코드</td><td class="text-gray-500">호기 코드</td><td class="text-gray-400">PM2, PM3</td><td><span class="text-red-500">*</span></td></tr>
-                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">자재코드</td><td class="text-gray-500">자재 코드</td><td class="text-gray-400">RM-001</td><td><span class="text-red-500">*</span></td></tr>
-                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">년도</td><td class="text-gray-500">실적 년도</td><td class="text-gray-400">2026</td><td><span class="text-red-500">*</span></td></tr>
-                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">월</td><td class="text-gray-500">실적 월</td><td class="text-gray-400">6</td><td><span class="text-red-500">*</span></td></tr>
-                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">사용량</td><td class="text-gray-500">사용 수량</td><td class="text-gray-400">3200</td><td><span class="text-red-500">*</span></td></tr>
-                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">단가</td><td class="text-gray-500">원 단위</td><td class="text-gray-400">880000</td><td><span class="text-red-500">*</span></td></tr>
-                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">생산량</td><td class="text-gray-500">생산 수량</td><td class="text-gray-400">12500</td><td class="text-gray-400">선택</td></tr>
-                  <tr><td class="py-2 font-mono text-primary-600">비고</td><td class="text-gray-500">메모</td><td class="text-gray-400"></td><td class="text-gray-400">선택</td></tr>
+                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">달력연도/월</td><td class="text-gray-500">실적 기간 (YYYYMM)</td><td class="text-gray-400">202605</td><td><span class="text-red-500">*</span></td></tr>
+                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">생산호기</td><td class="text-gray-500">호기 코드</td><td class="text-gray-400">PM2, PM3</td><td><span class="text-red-500">*</span></td></tr>
+                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">자재</td><td class="text-gray-500">자재 코드 (7자리)</td><td class="text-gray-400">1200000</td><td><span class="text-red-500">*</span></td></tr>
+                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">자재명</td><td class="text-gray-500">자재 이름</td><td class="text-gray-400">화이트레저(B)</td><td><span class="text-red-500">*</span></td></tr>
+                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">자재 그룹명</td><td class="text-gray-500">자재 그룹 분류</td><td class="text-gray-400">고지 : 화이트레저</td><td><span class="text-red-500">*</span></td></tr>
+                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">실제 배부수량</td><td class="text-gray-500">실 사용량 (kg)</td><td class="text-gray-400">15674</td><td><span class="text-red-500">*</span></td></tr>
+                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">실제단가</td><td class="text-gray-500">실 단가 (원/kg)</td><td class="text-gray-400">335</td><td><span class="text-red-500">*</span></td></tr>
+                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">총생산량</td><td class="text-gray-500">총 생산량 (kg)</td><td class="text-gray-400">104256</td><td class="text-gray-400">선택</td></tr>
+                  <tr><td class="py-2 font-mono text-primary-600">출고금액</td><td class="text-gray-500">출고 금액 (원)</td><td class="text-gray-400">946668270</td><td class="text-gray-400">선택</td></tr>
                 </tbody>
               </table>
             </div>
+            <p class="text-[10px] text-gray-400 mt-2">* SAP BW에서 다운받은 엑셀(ZOHPP100/101)을 그대로 업로드하세요. 43개 컬럼 전체를 자동 인식합니다.</p>
           </div>
         </div>
       </div>
@@ -3551,10 +3553,10 @@ export function mainPage(): string {
     function resetUpload() { uploadData=[]; uploadRawData=[]; uploadMode='simple'; document.getElementById('upload-area').classList.remove('hidden'); document.getElementById('upload-preview').classList.add('hidden'); document.getElementById('file-input').value=''; }
     function downloadTemplate() {
       const t = [
-        {호기코드:'PM2',자재코드:'RM-001',년도:2026,월:6,사용량:3200,단가:880000,생산량:12500,비고:''},
-        {호기코드:'PM3',자재코드:'SM-001',년도:2026,월:6,사용량:45000,단가:1250,생산량:11000,비고:''},
+        {'     달력연도/월':202605,'공정':100,'공정명':'점보롤','생산호기':'PM2','생산호기명':'제지 2호기','자재':1200000,'자재명':'화이트레저(B)','자재 그룹':1201,'자재 그룹명':'고지 : 화이트레저','자재그룹(대분류)':1200,'자재그룹(대분류)명':'고지','       실제 원단위(KG/Ton)(당월)':150,'        실제 배부수량(당월)':15674,'      실제단가(당월)':335,'       실제 재료비(당월)':5250831,'       출고수량(당월)':2824806,'      출고금액(당월)':946668270,'      총생산량(당월)':104256},
+        {'     달력연도/월':202605,'공정':100,'공정명':'점보롤','생산호기':'PM3','생산호기명':'제지 3호기','자재':1100016,'자재명':'DIP(국내산)','자재 그룹':1101,'자재 그룹명':'펄프 : DIP','자재그룹(대분류)':1100,'자재그룹(대분류)명':'펄프','       실제 원단위(KG/Ton)(당월)':11.4,'        실제 배부수량(당월)':255794,'      실제단가(당월)':899,'       실제 재료비(당월)':229960506,'       출고수량(당월)':255794,'      출고금액(당월)':229960506,'      총생산량(당월)':20594},
       ];
-      const ws=XLSX.utils.json_to_sheet(t); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'실적데이터'); XLSX.writeFile(wb,'원부자재_업로드양식.xlsx');
+      const ws=XLSX.utils.json_to_sheet(t); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'실적데이터'); XLSX.writeFile(wb,'원부자재_업로드양식_SAP.xlsx');
     }
 
     // CSV Export
