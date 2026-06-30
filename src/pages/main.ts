@@ -115,11 +115,11 @@ export function mainPage(): string {
         <!-- Filters -->
         <div class="flex items-center gap-3">
           <div class="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-1.5">
-            <select id="analysisYear" class="bg-transparent border-none text-sm font-semibold text-gray-700 focus:ring-0 pr-6 cursor-pointer" onchange="loadAnalysis()">
+            <select id="analysisYear" class="bg-transparent border-none text-sm font-semibold text-gray-700 focus:ring-0 pr-6 cursor-pointer" onchange="updatePeriodHint()">
               <option value="2026">2026년</option>
               <option value="2025">2025년</option>
             </select>
-            <select id="analysisMonth" class="bg-transparent border-none text-sm font-semibold text-gray-700 focus:ring-0 pr-6 cursor-pointer" onchange="loadAnalysis()">
+            <select id="analysisMonth" class="bg-transparent border-none text-sm font-semibold text-gray-700 focus:ring-0 pr-6 cursor-pointer" onchange="updatePeriodHint()">
               <option value="6" selected>6월</option>
               <option value="5">5월</option>
               <option value="4">4월</option>
@@ -127,6 +127,7 @@ export function mainPage(): string {
               <option value="2">2월</option>
               <option value="1">1월</option>
             </select>
+            <button onclick="loadAnalysis()" class="ml-1 px-3 py-1 bg-indigo-600 text-white text-xs font-semibold rounded-md hover:bg-indigo-700 transition shadow-sm"><i class="fas fa-search mr-1"></i>조회</button>
             <span id="period-hint" class="text-xs text-blue-600 font-medium ml-1 whitespace-nowrap"></span>
           </div>
         </div>
@@ -2258,6 +2259,13 @@ export function mainPage(): string {
       if (periodEl) periodEl.textContent = comp.summary?.period ? comp.summary.period.previous + ' vs ' + comp.summary.period.current : '';
       renderDashboard(); renderDetailTable();
       loadDashboardSummary(ym);
+      // 기준월 변경 시 다른 탭도 갱신
+      if (typeof loadForecast === 'function') try { loadForecast(); } catch(e) {}
+      if (typeof loadSimProfitBase === 'function') try { loadSimProfitBase(); } catch(e) {}
+      if (typeof loadInventoryData === 'function') try { loadInventoryData(); } catch(e) {}
+      if (typeof loadDataView === 'function') try { loadDataView(); } catch(e) {}
+      // 수기입력은 호기 선택 상태가 있어야만 갱신
+      if (mnMachine && typeof loadManualData === 'function') try { loadManualData(); } catch(e) {}
     }
 
     function renderDashboard() {
