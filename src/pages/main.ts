@@ -3924,32 +3924,34 @@ export function mainPage(): string {
       var month = document.getElementById('analysisMonth').value.padStart(2, '0');
       var ym = year + month;
       var curMonth = parseInt(month);
-      var nextMonth = curMonth + 1;
-      var nextYear = parseInt(year);
-      if (nextMonth > 12) { nextMonth = 1; nextYear++; }
+      // 전월(실적) 계산
+      var prevMonth = curMonth - 1;
+      var prevYear = parseInt(year);
+      if (prevMonth < 1) { prevMonth = 12; prevYear--; }
+      var prevYmStr = String(prevYear) + '.' + String(prevMonth).padStart(2,'0');
+      var curYmStr = year + '.' + month;
 
-      // 헤더 레이블
+      // 헤더 레이블: 전월 실적 vs 기준월 예상
       var labelEl = document.getElementById('fc-period-label');
-      if (labelEl) labelEl.textContent = fcMachineFilter + ' | ' + year + '.' + month + ' 실적 vs ' + nextYear + '.' + String(nextMonth).padStart(2,'0') + ' 예상';
+      if (labelEl) labelEl.textContent = fcMachineFilter + ' | ' + prevYmStr + ' 실적 vs ' + curYmStr + ' 예상';
 
       var curH = document.getElementById('fc-cur-header');
       var nextH = document.getElementById('fc-next-header');
       var detCurH = document.getElementById('fc-detail-cur-header');
       var detNextH = document.getElementById('fc-detail-next-header');
-      if (curH) curH.textContent = year + '.' + month + '월 (실적)';
-      if (nextH) nextH.textContent = nextYear + '.' + String(nextMonth).padStart(2,'0') + '월 (예상)';
-      if (detCurH) detCurH.textContent = year + '.' + month + '월 (실적)';
-      if (detNextH) detNextH.textContent = nextYear + '.' + String(nextMonth).padStart(2,'0') + '월 (예상)';
+      if (curH) curH.textContent = prevYmStr + '월 (실적)';
+      if (nextH) nextH.textContent = curYmStr + '월 (예상)';
+      if (detCurH) detCurH.textContent = prevYmStr + '월 (실적)';
+      if (detNextH) detNextH.textContent = curYmStr + '월 (예상)';
 
       var mcParam = '&machine=' + fcMachineFilter;
-      // 차월 YM 계산 (수기입력 저장 데이터 조회용)
-      var nextYm = String(nextYear) + String(nextMonth).padStart(2, '0');
+      var prevYm = String(prevYear) + String(prevMonth).padStart(2, '0');
       try {
         var results = await Promise.all([
-          fetch('/api/forecast/production?ym=' + ym).then(function(r){return r.json();}),
-          fetch('/api/forecast/material-detail?ym=' + ym + mcParam).then(function(r){return r.json();}),
-          fetch('/api/forecast/unit-by-product?ym=' + ym + mcParam).then(function(r){return r.json();}),
-          fetch('/api/manual-input/saved?ym=' + nextYm + '&machine=' + fcMachineFilter).then(function(r){return r.json();})
+          fetch('/api/forecast/production?ym=' + prevYm).then(function(r){return r.json();}),
+          fetch('/api/forecast/material-detail?ym=' + prevYm + mcParam).then(function(r){return r.json();}),
+          fetch('/api/forecast/unit-by-product?ym=' + prevYm + mcParam).then(function(r){return r.json();}),
+          fetch('/api/manual-input/saved?ym=' + ym + '&machine=' + fcMachineFilter).then(function(r){return r.json();})
         ]);
         fcCurProd = results[0];
         fcCurData = results[1];
@@ -4591,25 +4593,25 @@ export function mainPage(): string {
       var year = document.getElementById('analysisYear').value;
       var month = document.getElementById('analysisMonth').value.padStart(2, '0');
       var ym = year + month;
-      // 시뮬레이션 대상월(차월) 계산
-      var simMonth = parseInt(month) + 1;
-      var simYear = parseInt(year);
-      if (simMonth > 12) { simMonth = 1; simYear++; }
-      var simYmLabel = simYear + '년 ' + simMonth + '월';
-      var nextYm = String(simYear) + String(simMonth).padStart(2, '0');
+      // 기준월 = 예상월, 전월 = 실적월
+      var prevMonth = parseInt(month) - 1;
+      var prevYear = parseInt(year);
+      if (prevMonth < 1) { prevMonth = 12; prevYear--; }
+      var simYmLabel = year + '년 ' + parseInt(month) + '월';
       var simLabelEl = document.getElementById('sim-target-label');
       if (simLabelEl) simLabelEl.textContent = simYmLabel + ' 예상';
       var baseLabelEl = document.getElementById('sim-base-label');
-      if (baseLabelEl) baseLabelEl.textContent = year + '년 ' + parseInt(month) + '월 실적';
+      if (baseLabelEl) baseLabelEl.textContent = prevYear + '년 ' + prevMonth + '월 실적';
 
       var catParam = simCatFilter !== 'ALL' ? '&category=' + simCatFilter : '';
+      var prevYm = String(prevYear) + String(prevMonth).padStart(2, '0');
 
       try {
-        // 기준 데이터 + 수기입력 데이터 동시 로드
+        // 기준 데이터(전월 실적) + 수기입력 데이터(기준월) 동시 로드
         var results = await Promise.all([
-          fetch('/api/simulation/profit-base?ym=' + ym + catParam).then(function(r){return r.json();}),
-          fetch('/api/manual-input/saved?ym=' + nextYm + '&machine=PM2').then(function(r){return r.json();}),
-          fetch('/api/manual-input/saved?ym=' + nextYm + '&machine=PM3').then(function(r){return r.json();})
+          fetch('/api/simulation/profit-base?ym=' + prevYm + catParam).then(function(r){return r.json();}),
+          fetch('/api/manual-input/saved?ym=' + ym + '&machine=PM2').then(function(r){return r.json();}),
+          fetch('/api/manual-input/saved?ym=' + ym + '&machine=PM3').then(function(r){return r.json();})
         ]);
 
         simBaseData = results[0].rows || [];
