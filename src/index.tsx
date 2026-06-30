@@ -2337,7 +2337,7 @@ app.get('/api/manual-input/materials', async (c) => {
     }
   })
 
-  // 지종 목록 조회
+  // 지종 목록 조회 (production_qty 필터 제거 - 실적 데이터에 production_qty=0인 경우가 있음)
   const typeSql = `
     SELECT DISTINCT
       CASE 
@@ -2348,7 +2348,7 @@ app.get('/api/manual-input/materials', async (c) => {
     FROM raw_records
     WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
       ${machineFilter}
-      AND CAST(production_qty AS REAL) > 0
+      AND product_level2_name IS NOT NULL AND product_level2_name != ''
   `
   const typeResult = await db.prepare(typeSql).bind(ym).all()
   const productTypes = (typeResult.results as any[]).map(r => r.product_type).filter(Boolean)

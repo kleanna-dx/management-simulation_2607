@@ -558,14 +558,14 @@ export function mainPage(): string {
         <button onclick="switchDataInputSub('dataview')" id="di-tab-dataview" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
           <i class="fas fa-database mr-1.5"></i>원/부자재 실적 데이터 조회
         </button>
+        <button onclick="switchDataInputSub('inventory')" id="di-tab-inventory" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
+          <i class="fas fa-boxes-stacked mr-1.5"></i>기초재고 입력
+        </button>
         <button onclick="switchDataInputSub('manual')" id="di-tab-manual" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
           <i class="fas fa-edit mr-1.5"></i>부서 수기 입력
         </button>
         <button onclick="switchDataInputSub('calcresult')" id="di-tab-calcresult" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
           <i class="fas fa-calculator mr-1.5"></i>계산결과
-        </button>
-        <button onclick="switchDataInputSub('inventory')" id="di-tab-inventory" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
-          <i class="fas fa-boxes-stacked mr-1.5"></i>기초재고 입력
         </button>
       </div>
 
