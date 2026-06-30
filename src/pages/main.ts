@@ -4573,6 +4573,7 @@ export function mainPage(): string {
     let simProfitChart = null;
     let simManualData = null; // 수기입력 저장 데이터 (시뮬레이션용)
     let simSource = 'actual'; // 'actual' | 'manual'
+    let simSourceUserSet = false; // 사용자가 직접 소스를 선택했는지 여부
 
     function setSimCatFilter(f) {
       simCatFilter = f;
@@ -4586,7 +4587,10 @@ export function mainPage(): string {
     function onSimSourceChange() {
       var manualRadio = document.getElementById('sim-source-manual');
       simSource = (manualRadio && manualRadio.checked) ? 'manual' : 'actual';
-      loadSimProfitBase();
+      simSourceUserSet = true; // 사용자가 직접 선택함
+      initSimRows();
+      renderSimTable();
+      calcSimProfit();
     }
 
     async function loadSimProfitBase() {
@@ -4660,8 +4664,8 @@ export function mainPage(): string {
         infoText += ') \u2714 \uAD8C\uC7A5';
         if (manualInfo) { manualInfo.textContent = infoText; manualInfo.classList.remove('text-gray-400'); manualInfo.classList.add('text-emerald-600'); }
         if (notice) notice.classList.add('hidden');
-        // 수기입력 데이터 있으면 기본 선택을 manual로
-        if (manualRadio && simSource === 'actual') {
+        // 수기입력 데이터 있으면 기본 선택을 manual로 (사용자가 직접 변경하지 않은 경우에만)
+        if (manualRadio && !simSourceUserSet) {
           manualRadio.checked = true;
           simSource = 'manual';
         }
