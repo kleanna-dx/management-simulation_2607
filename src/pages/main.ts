@@ -1137,8 +1137,6 @@ export function mainPage(): string {
             <input id="inv-add-mat-type" type="text" class="w-14 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="ROH2">
             <input id="inv-add-mat-type-name" type="text" class="w-32 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="자재유형명">
             <input id="inv-add-mat-id" type="text" class="w-20 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="자재(ID)">
-            <input id="inv-add-division" type="text" class="w-14 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="사업부">
-            <input id="inv-add-mat-code" type="text" class="w-14 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="자재코드">
             <input id="inv-add-mat-name" type="text" class="w-28 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="자재내역">
             <input id="inv-add-qty" type="text" inputmode="numeric" class="w-24 text-[10px] border border-amber-200 rounded px-1.5 py-1 text-right comma-fmt" placeholder="기초재고수량">
             <input id="inv-add-price" type="text" inputmode="numeric" class="w-20 text-[10px] border border-amber-200 rounded px-1.5 py-1 text-right comma-fmt" placeholder="기초재고단가">
@@ -1157,8 +1155,6 @@ export function mainPage(): string {
                 <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">자재유형</th>
                 <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">자재유형명</th>
                 <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">자재</th>
-                <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">사업부</th>
-                <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">자재코드</th>
                 <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">자재내역</th>
                 <th class="px-2 py-2 text-center font-semibold text-gray-600 whitespace-nowrap">통화</th>
                 <th class="px-2 py-2 text-center font-semibold text-gray-600 whitespace-nowrap">단위</th>
@@ -1174,7 +1170,7 @@ export function mainPage(): string {
               </tr>
             </thead>
             <tbody id="inv-table-body">
-              <tr><td colspan="20" class="text-center text-gray-400 py-8">데이터를 업로드하거나 수동 추가해주세요.</td></tr>
+              <tr><td colspan="18" class="text-center text-gray-400 py-8">데이터를 업로드하거나 수동 추가해주세요.</td></tr>
             </tbody>
           </table>
         </div>
@@ -6707,7 +6703,7 @@ export function mainPage(): string {
       if (countEl) countEl.textContent = invData.length + '건';
 
       if (!invData.length) {
-        tbody.innerHTML = '<tr><td colspan="20" class="text-center text-gray-400 py-8">데이터를 업로드하거나 수동 추가해주세요.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="18" class="text-center text-gray-400 py-8">데이터를 업로드하거나 수동 추가해주세요.</td></tr>';
         return;
       }
 
@@ -6721,8 +6717,6 @@ export function mainPage(): string {
         html += '<td class="px-2 py-1.5 text-xs font-mono whitespace-nowrap">' + (d.material_type || '') + '</td>';
         html += '<td class="px-2 py-1.5 text-xs whitespace-nowrap">' + (d.material_type_name || '') + '</td>';
         html += '<td class="px-2 py-1.5 text-xs font-mono whitespace-nowrap">' + (d.material_id || '') + '</td>';
-        html += '<td class="px-2 py-1.5 text-xs whitespace-nowrap">' + (d.division || '') + '</td>';
-        html += '<td class="px-2 py-1.5 text-xs font-mono whitespace-nowrap">' + (d.material_code || '') + '</td>';
         html += '<td class="px-2 py-1.5 text-xs whitespace-nowrap">' + (d.material_name || '') + '</td>';
         html += '<td class="px-2 py-1.5 text-xs text-center">' + (d.currency || 'KRW') + '</td>';
         html += '<td class="px-2 py-1.5 text-xs text-center">' + (d.unit || 'KG') + '</td>';
@@ -6741,14 +6735,14 @@ export function mainPage(): string {
     }
 
     function downloadInventoryTemplate() {
-      var headers = ['월', '플랜트', '자재그룹', '자재유형', '자재유형명', '자재', '사업부', '자재코드', '자재내역', '통화', '기본단위', '기초재고_수량', '기초재고_단가', '입고_수량', '입고_단가', '출고_수량', '출고_단가', '기말재고_수량', '기말재고_단가'];
+      var headers = ['월', '플랜트', '자재그룹', '자재유형', '자재유형명', '자재', '자재내역', '통화', '기본단위', '기초재고_수량', '기초재고_단가', '입고_수량', '입고_단가', '출고_수량', '출고_단가', '기말재고_수량', '기말재고_단가'];
       var sample = [
-        ['26년 4월', 'P100', '1100', 'ROH1', '펄프원자재(깨끗한나라)', '1100011', '제지', '11', 'LBKP GUAIBA', 'KRW', 'KG', 9073, 781.59, 32293, 784.39, 41366, 783.78, 0, 0],
-        ['26년 4월', 'P100', '1200', 'ROH2', '고지원자재(깨끗한나라)', '1200000', '제지', '12', '화이트레저(B)', 'KRW', 'KG', 3735921, 335.13, 2340964, 325.65, 3090491, 331.48, 2986394, 331.48]
+        ['26년 4월', 'P100', '1100', 'ROH1', '펄프원자재(깨끗한나라)', '1100011', 'LBKP GUAIBA', 'KRW', 'KG', 9073, 781.59, 32293, 784.39, 41366, 783.78, 0, 0],
+        ['26년 4월', 'P100', '1200', 'ROH2', '고지원자재(깨끗한나라)', '1200000', '화이트레저(B)', 'KRW', 'KG', 3735921, 335.13, 2340964, 325.65, 3090491, 331.48, 2986394, 331.48]
       ];
       var wsData = [headers].concat(sample);
       var ws = XLSX.utils.aoa_to_sheet(wsData);
-      ws['!cols'] = [{wch:10},{wch:8},{wch:8},{wch:8},{wch:25},{wch:10},{wch:6},{wch:8},{wch:18},{wch:6},{wch:6},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12}];
+      ws['!cols'] = [{wch:10},{wch:8},{wch:8},{wch:8},{wch:25},{wch:10},{wch:18},{wch:6},{wch:6},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12}];
       var wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, '재고현황');
       XLSX.writeFile(wb, '재고현황_양식.xlsx');
@@ -6777,8 +6771,6 @@ export function mainPage(): string {
               material_type: r['자재유형'] || r['material_type'] || '',
               material_type_name: r['자재유형명'] || r['material_type_name'] || '',
               material_id: String(r['자재'] || r['material_id'] || ''),
-              division: r['사업부'] || r['division'] || '',
-              material_code: String(r['자재코드'] || r['material_code'] || ''),
               material_name: r['자재내역'] || r['material_name'] || r['자재명'] || '',
               currency: r['통화'] || r['currency'] || 'KRW',
               unit: r['기본단위'] || r['unit'] || 'KG',
@@ -6819,8 +6811,6 @@ export function mainPage(): string {
       var matType = document.getElementById('inv-add-mat-type').value.trim();
       var matTypeName = document.getElementById('inv-add-mat-type-name').value.trim();
       var matId = document.getElementById('inv-add-mat-id').value.trim();
-      var division = document.getElementById('inv-add-division').value.trim();
-      var matCode = document.getElementById('inv-add-mat-code').value.trim();
       var matName = document.getElementById('inv-add-mat-name').value.trim();
       var qty = parseComma(document.getElementById('inv-add-qty').value);
       var price = parseComma(document.getElementById('inv-add-price').value);
@@ -6834,15 +6824,14 @@ export function mainPage(): string {
           body: JSON.stringify({
             month: month, plant: plant, material_group: matGroup,
             material_type: matType, material_type_name: matTypeName,
-            material_id: matId, division: division,
-            material_code: matCode, material_name: matName,
+            material_id: matId, material_name: matName,
             currency: 'KRW', unit: 'KG',
             stock_qty: qty, stock_price: price
           })
         });
         var result = await res.json();
         if (result.success) {
-          ['inv-add-month','inv-add-plant','inv-add-mat-group','inv-add-mat-type','inv-add-mat-type-name','inv-add-mat-id','inv-add-division','inv-add-mat-code','inv-add-mat-name','inv-add-qty','inv-add-price'].forEach(function(id) {
+          ['inv-add-month','inv-add-plant','inv-add-mat-group','inv-add-mat-type','inv-add-mat-type-name','inv-add-mat-id','inv-add-mat-name','inv-add-qty','inv-add-price'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.value = '';
           });
@@ -6865,13 +6854,12 @@ export function mainPage(): string {
 
     function exportInventoryExcel() {
       if (!invData || !invData.length) { alert('내보낼 데이터가 없습니다.'); return; }
-      var headers = ['월', '플랜트', '자재그룹', '자재유형', '자재유형명', '자재', '사업부', '자재코드', '자재내역', '통화', '기본단위', '기초재고_수량', '기초재고_단가', '입고_수량', '입고_단가', '출고_수량', '출고_단가', '기말재고_수량', '기말재고_단가'];
+      var headers = ['월', '플랜트', '자재그룹', '자재유형', '자재유형명', '자재', '자재내역', '통화', '기본단위', '기초재고_수량', '기초재고_단가', '입고_수량', '입고_단가', '출고_수량', '출고_단가', '기말재고_수량', '기말재고_단가'];
       var rows = invData.map(function(d) {
         return [
           d.month || '', d.plant || '', d.material_group || '',
           d.material_type || '', d.material_type_name || '',
-          d.material_id || '', d.division || '',
-          d.material_code || '', d.material_name || '',
+          d.material_id || '', d.material_name || '',
           d.currency || 'KRW', d.unit || 'KG',
           d.stock_qty || 0, d.stock_price || 0,
           d.incoming_qty || 0, d.incoming_price || 0,
@@ -6881,7 +6869,7 @@ export function mainPage(): string {
       });
       var wsData = [headers].concat(rows);
       var ws = XLSX.utils.aoa_to_sheet(wsData);
-      ws['!cols'] = [{wch:10},{wch:8},{wch:8},{wch:8},{wch:25},{wch:10},{wch:6},{wch:8},{wch:18},{wch:6},{wch:6},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12}];
+      ws['!cols'] = [{wch:10},{wch:8},{wch:8},{wch:8},{wch:25},{wch:10},{wch:18},{wch:6},{wch:6},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12}];
       var wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, '재고현황');
       var monthFilter = document.getElementById('inv-month-filter') ? document.getElementById('inv-month-filter').value : '';

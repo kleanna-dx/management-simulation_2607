@@ -2502,8 +2502,6 @@ app.get('/api/inventory-stock', async (c) => {
       material_type TEXT DEFAULT '',
       material_type_name TEXT DEFAULT '',
       material_id TEXT DEFAULT '',
-      division TEXT DEFAULT '',
-      material_code TEXT DEFAULT '',
       material_name TEXT DEFAULT '',
       currency TEXT DEFAULT 'KRW',
       unit TEXT DEFAULT 'KG',
@@ -2527,7 +2525,7 @@ app.get('/api/inventory-stock', async (c) => {
   if (materialType) { query += ' AND material_type = ?'; binds.push(materialType); }
   if (materialGroup) { query += ' AND material_group = ?'; binds.push(materialGroup); }
 
-  query += ' ORDER BY month DESC, plant, material_group, material_code'
+  query += ' ORDER BY month DESC, plant, material_group, material_id'
 
   const stmt = binds.length > 0 ? db.prepare(query).bind(...binds) : db.prepare(query)
   const result = await stmt.all()
@@ -2549,8 +2547,6 @@ app.post('/api/inventory-stock', async (c) => {
       material_type TEXT DEFAULT '',
       material_type_name TEXT DEFAULT '',
       material_id TEXT DEFAULT '',
-      division TEXT DEFAULT '',
-      material_code TEXT DEFAULT '',
       material_name TEXT DEFAULT '',
       currency TEXT DEFAULT 'KRW',
       unit TEXT DEFAULT 'KG',
@@ -2567,13 +2563,12 @@ app.post('/api/inventory-stock', async (c) => {
   `).run()
 
   await db.prepare(`
-    INSERT INTO inventory_stock (month, plant, material_group, material_type, material_type_name, material_id, division, material_code, material_name, currency, unit, stock_qty, stock_price, incoming_qty, incoming_price, outgoing_qty, outgoing_price, closing_qty, closing_price)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO inventory_stock (month, plant, material_group, material_type, material_type_name, material_id, material_name, currency, unit, stock_qty, stock_price, incoming_qty, incoming_price, outgoing_qty, outgoing_price, closing_qty, closing_price)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     body.month || '', body.plant || '', body.material_group || '',
     body.material_type || '', body.material_type_name || '',
-    body.material_id || '', body.division || '',
-    body.material_code || '', body.material_name || '',
+    body.material_id || '', body.material_name || '',
     body.currency || 'KRW', body.unit || 'KG',
     body.stock_qty || 0, body.stock_price || 0,
     body.incoming_qty || 0, body.incoming_price || 0,
@@ -2600,8 +2595,6 @@ app.post('/api/inventory-stock/bulk', async (c) => {
       material_type TEXT DEFAULT '',
       material_type_name TEXT DEFAULT '',
       material_id TEXT DEFAULT '',
-      division TEXT DEFAULT '',
-      material_code TEXT DEFAULT '',
       material_name TEXT DEFAULT '',
       currency TEXT DEFAULT 'KRW',
       unit TEXT DEFAULT 'KG',
@@ -2620,13 +2613,12 @@ app.post('/api/inventory-stock/bulk', async (c) => {
   let count = 0
   for (const row of rows) {
     await db.prepare(`
-      INSERT INTO inventory_stock (month, plant, material_group, material_type, material_type_name, material_id, division, material_code, material_name, currency, unit, stock_qty, stock_price, incoming_qty, incoming_price, outgoing_qty, outgoing_price, closing_qty, closing_price)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO inventory_stock (month, plant, material_group, material_type, material_type_name, material_id, material_name, currency, unit, stock_qty, stock_price, incoming_qty, incoming_price, outgoing_qty, outgoing_price, closing_qty, closing_price)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       row.month || '', row.plant || '', row.material_group || '',
       row.material_type || '', row.material_type_name || '',
-      row.material_id || '', row.division || '',
-      row.material_code || '', row.material_name || '',
+      row.material_id || '', row.material_name || '',
       row.currency || 'KRW', row.unit || 'KG',
       row.stock_qty || 0, row.stock_price || 0,
       row.incoming_qty || 0, row.incoming_price || 0,
