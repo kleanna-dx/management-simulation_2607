@@ -5746,9 +5746,9 @@ export function mainPage(): string {
           html += '<td class="px-1.5 py-0.5 text-[10px] font-mono text-gray-400 border-r border-slate-100">' + (m.is_new ? '<span class="text-amber-600 font-semibold">' + shortCode + '</span>' : shortCode) + '</td>';
           html += '<td class="px-1.5 py-0.5 text-xs border-r border-slate-300">' + m.name + (m.is_new ? ' <span class="text-[9px] px-1 py-0.5 bg-amber-100 text-amber-700 rounded font-semibold">NEW</span>' : '') + '</td>';
           // 전월 실적 5열 (사용량은 표시, 원단위는 자동계산값 표시 + 수정 가능)
-          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-l border-slate-200">' + (prevUsage > 0 ? Math.round(prevUsage).toLocaleString() : '-') + '</td>';
+          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-l border-slate-200" id="' + rid + '-pu">' + (prevUsage > 0 ? Math.round(prevUsage).toLocaleString() : '-') + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" step="0.1" class="w-14 text-right text-[10px] font-mono border border-blue-200 rounded px-0.5 py-0.5 bg-blue-50/30 focus:border-blue-400 mn-inp" id="' + rid + '-puc" data-row="' + rowIdx + '" data-field="prev_uc" value="' + inputPrevUC + '" placeholder="-" onchange="calcManualProfit()" title="실적 원단위 (수정 가능)">'
+            + '<input type="number" step="0.1" class="w-14 text-right text-[10px] font-mono border border-blue-200 rounded px-0.5 py-0.5 bg-blue-50/30 focus:border-blue-400 mn-inp" id="' + rid + '-puc" data-row="' + rowIdx + '" data-field="prev_uc" value="' + inputPrevUC + '" placeholder="-" onchange="onPrevUnitCostInput(' + rowIdx + ')" title="원단위 입력 시 사용량 역산">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (prevPrice > 0 ? Math.round(prevPrice).toLocaleString() : '-') + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (prevCostMil > 0 ? Math.round(prevCostMil).toLocaleString() : '-') + '</td>';
@@ -5802,7 +5802,49 @@ export function mainPage(): string {
       calcManualProfit();
     }
 
-    // 원단위 입력 → 사용량 역산
+    // 전월 원단위 입력 → 전월 사용량 역산
+    // 공식: 사용량(kg) = 원단위(kg/톤) × 전월 유효생산량(톤)
+    function onPrevUnitCostInput(idx) {
+      var rid = 'mn-r-' + idx;
+      var pucEl = document.getElementById(rid + '-puc');
+      var puEl = document.getElementById(rid + '-pu');
+      if (!pucEl) return;
+
+      var unitCost = Number(pucEl.value) || 0;
+      if (unitCost <= 0) { calcManualProfit(); return; }
+
+      // 전월 유효 생산량 계산 (톤 단위)
+      var m = mnMaterials[idx];
+      var groupName = m ? (m.group_name || '') : '';
+      var prevProdByType = {};
+      var prevTotalProd = 0;
+      for (var k in mnPrevProd) {
+        var tonVal = (mnPrevProd[k] || 0) / 1000;
+        prevProdByType[k] = tonVal;
+        prevTotalProd += tonVal;
+      }
+
+      // DB 규칙에서 제외 지종 확인
+      var excludeProd = 0;
+      if (mnExclusionRules && mnExclusionRules.length && groupName) {
+        mnExclusionRules.forEach(function(rule) {
+          if (groupName.indexOf(rule.material_group_keyword) >= 0) {
+            excludeProd += prevProdByType[rule.excluded_product_type] || 0;
+          }
+        });
+      }
+
+      var effectiveProd = prevTotalProd - excludeProd;
+      if (effectiveProd <= 0) effectiveProd = prevTotalProd > 0 ? prevTotalProd : 1;
+
+      // 사용량 역산
+      var usage = Math.round(unitCost * effectiveProd);
+      if (puEl) puEl.textContent = usage > 0 ? usage.toLocaleString() : '-';
+
+      calcManualProfit();
+    }
+
+    // 당월 원단위 입력 → 사용량 역산
     // 공식: 사용량(kg) = 원단위(kg/톤) × 유효생산량(톤)
     // 유효생산량 = 전체생산량 - 제외지종 생산량
     // PM2: 화이트레저 → KB 제외
