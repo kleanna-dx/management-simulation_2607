@@ -2490,21 +2490,31 @@ app.get('/api/inventory-stock', async (c) => {
   const month = c.req.query('month') || ''
   const plant = c.req.query('plant') || ''
   const materialType = c.req.query('material_type') || ''
+  const materialGroup = c.req.query('material_group') || ''
 
-  // 테이블 생성
+  // 테이블 생성 (확장 스키마)
   await db.prepare(`
     CREATE TABLE IF NOT EXISTS inventory_stock (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       month TEXT NOT NULL,
       plant TEXT DEFAULT '',
+      material_group TEXT DEFAULT '',
       material_type TEXT DEFAULT '',
       material_type_name TEXT DEFAULT '',
-      material_code TEXT NOT NULL,
+      material_id TEXT DEFAULT '',
+      division TEXT DEFAULT '',
+      material_code TEXT DEFAULT '',
       material_name TEXT DEFAULT '',
       currency TEXT DEFAULT 'KRW',
       unit TEXT DEFAULT 'KG',
       stock_qty REAL DEFAULT 0,
       stock_price REAL DEFAULT 0,
+      incoming_qty REAL DEFAULT 0,
+      incoming_price REAL DEFAULT 0,
+      outgoing_qty REAL DEFAULT 0,
+      outgoing_price REAL DEFAULT 0,
+      closing_qty REAL DEFAULT 0,
+      closing_price REAL DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `).run()
@@ -2515,8 +2525,9 @@ app.get('/api/inventory-stock', async (c) => {
   if (month) { query += ' AND month = ?'; binds.push(month); }
   if (plant) { query += ' AND plant = ?'; binds.push(plant); }
   if (materialType) { query += ' AND material_type = ?'; binds.push(materialType); }
+  if (materialGroup) { query += ' AND material_group = ?'; binds.push(materialGroup); }
 
-  query += ' ORDER BY month DESC, plant, material_code'
+  query += ' ORDER BY month DESC, plant, material_group, material_code'
 
   const stmt = binds.length > 0 ? db.prepare(query).bind(...binds) : db.prepare(query)
   const result = await stmt.all()
@@ -2534,25 +2545,40 @@ app.post('/api/inventory-stock', async (c) => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       month TEXT NOT NULL,
       plant TEXT DEFAULT '',
+      material_group TEXT DEFAULT '',
       material_type TEXT DEFAULT '',
       material_type_name TEXT DEFAULT '',
-      material_code TEXT NOT NULL,
+      material_id TEXT DEFAULT '',
+      division TEXT DEFAULT '',
+      material_code TEXT DEFAULT '',
       material_name TEXT DEFAULT '',
       currency TEXT DEFAULT 'KRW',
       unit TEXT DEFAULT 'KG',
       stock_qty REAL DEFAULT 0,
       stock_price REAL DEFAULT 0,
+      incoming_qty REAL DEFAULT 0,
+      incoming_price REAL DEFAULT 0,
+      outgoing_qty REAL DEFAULT 0,
+      outgoing_price REAL DEFAULT 0,
+      closing_qty REAL DEFAULT 0,
+      closing_price REAL DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `).run()
 
   await db.prepare(`
-    INSERT INTO inventory_stock (month, plant, material_type, material_type_name, material_code, material_name, currency, unit, stock_qty, stock_price)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO inventory_stock (month, plant, material_group, material_type, material_type_name, material_id, division, material_code, material_name, currency, unit, stock_qty, stock_price, incoming_qty, incoming_price, outgoing_qty, outgoing_price, closing_qty, closing_price)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
-    body.month || '', body.plant || '', body.material_type || '', body.material_type_name || '',
-    body.material_code || '', body.material_name || '', body.currency || 'KRW', body.unit || 'KG',
-    body.stock_qty || 0, body.stock_price || 0
+    body.month || '', body.plant || '', body.material_group || '',
+    body.material_type || '', body.material_type_name || '',
+    body.material_id || '', body.division || '',
+    body.material_code || '', body.material_name || '',
+    body.currency || 'KRW', body.unit || 'KG',
+    body.stock_qty || 0, body.stock_price || 0,
+    body.incoming_qty || 0, body.incoming_price || 0,
+    body.outgoing_qty || 0, body.outgoing_price || 0,
+    body.closing_qty || 0, body.closing_price || 0
   ).run()
 
   return c.json({ success: true })
@@ -2570,14 +2596,23 @@ app.post('/api/inventory-stock/bulk', async (c) => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       month TEXT NOT NULL,
       plant TEXT DEFAULT '',
+      material_group TEXT DEFAULT '',
       material_type TEXT DEFAULT '',
       material_type_name TEXT DEFAULT '',
-      material_code TEXT NOT NULL,
+      material_id TEXT DEFAULT '',
+      division TEXT DEFAULT '',
+      material_code TEXT DEFAULT '',
       material_name TEXT DEFAULT '',
       currency TEXT DEFAULT 'KRW',
       unit TEXT DEFAULT 'KG',
       stock_qty REAL DEFAULT 0,
       stock_price REAL DEFAULT 0,
+      incoming_qty REAL DEFAULT 0,
+      incoming_price REAL DEFAULT 0,
+      outgoing_qty REAL DEFAULT 0,
+      outgoing_price REAL DEFAULT 0,
+      closing_qty REAL DEFAULT 0,
+      closing_price REAL DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `).run()
@@ -2585,12 +2620,18 @@ app.post('/api/inventory-stock/bulk', async (c) => {
   let count = 0
   for (const row of rows) {
     await db.prepare(`
-      INSERT INTO inventory_stock (month, plant, material_type, material_type_name, material_code, material_name, currency, unit, stock_qty, stock_price)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO inventory_stock (month, plant, material_group, material_type, material_type_name, material_id, division, material_code, material_name, currency, unit, stock_qty, stock_price, incoming_qty, incoming_price, outgoing_qty, outgoing_price, closing_qty, closing_price)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
-      row.month || '', row.plant || '', row.material_type || '', row.material_type_name || '',
-      row.material_code || '', row.material_name || '', row.currency || 'KRW', row.unit || 'KG',
-      row.stock_qty || 0, row.stock_price || 0
+      row.month || '', row.plant || '', row.material_group || '',
+      row.material_type || '', row.material_type_name || '',
+      row.material_id || '', row.division || '',
+      row.material_code || '', row.material_name || '',
+      row.currency || 'KRW', row.unit || 'KG',
+      row.stock_qty || 0, row.stock_price || 0,
+      row.incoming_qty || 0, row.incoming_price || 0,
+      row.outgoing_qty || 0, row.outgoing_price || 0,
+      row.closing_qty || 0, row.closing_price || 0
     ).run()
     count++
   }

@@ -1095,7 +1095,7 @@ export function mainPage(): string {
         </div>
 
         <!-- 필터 -->
-        <div class="flex items-center gap-3 mb-4">
+        <div class="flex items-center gap-3 mb-4 flex-wrap">
           <div class="flex items-center gap-2">
             <label class="text-xs text-gray-500">월:</label>
             <select id="inv-month-filter" class="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:border-emerald-400" onchange="loadInventoryData()">
@@ -1108,6 +1108,12 @@ export function mainPage(): string {
               <option value="">전체</option>
               <option value="P100">P100</option>
               <option value="P200">P200</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-500">자재그룹:</label>
+            <select id="inv-group-filter" class="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:border-emerald-400" onchange="loadInventoryData()">
+              <option value="">전체</option>
             </select>
           </div>
           <div class="flex items-center gap-2">
@@ -1126,12 +1132,15 @@ export function mainPage(): string {
             <span class="text-[10px] font-semibold text-amber-700"><i class="fas fa-plus-circle mr-0.5"></i>수동 추가:</span>
             <input id="inv-add-month" type="text" class="w-20 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="26년 5월">
             <input id="inv-add-plant" type="text" class="w-14 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="P100">
+            <input id="inv-add-mat-group" type="text" class="w-14 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="1200">
             <input id="inv-add-mat-type" type="text" class="w-14 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="ROH2">
             <input id="inv-add-mat-type-name" type="text" class="w-32 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="자재유형명">
-            <input id="inv-add-mat-code" type="text" class="w-20 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="자재코드">
+            <input id="inv-add-mat-id" type="text" class="w-20 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="자재(ID)">
+            <input id="inv-add-division" type="text" class="w-14 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="사업부">
+            <input id="inv-add-mat-code" type="text" class="w-14 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="자재코드">
             <input id="inv-add-mat-name" type="text" class="w-28 text-[10px] border border-amber-200 rounded px-1.5 py-1" placeholder="자재내역">
-            <input id="inv-add-qty" type="text" inputmode="numeric" class="w-24 text-[10px] border border-amber-200 rounded px-1.5 py-1 text-right comma-fmt" placeholder="수량(kg)">
-            <input id="inv-add-price" type="text" inputmode="numeric" class="w-16 text-[10px] border border-amber-200 rounded px-1.5 py-1 text-right comma-fmt" placeholder="단가">
+            <input id="inv-add-qty" type="text" inputmode="numeric" class="w-24 text-[10px] border border-amber-200 rounded px-1.5 py-1 text-right comma-fmt" placeholder="기초재고수량">
+            <input id="inv-add-price" type="text" inputmode="numeric" class="w-20 text-[10px] border border-amber-200 rounded px-1.5 py-1 text-right comma-fmt" placeholder="기초재고단가">
             <button onclick="addInventoryRow()" class="text-[10px] px-2 py-1 rounded bg-amber-500 text-white hover:bg-amber-600"><i class="fas fa-plus"></i> 추가</button>
           </div>
         </div>
@@ -1143,19 +1152,28 @@ export function mainPage(): string {
               <tr class="bg-slate-50 border-b">
                 <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">월</th>
                 <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">플랜트</th>
+                <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">자재그룹</th>
                 <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">자재유형</th>
                 <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">자재유형명</th>
+                <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">자재</th>
+                <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">사업부</th>
                 <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">자재코드</th>
                 <th class="px-2 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">자재내역</th>
                 <th class="px-2 py-2 text-center font-semibold text-gray-600 whitespace-nowrap">통화</th>
                 <th class="px-2 py-2 text-center font-semibold text-gray-600 whitespace-nowrap">단위</th>
-                <th class="px-2 py-2 text-right font-semibold text-gray-600 whitespace-nowrap">기초재고-수량</th>
-                <th class="px-2 py-2 text-right font-semibold text-gray-600 whitespace-nowrap">기초재고-가격</th>
+                <th class="px-2 py-2 text-right font-semibold text-blue-700 whitespace-nowrap border-l border-slate-200">기초재고-수량</th>
+                <th class="px-2 py-2 text-right font-semibold text-blue-700 whitespace-nowrap">기초재고-단가</th>
+                <th class="px-2 py-2 text-right font-semibold text-emerald-700 whitespace-nowrap border-l border-slate-200">입고-수량</th>
+                <th class="px-2 py-2 text-right font-semibold text-emerald-700 whitespace-nowrap">입고-단가</th>
+                <th class="px-2 py-2 text-right font-semibold text-orange-700 whitespace-nowrap border-l border-slate-200">출고-수량</th>
+                <th class="px-2 py-2 text-right font-semibold text-orange-700 whitespace-nowrap">출고-단가</th>
+                <th class="px-2 py-2 text-right font-semibold text-purple-700 whitespace-nowrap border-l border-slate-200">기말재고-수량</th>
+                <th class="px-2 py-2 text-right font-semibold text-purple-700 whitespace-nowrap">기말재고-단가</th>
                 <th class="px-2 py-2 text-center font-semibold text-gray-600 whitespace-nowrap">삭제</th>
               </tr>
             </thead>
             <tbody id="inv-table-body">
-              <tr><td colspan="11" class="text-center text-gray-400 py-8">데이터를 업로드하거나 수동 추가해주세요.</td></tr>
+              <tr><td colspan="20" class="text-center text-gray-400 py-8">데이터를 업로드하거나 수동 추가해주세요.</td></tr>
             </tbody>
           </table>
         </div>
@@ -6625,11 +6643,13 @@ export function mainPage(): string {
     async function loadInventoryData() {
       var monthFilter = document.getElementById('inv-month-filter') ? document.getElementById('inv-month-filter').value : '';
       var plantFilter = document.getElementById('inv-plant-filter') ? document.getElementById('inv-plant-filter').value : '';
+      var groupFilter = document.getElementById('inv-group-filter') ? document.getElementById('inv-group-filter').value : '';
       var typeFilter = document.getElementById('inv-type-filter') ? document.getElementById('inv-type-filter').value : '';
 
       var params = [];
       if (monthFilter) params.push('month=' + encodeURIComponent(monthFilter));
       if (plantFilter) params.push('plant=' + encodeURIComponent(plantFilter));
+      if (groupFilter) params.push('material_group=' + encodeURIComponent(groupFilter));
       if (typeFilter) params.push('material_type=' + encodeURIComponent(typeFilter));
       var qs = params.length ? '?' + params.join('&') : '';
 
@@ -6646,22 +6666,32 @@ export function mainPage(): string {
 
     function updateInvFilters() {
       var monthSel = document.getElementById('inv-month-filter');
+      var groupSel = document.getElementById('inv-group-filter');
       var typeSel = document.getElementById('inv-type-filter');
       if (!monthSel || !typeSel) return;
 
       var months = {};
+      var groups = {};
       var types = {};
       invData.forEach(function(d) {
         if (d.month) months[d.month] = true;
+        if (d.material_group) groups[d.material_group] = true;
         if (d.material_type) types[d.material_type] = true;
       });
 
       var curMonth = monthSel.value;
+      var curGroup = groupSel ? groupSel.value : '';
       var curType = typeSel.value;
 
       var mHtml = '<option value="">전체</option>';
       Object.keys(months).sort().forEach(function(m) { mHtml += '<option value="' + m + '"' + (m === curMonth ? ' selected' : '') + '>' + m + '</option>'; });
       monthSel.innerHTML = mHtml;
+
+      if (groupSel) {
+        var gHtml = '<option value="">전체</option>';
+        Object.keys(groups).sort().forEach(function(g) { gHtml += '<option value="' + g + '"' + (g === curGroup ? ' selected' : '') + '>' + g + '</option>'; });
+        groupSel.innerHTML = gHtml;
+      }
 
       var tHtml = '<option value="">전체</option>';
       Object.keys(types).sort().forEach(function(t) { tHtml += '<option value="' + t + '"' + (t === curType ? ' selected' : '') + '>' + t + '</option>'; });
@@ -6676,23 +6706,33 @@ export function mainPage(): string {
       if (countEl) countEl.textContent = invData.length + '건';
 
       if (!invData.length) {
-        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-gray-400 py-8">데이터를 업로드하거나 수동 추가해주세요.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="20" class="text-center text-gray-400 py-8">데이터를 업로드하거나 수동 추가해주세요.</td></tr>';
         return;
       }
 
+      var fmtN = function(v) { return v != null && v !== 0 ? Number(v).toLocaleString(undefined, {maximumFractionDigits:2}) : '-'; };
       var html = '';
       invData.forEach(function(d) {
         html += '<tr class="border-b border-slate-50 hover:bg-slate-50/50">';
         html += '<td class="px-2 py-1.5 text-xs whitespace-nowrap">' + (d.month || '') + '</td>';
         html += '<td class="px-2 py-1.5 text-xs whitespace-nowrap">' + (d.plant || '') + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs font-mono whitespace-nowrap">' + (d.material_group || '') + '</td>';
         html += '<td class="px-2 py-1.5 text-xs font-mono whitespace-nowrap">' + (d.material_type || '') + '</td>';
         html += '<td class="px-2 py-1.5 text-xs whitespace-nowrap">' + (d.material_type_name || '') + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs font-mono whitespace-nowrap">' + (d.material_id || '') + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs whitespace-nowrap">' + (d.division || '') + '</td>';
         html += '<td class="px-2 py-1.5 text-xs font-mono whitespace-nowrap">' + (d.material_code || '') + '</td>';
         html += '<td class="px-2 py-1.5 text-xs whitespace-nowrap">' + (d.material_name || '') + '</td>';
         html += '<td class="px-2 py-1.5 text-xs text-center">' + (d.currency || 'KRW') + '</td>';
         html += '<td class="px-2 py-1.5 text-xs text-center">' + (d.unit || 'KG') + '</td>';
-        html += '<td class="px-2 py-1.5 text-xs text-right font-mono">' + (d.stock_qty != null ? Number(d.stock_qty).toLocaleString(undefined, {maximumFractionDigits:3}) : '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-xs text-right font-mono">' + (d.stock_price != null ? Number(d.stock_price).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs text-right font-mono border-l border-slate-100">' + fmtN(d.stock_qty) + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs text-right font-mono">' + fmtN(d.stock_price) + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs text-right font-mono border-l border-slate-100">' + fmtN(d.incoming_qty) + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs text-right font-mono">' + fmtN(d.incoming_price) + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs text-right font-mono border-l border-slate-100">' + fmtN(d.outgoing_qty) + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs text-right font-mono">' + fmtN(d.outgoing_price) + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs text-right font-mono border-l border-slate-100">' + fmtN(d.closing_qty) + '</td>';
+        html += '<td class="px-2 py-1.5 text-xs text-right font-mono">' + fmtN(d.closing_price) + '</td>';
         html += '<td class="px-2 py-1.5 text-center"><button onclick="deleteInventoryRow(' + d.id + ')" class="text-red-400 hover:text-red-600 text-[10px]"><i class="fas fa-trash"></i></button></td>';
         html += '</tr>';
       });
@@ -6700,17 +6740,17 @@ export function mainPage(): string {
     }
 
     function downloadInventoryTemplate() {
-      var headers = ['월', '플랜트', '자재유형', '자재유형명', '자재', '자재내역', '통화', '기본단위', '기초재고-수량', '기초재고-가격'];
+      var headers = ['월', '플랜트', '자재그룹', '자재유형', '자재유형명', '자재', '사업부', '자재코드', '자재내역', '통화', '기본단위', '기초재고_수량', '기초재고_단가', '입고_수량', '입고_단가', '출고_수량', '출고_단가', '기말재고_수량', '기말재고_단가'];
       var sample = [
-        ['26년 4월', 'P100', 'ROH2', '고지원자재(깨끗한나라)', '1200000', '화이트레저(B)', 'KRW', 'KG', 3735921, 335],
-        ['26년 5월', 'P100', 'ROH2', '고지원자재(깨끗한나라)', '1200000', '화이트레저(B)', 'KRW', 'KG', 2986394, 331]
+        ['26년 4월', 'P100', '1100', 'ROH1', '펄프원자재(깨끗한나라)', '1100011', '제지', '11', 'LBKP GUAIBA', 'KRW', 'KG', 9073, 781.59, 32293, 784.39, 41366, 783.78, 0, 0],
+        ['26년 4월', 'P100', '1200', 'ROH2', '고지원자재(깨끗한나라)', '1200000', '제지', '12', '화이트레저(B)', 'KRW', 'KG', 3735921, 335.13, 2340964, 325.65, 3090491, 331.48, 2986394, 331.48]
       ];
       var wsData = [headers].concat(sample);
       var ws = XLSX.utils.aoa_to_sheet(wsData);
-      ws['!cols'] = [{wch:10},{wch:8},{wch:8},{wch:25},{wch:10},{wch:18},{wch:6},{wch:6},{wch:15},{wch:12}];
+      ws['!cols'] = [{wch:10},{wch:8},{wch:8},{wch:8},{wch:25},{wch:10},{wch:6},{wch:8},{wch:18},{wch:6},{wch:6},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12}];
       var wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, '기초재고');
-      XLSX.writeFile(wb, '기초재고_양식.xlsx');
+      XLSX.utils.book_append_sheet(wb, ws, '재고현황');
+      XLSX.writeFile(wb, '재고현황_양식.xlsx');
     }
 
     async function uploadInventoryFile(event) {
@@ -6732,14 +6772,23 @@ export function mainPage(): string {
             return {
               month: r['월'] || r['month'] || '',
               plant: r['플랜트'] || r['plant'] || '',
+              material_group: String(r['자재그룹'] || r['material_group'] || ''),
               material_type: r['자재유형'] || r['material_type'] || '',
               material_type_name: r['자재유형명'] || r['material_type_name'] || '',
-              material_code: String(r['자재'] || r['material_code'] || r['자재코드'] || ''),
+              material_id: String(r['자재'] || r['material_id'] || ''),
+              division: r['사업부'] || r['division'] || '',
+              material_code: String(r['자재코드'] || r['material_code'] || ''),
               material_name: r['자재내역'] || r['material_name'] || r['자재명'] || '',
               currency: r['통화'] || r['currency'] || 'KRW',
               unit: r['기본단위'] || r['unit'] || 'KG',
-              stock_qty: Number(String(r['기초재고-수량'] || r['stock_qty'] || r['수량'] || 0).replace(/,/g, '')) || 0,
-              stock_price: Number(String(r['기초재고-가격'] || r['stock_price'] || r['가격'] || r['단가'] || 0).replace(/,/g, '')) || 0
+              stock_qty: Number(String(r['기초재고_수량'] || r['기초재고-수량'] || r['stock_qty'] || 0).replace(/,/g, '')) || 0,
+              stock_price: Number(String(r['기초재고_단가'] || r['기초재고-가격'] || r['stock_price'] || 0).replace(/,/g, '')) || 0,
+              incoming_qty: Number(String(r['입고_수량'] || r['incoming_qty'] || 0).replace(/,/g, '')) || 0,
+              incoming_price: Number(String(r['입고_단가'] || r['incoming_price'] || 0).replace(/,/g, '')) || 0,
+              outgoing_qty: Number(String(r['출고_수량'] || r['outgoing_qty'] || 0).replace(/,/g, '')) || 0,
+              outgoing_price: Number(String(r['출고_단가'] || r['outgoing_price'] || 0).replace(/,/g, '')) || 0,
+              closing_qty: Number(String(r['기말재고_수량'] || r['closing_qty'] || 0).replace(/,/g, '')) || 0,
+              closing_price: Number(String(r['기말재고_단가'] || r['closing_price'] || 0).replace(/,/g, '')) || 0
             };
           });
 
@@ -6765,29 +6814,34 @@ export function mainPage(): string {
     async function addInventoryRow() {
       var month = document.getElementById('inv-add-month').value.trim();
       var plant = document.getElementById('inv-add-plant').value.trim();
+      var matGroup = document.getElementById('inv-add-mat-group').value.trim();
       var matType = document.getElementById('inv-add-mat-type').value.trim();
       var matTypeName = document.getElementById('inv-add-mat-type-name').value.trim();
+      var matId = document.getElementById('inv-add-mat-id').value.trim();
+      var division = document.getElementById('inv-add-division').value.trim();
       var matCode = document.getElementById('inv-add-mat-code').value.trim();
       var matName = document.getElementById('inv-add-mat-name').value.trim();
       var qty = parseComma(document.getElementById('inv-add-qty').value);
       var price = parseComma(document.getElementById('inv-add-price').value);
 
-      if (!month || !matCode) { alert('월과 자재코드는 필수입니다.'); return; }
+      if (!month || !matId) { alert('월과 자재(ID)는 필수입니다.'); return; }
 
       try {
         var res = await fetch('/api/inventory-stock', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
-            month: month, plant: plant, material_type: matType,
-            material_type_name: matTypeName, material_code: matCode,
-            material_name: matName, currency: 'KRW', unit: 'KG',
+            month: month, plant: plant, material_group: matGroup,
+            material_type: matType, material_type_name: matTypeName,
+            material_id: matId, division: division,
+            material_code: matCode, material_name: matName,
+            currency: 'KRW', unit: 'KG',
             stock_qty: qty, stock_price: price
           })
         });
         var result = await res.json();
         if (result.success) {
-          ['inv-add-month','inv-add-plant','inv-add-mat-type','inv-add-mat-type-name','inv-add-mat-code','inv-add-mat-name','inv-add-qty','inv-add-price'].forEach(function(id) {
+          ['inv-add-month','inv-add-plant','inv-add-mat-group','inv-add-mat-type','inv-add-mat-type-name','inv-add-mat-id','inv-add-division','inv-add-mat-code','inv-add-mat-name','inv-add-qty','inv-add-price'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.value = '';
           });
