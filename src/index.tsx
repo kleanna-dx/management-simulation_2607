@@ -2672,10 +2672,30 @@ app.get('/api/inventory-stock/closing-map', async (c) => {
     )
   `).run()
 
-  // 해당 월의 기말재고를 material_id 기준으로 조회
+  // YYYYMM → 다양한 월 형식으로 변환하여 검색
+  // 사용자 엑셀 형식: "26년 5월", "26년 04월" 등
+  const monthVariants: string[] = [month]
+  if (/^\d{6}$/.test(month)) {
+    const y = parseInt(month.substring(0, 4))
+    const m = parseInt(month.substring(4, 6))
+    const shortYear = y % 100
+    // "26년 5월" 형식
+    monthVariants.push(shortYear + '년 ' + m + '월')
+    // "26년 05월" 형식 (0패딩)
+    monthVariants.push(shortYear + '년 ' + String(m).padStart(2, '0') + '월')
+    // "2026년 5월" 형식
+    monthVariants.push(y + '년 ' + m + '월')
+    // "2026년 05월" 형식
+    monthVariants.push(y + '년 ' + String(m).padStart(2, '0') + '월')
+    // "2026-05" 형식
+    monthVariants.push(y + '-' + String(m).padStart(2, '0'))
+  }
+
+  // 해당 월의 기말재고를 material_id 기준으로 조회 (모든 월 형식 대응)
+  const placeholders = monthVariants.map(() => '?').join(',')
   const result = await db.prepare(
-    'SELECT material_id, closing_qty, closing_price FROM inventory_stock WHERE month = ? AND material_id != \'\''
-  ).bind(month).all()
+    'SELECT material_id, closing_qty, closing_price FROM inventory_stock WHERE month IN (' + placeholders + ') AND material_id != \'\''
+  ).bind(...monthVariants).all()
 
   // material_id → { closing_qty, closing_price } 맵으로 변환
   const map: Record<string, { closing_qty: number; closing_price: number }> = {}
@@ -2688,7 +2708,7 @@ app.get('/api/inventory-stock/closing-map', async (c) => {
     }
   }
 
-  return c.json({ map, month })
+  return c.json({ map, month, variants: monthVariants })
 })
 
 export default app
