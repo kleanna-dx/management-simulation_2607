@@ -5308,7 +5308,8 @@ export function mainPage(): string {
           fetch('/api/manual-input/materials?ym=' + prevYm + '&machine=' + mnMachine).then(function(r){return r.json();}),
           fetch('/api/manual-input/production?ym=' + prevYm + '&machine=' + mnMachine).then(function(r){return r.json();}),
           fetch('/api/manual-input/saved?ym=' + ym + '&machine=' + mnMachine).then(function(r){return r.json();}),
-          fetch('/api/exclusion-rules?machine=' + mnMachine).then(function(r){return r.json();})
+          fetch('/api/exclusion-rules?machine=' + mnMachine).then(function(r){return r.json();}),
+          fetch('/api/inventory-stock/closing-map?month=' + prevYm).then(function(r){return r.json();})
         ]);
         mnMaterials = results[0].materials || [];
         mnProdTypes = results[0].productTypes || [];
@@ -5316,6 +5317,9 @@ export function mainPage(): string {
         var savedData = results[2] || {};
         mnInputData = savedData.data || {};
         mnExclusionRules = results[3] || [];
+        // 전월 기말재고 맵 (material_id → { closing_qty, closing_price })
+        // 이것이 당월 기초재고가 됨
+        window.mnClosingMap = (results[4] && results[4].map) || {};
         // 저장된 신규 자재 복원
         if (mnInputData.new_materials && mnInputData.new_materials.length) {
           mnInputData.new_materials.forEach(function(nm) {
@@ -5443,6 +5447,19 @@ export function mainPage(): string {
         items.forEach(function(m) {
           var saved = (mnInputData.materials && mnInputData.materials[m.code]) || {};
           var shortCode = m.code.replace(/^0+/, '') || m.code;
+          // 기말재고 → 기초재고 자동매핑: 저장값 없으면 inventory_stock 기말재고 사용
+          var closingData = null;
+          if (window.mnClosingMap) {
+            closingData = window.mnClosingMap[m.code] || window.mnClosingMap[shortCode] || null;
+            if (!closingData) {
+              // 앞자리 0 제거 후 재매칭
+              for (var cKey in window.mnClosingMap) {
+                if (cKey.replace(/^0+/, '') === shortCode) { closingData = window.mnClosingMap[cKey]; break; }
+              }
+            }
+          }
+          var autoStockQty = (closingData && closingData.closing_qty) ? closingData.closing_qty : 0;
+          var autoStockPrice = (closingData && closingData.closing_price) ? closingData.closing_price : 0;
           var prevUsage = m.usage_qty || 0;
           var prevUC = prevProdTon > 0 ? prevUsage / prevProdTon : 0;
           var prevPrice = m.unit_price || 0;
@@ -5481,10 +5498,10 @@ export function mainPage(): string {
             + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp comma-fmt" id="' + rid + '-ip" data-row="' + rowIdx + '" data-field="incoming_price" value="' + (saved.incoming_price ? Math.round(saved.incoming_price).toLocaleString() : '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp comma-fmt" id="' + rid + '-sq" data-row="' + rowIdx + '" data-field="stock_qty" value="' + (saved.stock_qty ? Math.round(saved.stock_qty).toLocaleString() : '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
+            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp comma-fmt" id="' + rid + '-sq" data-row="' + rowIdx + '" data-field="stock_qty" value="' + (saved.stock_qty ? Math.round(saved.stock_qty).toLocaleString() : (autoStockQty > 0 ? Math.round(autoStockQty).toLocaleString() : '')) + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp comma-fmt" id="' + rid + '-sp" data-row="' + rowIdx + '" data-field="stock_price" value="' + (saved.stock_price ? Math.round(saved.stock_price).toLocaleString() : '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
+            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp comma-fmt" id="' + rid + '-sp" data-row="' + rowIdx + '" data-field="stock_price" value="' + (saved.stock_price ? Math.round(saved.stock_price).toLocaleString() : (autoStockPrice > 0 ? Math.round(autoStockPrice).toLocaleString() : '')) + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
             + '</td>';
           html += '<td class="px-1.5 py-0.5 text-right">'
             + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 bg-gray-100 text-gray-600 mn-inp comma-fmt" id="' + rid + '-up" data-row="' + rowIdx + '" data-field="use_price" value="' + ((saved.use_price || (prevPrice > 0 ? Math.round(prevPrice) : '')) ? Math.round(saved.use_price || prevPrice).toLocaleString() : '') + '" placeholder="-" readonly title="자동계산 (가중평균)">'
