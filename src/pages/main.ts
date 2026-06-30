@@ -1014,26 +1014,7 @@ export function mainPage(): string {
           </div>
         </div>
 
-        <!-- 그룹별 요약 -->
-        <div class="card p-4 mb-4">
-          <h4 class="text-xs font-semibold text-gray-600 mb-3"><i class="fas fa-layer-group mr-1.5"></i>자재그룹별 요약</h4>
-          <div class="overflow-x-auto">
-            <table class="w-full text-xs">
-              <thead>
-                <tr class="bg-slate-50 text-gray-600 border-b border-slate-200">
-                  <th class="px-2 py-2 text-left font-semibold">그룹명</th>
-                  <th class="px-2 py-2 text-right font-semibold">자재수</th>
-                  <th class="px-2 py-2 text-right font-semibold">당월 재료비(백만원)</th>
-                  <th class="px-2 py-2 text-right font-semibold">원단위(원/톤)</th>
-                  <th class="px-2 py-2 text-right font-semibold">단가 절감</th>
-                  <th class="px-2 py-2 text-right font-semibold">단가 악화</th>
-                  <th class="px-2 py-2 text-right font-semibold">순 손익효과</th>
-                </tr>
-              </thead>
-              <tbody id="cr-group-body"></tbody>
-            </table>
-          </div>
-        </div>
+
 
         <!-- 자재별 상세 결과 테이블 -->
         <div class="card p-4">
@@ -6151,39 +6132,6 @@ export function mainPage(): string {
         });
         filterEl.innerHTML = optHtml;
         if (prevVal) filterEl.value = prevVal;
-      }
-
-      // 그룹 요약 테이블
-      var gbBody = document.getElementById('cr-group-body');
-      if (gbBody) {
-        var gHtml = '';
-        var gKeys = Object.keys(groups).sort();
-        gKeys.forEach(function(g) {
-          var gi = groups[g];
-          var gUnitCost = gi.count > 0 ? gi.unitCostSum / gi.count : 0;
-          var gNetEffect = gi.saving + gi.worse;
-          gHtml += '<tr class="border-b border-slate-100 hover:bg-slate-50/50">';
-          gHtml += '<td class="px-2 py-1.5 font-medium text-gray-700">' + g + '</td>';
-          gHtml += '<td class="px-2 py-1.5 text-right text-gray-600">' + gi.count + '</td>';
-          gHtml += '<td class="px-2 py-1.5 text-right font-mono">' + (gi.cost > 0 ? Math.round(gi.cost).toLocaleString() : '-') + '</td>';
-          gHtml += '<td class="px-2 py-1.5 text-right font-mono">' + (gUnitCost > 0 ? Math.round(gUnitCost).toLocaleString() : '-') + '</td>';
-          gHtml += '<td class="px-2 py-1.5 text-right font-mono text-blue-600">' + (gi.saving > 0 ? '+' + Math.round(gi.saving).toLocaleString() : '-') + '</td>';
-          gHtml += '<td class="px-2 py-1.5 text-right font-mono text-red-500">' + (gi.worse < 0 ? Math.round(gi.worse).toLocaleString() : '-') + '</td>';
-          gHtml += '<td class="px-2 py-1.5 text-right font-mono ' + (gNetEffect >= 0 ? 'text-blue-600' : 'text-red-500') + '">' + (gNetEffect !== 0 ? (gNetEffect > 0 ? '+' : '') + Math.round(gNetEffect).toLocaleString() : '-') + '</td>';
-          gHtml += '</tr>';
-        });
-        // 합계 행
-        var netTotal = totalSaving + totalWorse;
-        gHtml += '<tr class="bg-slate-50 font-semibold border-t border-slate-300">';
-        gHtml += '<td class="px-2 py-2 text-gray-800">합계</td>';
-        gHtml += '<td class="px-2 py-2 text-right text-gray-800">' + crData.length + '</td>';
-        gHtml += '<td class="px-2 py-2 text-right font-mono text-gray-800">' + Math.round(totalCost).toLocaleString() + '</td>';
-        gHtml += '<td class="px-2 py-2 text-right font-mono text-gray-800">' + Math.round(avgUC).toLocaleString() + '</td>';
-        gHtml += '<td class="px-2 py-2 text-right font-mono text-blue-600">' + (totalSaving > 0 ? '+' + Math.round(totalSaving).toLocaleString() : '-') + '</td>';
-        gHtml += '<td class="px-2 py-2 text-right font-mono text-red-500">' + (totalWorse < 0 ? Math.round(totalWorse).toLocaleString() : '-') + '</td>';
-        gHtml += '<td class="px-2 py-2 text-right font-mono ' + (netTotal >= 0 ? 'text-blue-600' : 'text-red-500') + '">' + (netTotal !== 0 ? (netTotal > 0 ? '+' : '') + Math.round(netTotal).toLocaleString() : '-') + '</td>';
-        gHtml += '</tr>';
-        gbBody.innerHTML = gHtml;
       }
 
       // 상세 테이블 렌더링
