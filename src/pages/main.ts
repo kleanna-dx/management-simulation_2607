@@ -6425,23 +6425,23 @@ export function mainPage(): string {
 
         var rid = 'mn-r-' + idx;
         var cuEl = document.getElementById(rid + '-cu');
-        var usageVal = uploaded['사용량(kg)'] || uploaded['당월_사용량(kg)'] || uploaded['cur_usage'] || uploaded['사용량'];
-        if (cuEl && usageVal !== undefined) { cuEl.value = Math.round(Number(usageVal)); applied++; }
+        var usageVal = uploaded['사용량(kg)'] !== undefined && uploaded['사용량(kg)'] !== null ? uploaded['사용량(kg)'] : (uploaded['당월_사용량(kg)'] !== undefined && uploaded['당월_사용량(kg)'] !== null ? uploaded['당월_사용량(kg)'] : (uploaded['cur_usage'] !== undefined && uploaded['cur_usage'] !== null ? uploaded['cur_usage'] : (uploaded['사용량'] !== undefined && uploaded['사용량'] !== null ? uploaded['사용량'] : undefined)));
+        if (cuEl && usageVal !== undefined && usageVal !== null && usageVal !== '') { cuEl.value = Math.round(Number(usageVal)).toLocaleString(); applied++; }
         var iqEl = document.getElementById(rid + '-iq');
-        var iqVal = uploaded['입고수량(톤)'] || uploaded['incoming_qty'] || uploaded['입고수량'];
-        if (iqEl && iqVal !== undefined) iqEl.value = Number(iqVal);
+        var iqVal = uploaded['입고수량(톤)'] !== undefined && uploaded['입고수량(톤)'] !== null ? uploaded['입고수량(톤)'] : (uploaded['incoming_qty'] !== undefined && uploaded['incoming_qty'] !== null ? uploaded['incoming_qty'] : (uploaded['입고수량'] !== undefined && uploaded['입고수량'] !== null ? uploaded['입고수량'] : undefined));
+        if (iqEl && iqVal !== undefined && iqVal !== null && iqVal !== '') iqEl.value = Number(iqVal).toLocaleString();
         var ipEl = document.getElementById(rid + '-ip');
-        var ipVal = uploaded['입고단가(원/kg)'] || uploaded['incoming_price'] || uploaded['입고단가'];
-        if (ipEl && ipVal !== undefined) ipEl.value = Math.round(Number(ipVal));
+        var ipVal = uploaded['입고단가(원/kg)'] !== undefined && uploaded['입고단가(원/kg)'] !== null ? uploaded['입고단가(원/kg)'] : (uploaded['incoming_price'] !== undefined && uploaded['incoming_price'] !== null ? uploaded['incoming_price'] : (uploaded['입고단가'] !== undefined && uploaded['입고단가'] !== null ? uploaded['입고단가'] : undefined));
+        if (ipEl && ipVal !== undefined && ipVal !== null && ipVal !== '') ipEl.value = Math.round(Number(ipVal)).toLocaleString();
         var sqEl = document.getElementById(rid + '-sq');
-        var sqVal = uploaded['기초재고수량(톤)'] || uploaded['stock_qty'] || uploaded['기초재고수량'];
-        if (sqEl && sqVal !== undefined) sqEl.value = Number(sqVal);
+        var sqVal = uploaded['기초재고수량(톤)'] !== undefined && uploaded['기초재고수량(톤)'] !== null ? uploaded['기초재고수량(톤)'] : (uploaded['stock_qty'] !== undefined && uploaded['stock_qty'] !== null ? uploaded['stock_qty'] : (uploaded['기초재고수량'] !== undefined && uploaded['기초재고수량'] !== null ? uploaded['기초재고수량'] : undefined));
+        if (sqEl && sqVal !== undefined && sqVal !== null && sqVal !== '') sqEl.value = Number(sqVal).toLocaleString();
         var spEl = document.getElementById(rid + '-sp');
-        var spVal = uploaded['기초재고단가(원/kg)'] || uploaded['stock_price'] || uploaded['기초재고단가'];
-        if (spEl && spVal !== undefined) spEl.value = Math.round(Number(spVal));
+        var spVal = uploaded['기초재고단가(원/kg)'] !== undefined && uploaded['기초재고단가(원/kg)'] !== null ? uploaded['기초재고단가(원/kg)'] : (uploaded['stock_price'] !== undefined && uploaded['stock_price'] !== null ? uploaded['stock_price'] : (uploaded['기초재고단가'] !== undefined && uploaded['기초재고단가'] !== null ? uploaded['기초재고단가'] : undefined));
+        if (spEl && spVal !== undefined && spVal !== null && spVal !== '') spEl.value = Math.round(Number(spVal)).toLocaleString();
         var upEl = document.getElementById(rid + '-up');
-        var upVal = uploaded['사용단가(원/kg)'] || uploaded['use_price'] || uploaded['사용단가'];
-        if (upEl && upVal !== undefined) upEl.value = Math.round(Number(upVal));
+        var upVal = uploaded['사용단가(원/kg)'] !== undefined && uploaded['사용단가(원/kg)'] !== null ? uploaded['사용단가(원/kg)'] : (uploaded['use_price'] !== undefined && uploaded['use_price'] !== null ? uploaded['use_price'] : (uploaded['사용단가'] !== undefined && uploaded['사용단가'] !== null ? uploaded['사용단가'] : undefined));
+        if (upEl && upVal !== undefined && upVal !== null && upVal !== '') upEl.value = Math.round(Number(upVal)).toLocaleString();
         var issueEl = document.getElementById(rid + '-issue');
         var issueVal = uploaded['이슈사항'] || uploaded['issue'] || uploaded['비고'];
         if (issueEl && issueVal !== undefined) issueEl.value = String(issueVal);
