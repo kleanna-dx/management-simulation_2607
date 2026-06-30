@@ -823,11 +823,11 @@ export function mainPage(): string {
             <div class="flex items-center gap-1.5 border-r border-slate-200 pr-2">
               <input type="text" id="mn-user-name" placeholder="이름/계정" class="w-20 text-xs border border-slate-200 rounded px-2 py-1 focus:ring-1 focus:ring-emerald-200 focus:border-emerald-400" value="">
             </div>
+            <button onclick="downloadManualTemplate()" class="text-xs px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition font-medium"><i class="fas fa-file-download mr-1"></i>양식 다운로드</button>
             <label class="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition cursor-pointer font-medium">
               <i class="fas fa-file-excel mr-1"></i>엑셀 업로드
               <input type="file" accept=".xlsx,.xls" class="hidden" onchange="uploadManualExcel(event)">
             </label>
-            <button onclick="downloadManualTemplate()" class="text-xs px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition font-medium"><i class="fas fa-file-download mr-1"></i>양식 다운로드</button>
             <button onclick="saveManualData()" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition font-medium"><i class="fas fa-save mr-1"></i>저장</button>
             <button onclick="loadManualData()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-gray-600 hover:bg-slate-200 transition font-medium"><i class="fas fa-sync-alt mr-1"></i>불러오기</button>
             <button onclick="toggleManualHistory()" class="text-xs px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 transition font-medium"><i class="fas fa-history mr-1"></i>히스토리</button>
