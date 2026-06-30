@@ -1060,19 +1060,13 @@ export function mainPage(): string {
                   <th class="px-2 py-2 text-left font-semibold whitespace-nowrap">자재코드</th>
                   <th class="px-2 py-2 text-left font-semibold whitespace-nowrap">자재명</th>
                   <th class="px-2 py-2 text-left font-semibold whitespace-nowrap">그룹</th>
-                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">기초재고(톤)</th>
-                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">기초단가</th>
-                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">입고(톤)</th>
-                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">입고단가</th>
-                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap bg-amber-50">가중평균단가</th>
-                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">전월단가</th>
-                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap bg-orange-50">단가차이</th>
-                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">당월사용량(kg)</th>
-                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">재료비(백만원)</th>
-                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">원단위(원/톤)</th>
-                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap bg-blue-50">사용량 효과</th>
-                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap bg-blue-50">단가 효과</th>
-                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap bg-blue-50">총 손익효과</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">기초재고수량(톤)</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">기초재고단가(원/kg)</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">입고수량(톤)</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">입고단가(원/kg)</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap bg-amber-50">사용단가(원/kg)</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap">전월단가(원/kg)</th>
+                  <th class="px-2 py-2 text-right font-semibold whitespace-nowrap bg-blue-50">전월대비 손익효과</th>
                 </tr>
               </thead>
               <tbody id="cr-detail-body"></tbody>
@@ -6226,16 +6220,20 @@ export function mainPage(): string {
       if (!tbody) return;
 
       var html = '';
-      var sumCost = 0, sumSaving = 0, sumWorse = 0, sumDiffUsage = 0;
+      var sumCost = 0, sumSaving = 0, sumWorse = 0, sumDiffTotal = 0;
 
       filtered.forEach(function(d, idx) {
-        var priceDiffColor = d.priceDiff > 0 ? 'text-red-500' : (d.priceDiff < 0 ? 'text-blue-600' : 'text-gray-500');
-        var effectColor = d.diffTotal > 0 ? 'text-blue-600' : (d.diffTotal < 0 ? 'text-red-500' : 'text-gray-400');
+        // 전월대비 손익효과 = (전월단가 - 당월가중평균단가) × 당월사용량 → 양수=절감
+        var profitEffect = 0;
+        if (d.calcPrice > 0 && d.prevPrice > 0 && d.curUsage > 0) {
+          profitEffect = (d.prevPrice - d.calcPrice) * d.curUsage;
+        }
+        var effectColor = profitEffect > 0 ? 'text-blue-600' : (profitEffect < 0 ? 'text-red-500' : 'text-gray-400');
 
         sumCost += d.curCostMil;
-        sumDiffUsage += d.diffUsage;
-        if (d.diffPrice > 0) sumSaving += d.diffPrice;
-        if (d.diffPrice < 0) sumWorse += d.diffPrice;
+        sumDiffTotal += profitEffect;
+        if (profitEffect > 0) sumSaving += profitEffect;
+        if (profitEffect < 0) sumWorse += profitEffect;
 
         html += '<tr class="border-b border-slate-100 hover:bg-slate-50/30">';
         html += '<td class="px-2 py-1.5 text-gray-400">' + (idx + 1) + '</td>';
@@ -6248,28 +6246,17 @@ export function mainPage(): string {
         html += '<td class="px-2 py-1.5 text-right font-mono">' + (d.incomingPrice > 0 ? Math.round(d.incomingPrice).toLocaleString() : '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-right font-mono bg-amber-50 font-semibold">' + (d.calcPrice > 0 ? Math.round(d.calcPrice).toLocaleString() : '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-right font-mono">' + (d.prevPrice > 0 ? Math.round(d.prevPrice).toLocaleString() : '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right font-mono bg-orange-50 ' + priceDiffColor + '">' + (d.priceDiff !== 0 ? (d.priceDiff > 0 ? '+' : '') + Math.round(d.priceDiff).toLocaleString() : '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right font-mono">' + (d.curUsage > 0 ? Math.round(d.curUsage).toLocaleString() : '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right font-mono">' + (d.curCostMil > 0 ? Math.round(d.curCostMil).toLocaleString() : '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right font-mono">' + (d.unitCost > 0 ? Math.round(d.unitCost).toLocaleString() : '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right font-mono bg-blue-50 ' + (d.diffUsage > 0 ? 'text-blue-600' : (d.diffUsage < 0 ? 'text-red-500' : 'text-gray-400')) + '">' + crFmtEffect(d.diffUsage) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right font-mono bg-blue-50 ' + (d.diffPrice > 0 ? 'text-blue-600' : (d.diffPrice < 0 ? 'text-red-500' : 'text-gray-400')) + '">' + crFmtEffect(d.diffPrice) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right font-mono bg-blue-50 font-semibold ' + effectColor + '">' + crFmtEffect(d.diffTotal) + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono bg-blue-50 font-semibold ' + effectColor + '">' + crFmtEffect(profitEffect) + '</td>';
         html += '</tr>';
       });
       tbody.innerHTML = html;
 
       // 합계 footer
       if (tfoot) {
-        var sumNet = sumSaving + sumWorse;
         var fHtml = '<tr>';
         fHtml += '<td colspan="4" class="px-2 py-2 text-gray-700">합계 (' + filtered.length + '건)</td>';
-        fHtml += '<td colspan="8"></td>';
-        fHtml += '<td class="px-2 py-2 text-right font-mono">' + Math.round(sumCost).toLocaleString() + '</td>';
-        fHtml += '<td class="px-2 py-2 text-right font-mono">-</td>';
-        fHtml += '<td class="px-2 py-2 text-right font-mono bg-blue-50 ' + (sumDiffUsage >= 0 ? 'text-blue-600' : 'text-red-500') + '">' + crFmtEffect(sumDiffUsage) + '</td>';
-        fHtml += '<td class="px-2 py-2 text-right font-mono bg-blue-50 ' + (sumNet >= 0 ? 'text-blue-600' : 'text-red-500') + '">' + crFmtEffect(sumSaving + sumWorse) + '</td>';
-        fHtml += '<td class="px-2 py-2 text-right font-mono bg-blue-50 font-bold ' + (sumNet + sumDiffUsage >= 0 ? 'text-blue-600' : 'text-red-500') + '">' + crFmtEffect(sumDiffUsage + sumNet) + '</td>';
+        fHtml += '<td colspan="6"></td>';
+        fHtml += '<td class="px-2 py-2 text-right font-mono bg-blue-50 font-bold ' + (sumDiffTotal >= 0 ? 'text-blue-600' : 'text-red-500') + '">' + crFmtEffect(sumDiffTotal) + '</td>';
         fHtml += '</tr>';
         tfoot.innerHTML = fHtml;
       }
@@ -6288,21 +6275,32 @@ export function mainPage(): string {
 
     function exportCalcResultExcel() {
       if (!crData || !crData.length) { alert('계산결과 데이터가 없습니다.'); return; }
-      // CSV export
-      var csvRows = [];
-      csvRows.push('No,자재코드,자재명,그룹,기초재고(톤),기초단가,입고(톤),입고단가,가중평균단가,전월단가,단가차이,당월사용량(kg),재료비(백만원),원단위(원/톤),사용량효과,단가효과,총손익효과');
+      var rows = [];
       crData.forEach(function(d, idx) {
-        csvRows.push([idx + 1, d.code, d.name, d.group, d.stockQty, Math.round(d.stockPrice), d.incomingQty, Math.round(d.incomingPrice), Math.round(d.calcPrice), Math.round(d.prevPrice), Math.round(d.priceDiff), Math.round(d.curUsage), Math.round(d.curCostMil), Math.round(d.unitCost), Math.round(d.diffUsage), Math.round(d.diffPrice), Math.round(d.diffTotal)].join(','));
+        var profitEffect = 0;
+        if (d.calcPrice > 0 && d.prevPrice > 0 && d.curUsage > 0) {
+          profitEffect = (d.prevPrice - d.calcPrice) * d.curUsage;
+        }
+        rows.push({
+          'No': idx + 1,
+          '자재코드': d.code,
+          '자재명': d.name,
+          '그룹': d.group,
+          '기초재고수량(톤)': d.stockQty || '',
+          '기초재고단가(원/kg)': d.stockPrice > 0 ? Math.round(d.stockPrice) : '',
+          '입고수량(톤)': d.incomingQty || '',
+          '입고단가(원/kg)': d.incomingPrice > 0 ? Math.round(d.incomingPrice) : '',
+          '사용단가_가중평균(원/kg)': d.calcPrice > 0 ? Math.round(d.calcPrice) : '',
+          '전월단가(원/kg)': d.prevPrice > 0 ? Math.round(d.prevPrice) : '',
+          '전월대비_손익효과(원)': Math.round(profitEffect)
+        });
       });
-      var csvContent = csvRows.join(String.fromCharCode(10));
-      var BOM = String.fromCharCode(0xFEFF);
-      var blob = new Blob([BOM + csvContent], {type: 'text/csv;charset=utf-8;'});
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = url;
-      a.download = 'calc_result_' + (mnMachine || 'PM2') + '_' + document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0') + '.csv';
-      a.click();
-      URL.revokeObjectURL(url);
+      var ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = [{wch:5},{wch:14},{wch:25},{wch:14},{wch:16},{wch:18},{wch:14},{wch:16},{wch:20},{wch:16},{wch:20}];
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '계산결과');
+      var filename = '계산결과_' + (mnMachine || 'PM2') + '_' + document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0') + '.xlsx';
+      XLSX.writeFile(wb, filename);
     }
 
     // ====== 시뮬레이션 플로우 (React Flow 스타일) ======
@@ -6564,8 +6562,7 @@ export function mainPage(): string {
             '자재코드': m.code || '',
             '자재명': m.name || '',
             '자재그룹': m.group_name || '',
-            '전월실적_원단위(kg/톤)': '',
-            '당월예상_원단위(kg/톤)': '',
+            '원단위(kg/톤)': '',
             '기초재고수량(톤)': '',
             '기초재고단가(원/kg)': '',
             '입고수량(톤)': '',
@@ -6581,8 +6578,7 @@ export function mainPage(): string {
             '자재코드': '',
             '자재명': '',
             '자재그룹': '',
-            '전월실적_원단위(kg/톤)': '',
-            '당월예상_원단위(kg/톤)': '',
+            '원단위(kg/톤)': '',
             '기초재고수량(톤)': '',
             '기초재고단가(원/kg)': '',
             '입고수량(톤)': '',
@@ -6595,7 +6591,7 @@ export function mainPage(): string {
       var ws = XLSX.utils.json_to_sheet(rows);
       // 컬럼 너비 설정
       ws['!cols'] = [
-        {wch: 14}, {wch: 25}, {wch: 14}, {wch: 20}, {wch: 20},
+        {wch: 14}, {wch: 25}, {wch: 14}, {wch: 14},
         {wch: 16}, {wch: 18},
         {wch: 14}, {wch: 18},
         {wch: 14}, {wch: 20}
@@ -6769,18 +6765,11 @@ export function mainPage(): string {
         if (spEl && spVal !== undefined && spVal !== null && spVal !== '') { spEl.value = Math.round(Number(spVal)).toLocaleString(); appliedSp++; }
         // 원단위(kg/톤) — 당월 예상: 값이 있으면 사용량 역산
         var cucEl = document.getElementById(rid + '-cuc');
-        var ucVal = uploaded['당월예상_원단위(kg/톤)'] !== undefined && uploaded['당월예상_원단위(kg/톤)'] !== null ? uploaded['당월예상_원단위(kg/톤)'] : (uploaded['원단위(kg/톤)'] !== undefined && uploaded['원단위(kg/톤)'] !== null ? uploaded['원단위(kg/톤)'] : (uploaded['원단위'] !== undefined && uploaded['원단위'] !== null ? uploaded['원단위'] : (uploaded['cur_uc'] !== undefined && uploaded['cur_uc'] !== null ? uploaded['cur_uc'] : undefined)));
+        var ucVal = uploaded['원단위(kg/톤)'] !== undefined && uploaded['원단위(kg/톤)'] !== null ? uploaded['원단위(kg/톤)'] : (uploaded['원단위'] !== undefined && uploaded['원단위'] !== null ? uploaded['원단위'] : (uploaded['cur_uc'] !== undefined && uploaded['cur_uc'] !== null ? uploaded['cur_uc'] : undefined));
         if (cucEl && ucVal !== undefined && ucVal !== null && ucVal !== '') {
           cucEl.value = Number(ucVal);
           cucEl.setAttribute('data-manual', '1');
           // 역산은 모든 매핑 완료 후 일괄 처리
-        }
-        // 전월 실적 원단위(kg/톤)
-        var pucEl = document.getElementById(rid + '-puc');
-        var pucVal = uploaded['전월실적_원단위(kg/톤)'] !== undefined && uploaded['전월실적_원단위(kg/톤)'] !== null ? uploaded['전월실적_원단위(kg/톤)'] : (uploaded['전월_원단위'] !== undefined && uploaded['전월_원단위'] !== null ? uploaded['전월_원단위'] : (uploaded['prev_uc'] !== undefined && uploaded['prev_uc'] !== null ? uploaded['prev_uc'] : undefined));
-        if (pucEl && pucVal !== undefined && pucVal !== null && pucVal !== '') {
-          pucEl.value = Number(pucVal);
-          // 전월 역산도 모든 매핑 완료 후 일괄 처리
         }
         // 사용단가(원/kg)
         var upEl = document.getElementById(rid + '-up');
@@ -6858,15 +6847,9 @@ export function mainPage(): string {
 
       // 원단위 입력된 행들 → 사용량 역산 (생산량 정보가 필요하므로 매핑 완료 후 일괄 처리)
       mnMaterials.forEach(function(m, idx) {
-        // 당월 예상 원단위 → 당월 사용량 역산
         var cucEl = document.getElementById('mn-r-' + idx + '-cuc');
         if (cucEl && cucEl.getAttribute('data-manual') === '1' && Number(cucEl.value) > 0) {
           onUnitCostInput(idx);
-        }
-        // 전월 실적 원단위 → 전월 사용량 역산
-        var pucEl = document.getElementById('mn-r-' + idx + '-puc');
-        if (pucEl && Number(pucEl.value) > 0) {
-          onPrevUnitCostInput(idx);
         }
       });
 
