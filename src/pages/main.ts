@@ -120,8 +120,8 @@ export function mainPage(): string {
               <option value="2025">2025년</option>
             </select>
             <select id="analysisMonth" class="bg-transparent border-none text-sm font-semibold text-gray-700 focus:ring-0 pr-6 cursor-pointer" onchange="loadAnalysis()">
-              <option value="6">6월</option>
-              <option value="5" selected>5월</option>
+              <option value="6" selected>6월</option>
+              <option value="5">5월</option>
               <option value="4">4월</option>
               <option value="3">3월</option>
               <option value="2">2월</option>
@@ -2235,8 +2235,9 @@ export function mainPage(): string {
     function updatePeriodHint() {
       var y = parseInt(document.getElementById('analysisYear').value);
       var m = parseInt(document.getElementById('analysisMonth').value);
-      var nextM = m === 12 ? 1 : m + 1;
-      var hint = '(' + m + '월 실적 기준 → ' + nextM + '월 예상)';
+      // 선택월 = 예상월, 실적 = 선택월-1
+      var prevM = m === 1 ? 12 : m - 1;
+      var hint = '(' + prevM + '월 실적 기준 → ' + m + '월 예상)';
       var el = document.getElementById('period-hint');
       if (el) el.textContent = hint;
     }
