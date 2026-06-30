@@ -1089,6 +1089,7 @@ export function mainPage(): string {
           </div>
           <div class="flex items-center gap-2">
             <button onclick="downloadInventoryTemplate()" class="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50"><i class="fas fa-file-download mr-1"></i>양식 다운로드</button>
+            <button onclick="exportInventoryExcel()" class="px-3 py-1.5 border border-emerald-200 rounded-lg text-xs text-emerald-700 hover:bg-emerald-50"><i class="fas fa-file-export mr-1"></i>엑셀 저장</button>
             <button onclick="document.getElementById('inv-file-input').click()" class="btn-primary text-xs !py-1.5"><i class="fas fa-file-excel mr-1"></i>엑셀 업로드</button>
             <input type="file" id="inv-file-input" accept=".xlsx,.xls,.csv" class="hidden" onchange="uploadInventoryFile(event)">
           </div>
@@ -6860,6 +6861,32 @@ export function mainPage(): string {
         if (result.success) { loadInventoryData(); }
         else { alert('삭제 실패'); }
       } catch(e) { alert('오류: ' + e.message); }
+    }
+
+    function exportInventoryExcel() {
+      if (!invData || !invData.length) { alert('내보낼 데이터가 없습니다.'); return; }
+      var headers = ['월', '플랜트', '자재그룹', '자재유형', '자재유형명', '자재', '사업부', '자재코드', '자재내역', '통화', '기본단위', '기초재고_수량', '기초재고_단가', '입고_수량', '입고_단가', '출고_수량', '출고_단가', '기말재고_수량', '기말재고_단가'];
+      var rows = invData.map(function(d) {
+        return [
+          d.month || '', d.plant || '', d.material_group || '',
+          d.material_type || '', d.material_type_name || '',
+          d.material_id || '', d.division || '',
+          d.material_code || '', d.material_name || '',
+          d.currency || 'KRW', d.unit || 'KG',
+          d.stock_qty || 0, d.stock_price || 0,
+          d.incoming_qty || 0, d.incoming_price || 0,
+          d.outgoing_qty || 0, d.outgoing_price || 0,
+          d.closing_qty || 0, d.closing_price || 0
+        ];
+      });
+      var wsData = [headers].concat(rows);
+      var ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = [{wch:10},{wch:8},{wch:8},{wch:8},{wch:25},{wch:10},{wch:6},{wch:8},{wch:18},{wch:6},{wch:6},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12}];
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '재고현황');
+      var monthFilter = document.getElementById('inv-month-filter') ? document.getElementById('inv-month-filter').value : '';
+      var fileName = '재고현황' + (monthFilter ? '_' + monthFilter : '') + '.xlsx';
+      XLSX.writeFile(wb, fileName);
     }
 
   </script>
