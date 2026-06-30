@@ -5371,7 +5371,18 @@ export function mainPage(): string {
       if (!tbody) return;
 
       var types = mnProdTypes.length > 0 ? mnProdTypes : Object.keys(mnPrevProd);
-      if (types.length === 0) types = ['RT-고지','RT-펄프','FT','KT','PCMC','기타 펄프'];
+      if (types.length === 0) {
+        // 호기별 기본 지종 설정
+        if (mnMachine === '화장지' || mnMachine === 'TM') {
+          types = ['RT-고지','RT-펄프','FT','KT','PCMC','기타 펄프'];
+        } else if (mnMachine === 'PM2') {
+          types = ['SC','IV','KB'];
+        } else if (mnMachine === 'PM3') {
+          types = ['SC고평량','SC저평량','IV','ACB','CB'];
+        } else {
+          types = ['기본'];
+        }
+      }
 
       var html = '';
       var prevTotal = 0, curTotal = 0;
