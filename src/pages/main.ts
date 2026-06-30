@@ -1303,6 +1303,9 @@ export function mainPage(): string {
               </div>
             </div>
             <div class="flex gap-2">
+              <button onclick="downloadMappingTemplate()" class="text-xs bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-100 border border-slate-200"><i class="fas fa-download mr-1"></i>양식 다운로드</button>
+              <label class="text-xs bg-sage-50 text-sage-700 px-3 py-1.5 rounded-lg hover:bg-sage-100 cursor-pointer border border-sage-200"><i class="fas fa-file-excel mr-1"></i>엑셀 업로드<input type="file" accept=".xlsx,.xls,.csv" onchange="uploadMappingExcel(event)" class="hidden"></label>
+              <span class="border-l border-gray-200 mx-1"></span>
               <button onclick="loadMaterialMapping('all')" id="mm-filter-all" class="pill-tab pill-tab-active text-xs !px-3 !py-1">전체</button>
               <button onclick="loadMaterialMapping('mapped')" id="mm-filter-mapped" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">매핑완료</button>
               <button onclick="loadMaterialMapping('unmapped')" id="mm-filter-unmapped" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">미매핑</button>
@@ -1961,6 +1964,209 @@ export function mainPage(): string {
         })
       });
       loadMaterialMapping(currentMappingFilter);
+    }
+
+    // 자재구분 매핑 엑셀 업로드
+    async function uploadMappingExcel(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      event.target.value = '';
+
+      var reader = new FileReader();
+      reader.onload = async function(e) {
+        try {
+          var data = new Uint8Array(e.target.result);
+          var workbook = XLSX.read(data, { type: 'array' });
+          var ws = workbook.Sheets[workbook.SheetNames[0]];
+          var rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+          if (!rows || rows.length === 0) {
+            alert('엑셀 파일에 데이터가 없습니다.');
+            return;
+          }
+
+          // 컬럼 매핑 탐색 (유연하게 매핑)
+          var firstRow = rows[0];
+          var keys = Object.keys(firstRow);
+
+          // 자재코드 컬럼 찾기
+          var codeKey = keys.find(function(k) { return /자재코드|material.?code|코드/i.test(k); }) || keys[0];
+          // 자재명 컬럼 찾기
+          var nameKey = keys.find(function(k) { return /자재명|material.?name|명/i.test(k); }) || keys[1];
+          // 자재구분(매핑) 컬럼 찾기
+          var groupKey = keys.find(function(k) { return /자재구분|자재그룹|material.?group|구분|매핑/i.test(k); }) || keys[2];
+          // 대상테이블 컬럼 찾기
+          var tableKey = keys.find(function(k) { return /대상|테이블|target|table|원재료|부재료|화장지/i.test(k); }) || null;
+
+          // 미리보기 모달 표시
+          var previewHtml = '<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]" id="mapping-upload-modal">';
+          previewHtml += '<div class="bg-white rounded-xl shadow-2xl w-[750px] max-h-[80vh] flex flex-col">';
+          previewHtml += '<div class="p-4 border-b flex items-center justify-between">';
+          previewHtml += '<div><h3 class="font-bold text-sm">자재구분 매핑 엑셀 업로드 미리보기</h3>';
+          previewHtml += '<p class="text-xs text-gray-500 mt-0.5">총 ' + rows.length + '건 | 컬럼: ' + keys.join(', ') + '</p></div>';
+          previewHtml += '<button onclick="document.getElementById(\'mapping-upload-modal\').remove()" class="text-gray-400 hover:text-gray-600 text-lg"><i class="fas fa-times"></i></button></div>';
+
+          // 컬럼 매핑 설정
+          previewHtml += '<div class="p-4 bg-slate-50 border-b">';
+          previewHtml += '<div class="text-xs font-medium text-gray-700 mb-2"><i class="fas fa-columns mr-1"></i>컬럼 매핑 설정</div>';
+          previewHtml += '<div class="grid grid-cols-4 gap-3">';
+          // 자재코드
+          previewHtml += '<div><label class="text-[10px] text-gray-500 block mb-0.5">자재코드</label>';
+          previewHtml += '<select id="mm-col-code" class="w-full text-xs border rounded px-2 py-1">';
+          keys.forEach(function(k) { previewHtml += '<option value="'+k+'"'+(k===codeKey?' selected':'')+'>'+k+'</option>'; });
+          previewHtml += '</select></div>';
+          // 자재명
+          previewHtml += '<div><label class="text-[10px] text-gray-500 block mb-0.5">자재명</label>';
+          previewHtml += '<select id="mm-col-name" class="w-full text-xs border rounded px-2 py-1">';
+          keys.forEach(function(k) { previewHtml += '<option value="'+k+'"'+(k===nameKey?' selected':'')+'>'+k+'</option>'; });
+          previewHtml += '</select></div>';
+          // 자재구분
+          previewHtml += '<div><label class="text-[10px] text-gray-500 block mb-0.5">자재구분(매핑)</label>';
+          previewHtml += '<select id="mm-col-group" class="w-full text-xs border rounded px-2 py-1">';
+          keys.forEach(function(k) { previewHtml += '<option value="'+k+'"'+(k===groupKey?' selected':'')+'>'+k+'</option>'; });
+          previewHtml += '</select></div>';
+          // 대상테이블
+          previewHtml += '<div><label class="text-[10px] text-gray-500 block mb-0.5">대상테이블</label>';
+          previewHtml += '<select id="mm-col-table" class="w-full text-xs border rounded px-2 py-1">';
+          previewHtml += '<option value="">(일괄 지정)</option>';
+          keys.forEach(function(k) { previewHtml += '<option value="'+k+'"'+(tableKey && k===tableKey?' selected':'')+'>'+k+'</option>'; });
+          previewHtml += '</select></div>';
+          previewHtml += '</div>';
+          // 일괄 대상테이블 지정
+          previewHtml += '<div class="mt-2 flex items-center gap-2">';
+          previewHtml += '<span class="text-[10px] text-gray-500">일괄 대상테이블:</span>';
+          previewHtml += '<select id="mm-bulk-table" class="text-xs border rounded px-2 py-1">';
+          previewHtml += '<option value="paper-raw">제지 원재료</option>';
+          previewHtml += '<option value="paper-sub">제지 부재료</option>';
+          previewHtml += '<option value="tissue-raw">화장지 원재료</option>';
+          previewHtml += '</select>';
+          previewHtml += '<span class="text-[10px] text-gray-400">(대상테이블 컬럼이 없거나 비어있을 때 사용)</span>';
+          previewHtml += '</div></div>';
+
+          // 데이터 미리보기 테이블
+          previewHtml += '<div class="p-4 overflow-y-auto flex-1">';
+          previewHtml += '<table class="data-table text-xs w-full">';
+          previewHtml += '<thead><tr><th class="!py-1.5">#</th>';
+          keys.forEach(function(k) { previewHtml += '<th class="!py-1.5">'+k+'</th>'; });
+          previewHtml += '</tr></thead><tbody>';
+          var previewCount = Math.min(rows.length, 20);
+          for (var pi = 0; pi < previewCount; pi++) {
+            previewHtml += '<tr>';
+            previewHtml += '<td class="!py-1 text-gray-400">' + (pi+1) + '</td>';
+            keys.forEach(function(k) { previewHtml += '<td class="!py-1">' + (rows[pi][k] || '') + '</td>'; });
+            previewHtml += '</tr>';
+          }
+          if (rows.length > 20) {
+            previewHtml += '<tr><td colspan="'+(keys.length+1)+'" class="text-center text-gray-400 !py-2">... 외 ' + (rows.length - 20) + '건</td></tr>';
+          }
+          previewHtml += '</tbody></table></div>';
+
+          // 버튼
+          previewHtml += '<div class="p-4 border-t flex justify-end gap-2">';
+          previewHtml += '<button onclick="document.getElementById(\'mapping-upload-modal\').remove()" class="px-4 py-2 text-xs text-gray-600 border rounded-lg hover:bg-gray-50">취소</button>';
+          previewHtml += '<button onclick="confirmMappingUpload()" class="px-4 py-2 text-xs bg-sage-600 text-white rounded-lg hover:bg-sage-700 font-medium"><i class="fas fa-upload mr-1"></i>업로드 확인 (' + rows.length + '건)</button>';
+          previewHtml += '</div></div></div>';
+
+          document.body.insertAdjacentHTML('beforeend', previewHtml);
+
+          // 업로드 데이터를 전역에 저장
+          window._mappingUploadRows = rows;
+        } catch(err) {
+          alert('엑셀 파싱 오류: ' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    async function confirmMappingUpload() {
+      var rows = window._mappingUploadRows;
+      if (!rows || rows.length === 0) return;
+
+      var codeKey = document.getElementById('mm-col-code').value;
+      var nameKey = document.getElementById('mm-col-name').value;
+      var groupKey = document.getElementById('mm-col-group').value;
+      var tableKey = document.getElementById('mm-col-table').value;
+      var bulkTable = document.getElementById('mm-bulk-table').value;
+
+      // 데이터 변환
+      var items = rows.map(function(row) {
+        var targetTable = '';
+        if (tableKey && row[tableKey]) {
+          var tv = String(row[tableKey]).trim();
+          if (/원재료|paper.?raw|제지.*원/i.test(tv)) targetTable = 'paper-raw';
+          else if (/부재료|paper.?sub|제지.*부/i.test(tv)) targetTable = 'paper-sub';
+          else if (/화장지|tissue/i.test(tv)) targetTable = 'tissue-raw';
+          else targetTable = tv;
+        }
+        if (!targetTable) targetTable = bulkTable;
+
+        return {
+          material_code: String(row[codeKey] || '').trim(),
+          material_name: String(row[nameKey] || '').trim(),
+          material_group: String(row[groupKey] || '').trim(),
+          target_table: targetTable
+        };
+      }).filter(function(item) {
+        return item.material_code && item.material_group;
+      });
+
+      if (items.length === 0) {
+        alert('유효한 데이터가 없습니다. 자재코드와 자재구분이 모두 필요합니다.');
+        return;
+      }
+
+      // 업로드 확인
+      var uploadBtn = document.querySelector('#mapping-upload-modal button[onclick="confirmMappingUpload()"]');
+      if (uploadBtn) {
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>업로드 중...';
+      }
+
+      try {
+        var resp = await fetch('/api/master/material-mapping/bulk-upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: items })
+        });
+        var result = await resp.json();
+
+        document.getElementById('mapping-upload-modal').remove();
+        window._mappingUploadRows = null;
+
+        if (result.success) {
+          var msg = '업로드 완료!\\n';
+          msg += '- 신규 등록: ' + result.inserted + '건\\n';
+          msg += '- 업데이트: ' + result.updated + '건\\n';
+          if (result.skipped > 0) msg += '- 건너뜀: ' + result.skipped + '건\\n';
+          if (result.errors && result.errors.length > 0) msg += '\\n오류:\\n' + result.errors.join('\\n');
+          alert(msg);
+          loadMaterialMapping(currentMappingFilter);
+        } else {
+          alert('업로드 실패: ' + (result.error || 'Unknown error'));
+        }
+      } catch(err) {
+        alert('업로드 오류: ' + err.message);
+        if (uploadBtn) {
+          uploadBtn.disabled = false;
+          uploadBtn.innerHTML = '<i class="fas fa-upload mr-1"></i>업로드 확인';
+        }
+      }
+    }
+
+    // 자재구분 매핑 양식 다운로드
+    function downloadMappingTemplate() {
+      var templateData = [
+        { '자재코드': '1200021', '자재명': '국내 신문고지', '자재구분': '고지류', '대상테이블': '제지 원재료' },
+        { '자재코드': '1100001', '자재명': 'L-BKP (수입)', '자재구분': 'L-BKP', '대상테이블': '제지 원재료' },
+        { '자재코드': '3100001', '자재명': '전분 (양성)', '자재구분': '전분류', '대상테이블': '제지 부재료' },
+        { '자재코드': '1200010', '자재명': '화장지 고지', '자재구분': '고지류', '대상테이블': '화장지 원재료' }
+      ];
+      var ws = XLSX.utils.json_to_sheet(templateData);
+      var colWidths = [{ wch: 12 }, { wch: 20 }, { wch: 12 }, { wch: 14 }];
+      ws['!cols'] = colWidths;
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '자재구분매핑');
+      XLSX.writeFile(wb, '자재구분_매핑_양식.xlsx');
     }
 
     async function loadMasterIdx(tab) {

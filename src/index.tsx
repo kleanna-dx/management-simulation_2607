@@ -2187,6 +2187,78 @@ app.post('/api/master/material-mapping', async (c) => {
   return c.json({ success: true })
 })
 
+// 자재구분 매핑 엑셀 일괄 업로드
+app.post('/api/master/material-mapping/bulk-upload', async (c) => {
+  const db = c.env.DB
+  const { items } = await c.req.json() as { items: Array<{ material_code: string; material_name: string; material_group: string; target_table: string }> }
+
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return c.json({ error: 'No items provided' }, 400)
+  }
+
+  let inserted = 0
+  let updated = 0
+  let skipped = 0
+  const errors: string[] = []
+
+  for (const item of items) {
+    const { material_code, material_name, material_group, target_table } = item
+    if (!material_code || !material_group || !target_table) {
+      skipped++
+      continue
+    }
+
+    const shortCode = String(material_code).replace(/^0+/, '')
+    const name = material_name || ''
+
+    try {
+      if (target_table === 'paper-raw' || target_table === '제지 원재료') {
+        // Check if exists
+        const existing = await db.prepare('SELECT id FROM master_paper_raw_materials WHERE material_code = ?').bind(shortCode).first()
+        if (existing) {
+          await db.prepare('UPDATE master_paper_raw_materials SET material_name = ?, material_group = ? WHERE material_code = ?')
+            .bind(name, material_group, shortCode).run()
+          updated++
+        } else {
+          await db.prepare('INSERT INTO master_paper_raw_materials (category1, material_class, material_subclass, material_code, material_name, material_group) VALUES (?, ?, ?, ?, ?, ?)')
+            .bind('', '', '', shortCode, name, material_group).run()
+          inserted++
+        }
+      } else if (target_table === 'paper-sub' || target_table === '제지 부재료') {
+        const existing = await db.prepare('SELECT id FROM master_paper_sub_materials WHERE material_code = ?').bind(shortCode).first()
+        if (existing) {
+          await db.prepare('UPDATE master_paper_sub_materials SET material_name = ?, material_group = ? WHERE material_code = ?')
+            .bind(name, material_group, shortCode).run()
+          updated++
+        } else {
+          await db.prepare('INSERT INTO master_paper_sub_materials (material_code, material_name, material_group) VALUES (?, ?, ?)')
+            .bind(shortCode, name, material_group).run()
+          inserted++
+        }
+      } else if (target_table === 'tissue-raw' || target_table === '화장지 원재료') {
+        const existing = await db.prepare('SELECT id FROM master_tissue_raw_materials WHERE material_code = ?').bind(shortCode).first()
+        if (existing) {
+          await db.prepare('UPDATE master_tissue_raw_materials SET category = ?, material_name = ? WHERE material_code = ?')
+            .bind(material_group, name, shortCode).run()
+          updated++
+        } else {
+          await db.prepare('INSERT INTO master_tissue_raw_materials (category, material_code, material_name) VALUES (?, ?, ?)')
+            .bind(material_group, shortCode, name).run()
+          inserted++
+        }
+      } else {
+        skipped++
+        errors.push(`Invalid target_table "${target_table}" for code ${shortCode}`)
+      }
+    } catch (e: any) {
+      skipped++
+      errors.push(`Error for code ${shortCode}: ${e.message || e}`)
+    }
+  }
+
+  return c.json({ success: true, inserted, updated, skipped, errors: errors.slice(0, 10) })
+})
+
 // ============ 가용 월 목록 API ============
 app.get('/api/available-months', async (c) => {
   const { env } = c
