@@ -1044,6 +1044,7 @@ export function mainPage(): string {
                 <option value="">전체 그룹</option>
               </select>
               <select id="cr-sort" onchange="renderCalcResultTable()" class="text-xs border border-slate-200 rounded px-2 py-1">
+                <option value="group-asc">자재그룹순</option>
                 <option value="effect-desc">손익효과순 (악화 먼저)</option>
                 <option value="effect-asc">손익효과순 (절감 먼저)</option>
                 <option value="cost-desc">재료비순 (높은순)</option>
@@ -5450,6 +5451,14 @@ export function mainPage(): string {
       // 그룹별 정리
       var grouped = {};
       var groups = [];
+      // mnMaterials를 한국어 자재그룹순으로 재정렬 (idx-DOM ID 동기화를 위해 원본 정렬)
+      mnMaterials.sort(function(a, b) {
+        var ga = a.group_name || '기타';
+        var gb = b.group_name || '기타';
+        var gCmp = ga.localeCompare(gb, 'ko');
+        if (gCmp !== 0) return gCmp;
+        return (a.code || '').localeCompare(b.code || '', 'ko');
+      });
       mnMaterials.forEach(function(m) {
         var gk = m.group_name || '기타';
         if (!grouped[gk]) { grouped[gk] = []; groups.push(gk); }
@@ -5935,10 +5944,15 @@ export function mainPage(): string {
 
       // 정렬
       filtered.sort(function(a, b) {
+        if (sortVal === 'group-asc') {
+          var gCmp = (a.group || '').localeCompare(b.group || '', 'ko');
+          if (gCmp !== 0) return gCmp;
+          return (a.name || '').localeCompare(b.name || '', 'ko');
+        }
         if (sortVal === 'effect-desc') return a.diffTotal - b.diffTotal;
         if (sortVal === 'effect-asc') return b.diffTotal - a.diffTotal;
         if (sortVal === 'cost-desc') return b.curCostMil - a.curCostMil;
-        if (sortVal === 'name-asc') return (a.name || '').localeCompare(b.name || '');
+        if (sortVal === 'name-asc') return (a.name || '').localeCompare(b.name || '', 'ko');
         return 0;
       });
 
