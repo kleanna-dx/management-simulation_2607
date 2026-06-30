@@ -5276,6 +5276,13 @@ export function mainPage(): string {
       loadManualData();
     }
 
+    // 호기 → 플랜트 매핑
+    function getMachinePlant(machine) {
+      if (machine === 'PM2' || machine === 'PM3') return 'P100';
+      if (machine === '화장지' || machine === 'TM') return 'P200';
+      return '';
+    }
+
     async function loadManualData() {
       var year = document.getElementById('analysisYear').value;
       var month = document.getElementById('analysisMonth').value.padStart(2, '0');
@@ -5309,7 +5316,7 @@ export function mainPage(): string {
           fetch('/api/manual-input/production?ym=' + prevYm + '&machine=' + mnMachine).then(function(r){return r.json();}),
           fetch('/api/manual-input/saved?ym=' + ym + '&machine=' + mnMachine).then(function(r){return r.json();}),
           fetch('/api/exclusion-rules?machine=' + mnMachine).then(function(r){return r.json();}),
-          fetch('/api/inventory-stock/closing-map?month=' + prevYm).then(function(r){return r.json();})
+          fetch('/api/inventory-stock/closing-map?month=' + prevYm + '&plant=' + getMachinePlant(mnMachine)).then(function(r){return r.json();})
         ]);
         mnMaterials = results[0].materials || [];
         mnProdTypes = results[0].productTypes || [];

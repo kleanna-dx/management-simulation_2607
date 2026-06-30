@@ -2645,6 +2645,7 @@ app.delete('/api/inventory-stock/:id', async (c) => {
 app.get('/api/inventory-stock/closing-map', async (c) => {
   const db = c.env.DB
   const month = c.req.query('month') || ''
+  const plant = c.req.query('plant') || ''
 
   if (!month) return c.json({ map: {} })
 
@@ -2693,22 +2694,40 @@ app.get('/api/inventory-stock/closing-map', async (c) => {
 
   // 해당 월의 기말재고를 material_id 기준으로 조회 (모든 월 형식 대응)
   const placeholders = monthVariants.map(() => '?').join(',')
-  const result = await db.prepare(
-    'SELECT material_id, closing_qty, closing_price FROM inventory_stock WHERE month IN (' + placeholders + ') AND material_id != \'\''
-  ).bind(...monthVariants).all()
+  let sql = 'SELECT material_id, closing_qty, closing_price FROM inventory_stock WHERE month IN (' + placeholders + ') AND material_id != \'\''
+  const binds: any[] = [...monthVariants]
+
+  // 플랜트 필터 (PM2/PM3→P100, 화장지→P200)
+  if (plant) {
+    sql += ' AND plant = ?'
+    binds.push(plant)
+  }
+
+  const result = await db.prepare(sql).bind(...binds).all()
 
   // material_id → { closing_qty, closing_price } 맵으로 변환
+  // 동일 material_id가 여러 행일 경우 합산 (수량 SUM, 단가 가중평균)
   const map: Record<string, { closing_qty: number; closing_price: number }> = {}
   if (result.results) {
     for (const row of result.results as any[]) {
       const id = String(row.material_id).trim()
-      if (id) {
-        map[id] = { closing_qty: row.closing_qty || 0, closing_price: row.closing_price || 0 }
+      if (!id) continue
+      const qty = row.closing_qty || 0
+      const price = row.closing_price || 0
+      if (map[id]) {
+        // 가중평균: (기존수량×기존단가 + 신규수량×신규단가) / (기존수량 + 신규수량)
+        const prevQty = map[id].closing_qty
+        const prevPrice = map[id].closing_price
+        const totalQty = prevQty + qty
+        map[id].closing_qty = totalQty
+        map[id].closing_price = totalQty > 0 ? (prevQty * prevPrice + qty * price) / totalQty : 0
+      } else {
+        map[id] = { closing_qty: qty, closing_price: price }
       }
     }
   }
 
-  return c.json({ map, month, variants: monthVariants })
+  return c.json({ map, month, plant, variants: monthVariants })
 })
 
 export default app
