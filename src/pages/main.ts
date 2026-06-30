@@ -1859,6 +1859,7 @@ export function mainPage(): string {
       var stickyEl = document.getElementById('pa-sticky-header');
       if (stickyEl) stickyEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
       if (sub === 'forecast') { loadForecast(); }
+      if (sub === 'detail') { loadDetailAnalysis(); }
       if (sub === 'simulation') { loadSimProfitBase(); }
     }
 
@@ -3279,6 +3280,108 @@ export function mainPage(): string {
     function renderUnitSummaryTable() {}
 
     function renderTopImpact() {}
+
+    // ============ 상세 분석표 (raw_records 기반, 전월 vs 전전월 비교) ============
+    async function loadDetailAnalysis() {
+      var year = document.getElementById('analysisYear').value;
+      var month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      var curMonth = parseInt(month);
+      // 기준월 6월 → 전월(5월)=당월실적, 전전월(4월)=전월실적
+      var prevMonth = curMonth - 1;
+      var prevYear = parseInt(year);
+      if (prevMonth < 1) { prevMonth = 12; prevYear--; }
+      var prevYm = String(prevYear) + String(prevMonth).padStart(2, '0');
+      var prevPrevMonth = prevMonth - 1;
+      var prevPrevYear = prevYear;
+      if (prevPrevMonth < 1) { prevPrevMonth = 12; prevPrevYear--; }
+      var prevPrevYm = String(prevPrevYear) + String(prevPrevMonth).padStart(2, '0');
+
+      var tb = document.getElementById('detail-table-body');
+      if (!tb) return;
+      tb.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i>로딩 중...</td></tr>';
+
+      try {
+        // 전전월(전월실적)과 전월(당월실적) 데이터 동시 로드
+        var results = await Promise.all([
+          fetch('/api/forecast/material-detail?ym=' + prevPrevYm).then(function(r){return r.json();}),
+          fetch('/api/forecast/material-detail?ym=' + prevYm).then(function(r){return r.json();})
+        ]);
+        var prevData = results[0]; // 전전월 = 전월실적
+        var curData = results[1];  // 전월 = 당월실적
+
+        if (!curData || !curData.rows || !curData.rows.length) {
+          tb.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-400">데이터가 없습니다</td></tr>';
+          return;
+        }
+
+        // 전전월 맵 구성 (machine_code + material_code → data)
+        var prevMap = {};
+        if (prevData && prevData.rows) {
+          prevData.rows.forEach(function(r) {
+            var key = r.machine_code + '|' + r.material_code;
+            prevMap[key] = r;
+          });
+        }
+
+        // 테이블 헤더 레이블 업데이트
+        var headerRow = tb.parentNode.querySelector('thead tr');
+        if (headerRow) {
+          var ths = headerRow.querySelectorAll('th');
+          if (ths.length >= 16) {
+            ths[5].textContent = prevPrevYm.substring(2,4) + '.' + prevPrevYm.substring(4) + '수량';
+            ths[6].textContent = prevYm.substring(2,4) + '.' + prevYm.substring(4) + '수량';
+            ths[8].textContent = prevPrevYm.substring(2,4) + '.' + prevPrevYm.substring(4) + '단가';
+            ths[9].textContent = prevYm.substring(2,4) + '.' + prevYm.substring(4) + '단가';
+            ths[11].textContent = prevPrevYm.substring(2,4) + '.' + prevPrevYm.substring(4) + '원가';
+            ths[12].textContent = prevYm.substring(2,4) + '.' + prevYm.substring(4) + '원가';
+          }
+        }
+
+        var html = '';
+        curData.rows.forEach(function(r) {
+          var key = r.machine_code + '|' + r.material_code;
+          var prev = prevMap[key] || {};
+          var prevUsage = Number(prev.usage_qty) || 0;
+          var curUsage = Number(r.usage_qty) || 0;
+          var prevPrice = Number(prev.unit_price) || 0;
+          var curPrice = Number(r.unit_price) || 0;
+          var prevCost = prevUsage * prevPrice;
+          var curCost = curUsage * curPrice;
+          var qtyDiff = curUsage - prevUsage;
+          var priceDiff = curPrice - prevPrice;
+          var costDiff = curCost - prevCost;
+          var qtyEffect = (curUsage - prevUsage) * prevPrice;
+          var priceEffect = (curPrice - prevPrice) * curUsage;
+
+          var chipClass = r.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+          var catLabel = (r.material_group_major_name || '').includes('원') ? '원' : '부';
+          var catClass = catLabel === '원' ? 'bg-steel-50 text-steel-400' : 'bg-sage-50 text-sage-600';
+
+          html += '<tr class="hover:bg-slate-50/50">';
+          html += '<td><span class="unit-chip ' + chipClass + '">' + r.machine_code + '</span></td>';
+          html += '<td><span class="text-[10px] px-1.5 py-0.5 rounded ' + catClass + '">' + catLabel + '</span></td>';
+          html += '<td class="text-gray-400 font-mono text-[11px]">' + r.material_code + '</td>';
+          html += '<td class="font-medium text-xs">' + (r.material_name || '') + '</td>';
+          html += '<td class="text-gray-400 text-xs">kg</td>';
+          html += '<td class="text-right font-mono text-xs">' + (prevUsage ? Math.round(prevUsage).toLocaleString() : '-') + '</td>';
+          html += '<td class="text-right font-mono text-xs">' + (curUsage ? Math.round(curUsage).toLocaleString() : '-') + '</td>';
+          html += '<td class="text-right font-mono text-xs ' + (qtyDiff > 0 ? 'text-red-500' : qtyDiff < 0 ? 'text-blue-500' : '') + '">' + (qtyDiff ? Math.round(qtyDiff).toLocaleString() : '-') + '</td>';
+          html += '<td class="text-right font-mono text-xs">' + (prevPrice ? Math.round(prevPrice).toLocaleString() : '-') + '</td>';
+          html += '<td class="text-right font-mono text-xs">' + (curPrice ? Math.round(curPrice).toLocaleString() : '-') + '</td>';
+          html += '<td class="text-right font-mono text-xs ' + (priceDiff > 0 ? 'text-red-500' : priceDiff < 0 ? 'text-blue-500' : '') + '">' + (priceDiff ? Math.round(priceDiff).toLocaleString() : '-') + '</td>';
+          html += '<td class="text-right font-mono text-xs">' + (prevCost ? (prevCost/1000000).toFixed(1) : '-') + '</td>';
+          html += '<td class="text-right font-mono text-xs">' + (curCost ? (curCost/1000000).toFixed(1) : '-') + '</td>';
+          html += '<td class="text-right font-mono text-xs font-medium ' + (qtyEffect > 0 ? 'text-red-500' : qtyEffect < 0 ? 'text-blue-500' : '') + '">' + (qtyEffect ? (qtyEffect/1000000).toFixed(1) : '-') + '</td>';
+          html += '<td class="text-right font-mono text-xs font-medium ' + (priceEffect > 0 ? 'text-red-500' : priceEffect < 0 ? 'text-blue-500' : '') + '">' + (priceEffect ? (priceEffect/1000000).toFixed(1) : '-') + '</td>';
+          html += '<td class="text-right font-mono text-xs font-bold ' + (costDiff > 0 ? 'text-red-500' : costDiff < 0 ? 'text-blue-500' : '') + '">' + (costDiff ? (costDiff/1000000).toFixed(1) : '-') + '</td>';
+          html += '</tr>';
+        });
+        tb.innerHTML = html;
+      } catch(e) {
+        console.error('Detail analysis error:', e);
+        tb.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-400">데이터 로드 오류</td></tr>';
+      }
+    }
 
     function renderDetailTable() {
       const tb = document.getElementById('detail-table-body');
