@@ -2156,20 +2156,43 @@ export function mainPage(): string {
       }
     }
 
-    // 자재구분 매핑 양식 다운로드
-    function downloadMappingTemplate() {
-      var templateData = [
-        { '자재코드': '1200021', '자재명': '국내 신문고지', '자재구분': '고지류', '대상테이블': '제지 원재료' },
-        { '자재코드': '1100001', '자재명': 'L-BKP (수입)', '자재구분': 'L-BKP', '대상테이블': '제지 원재료' },
-        { '자재코드': '3100001', '자재명': '전분 (양성)', '자재구분': '전분류', '대상테이블': '제지 부재료' },
-        { '자재코드': '1200010', '자재명': '화장지 고지', '자재구분': '고지류', '대상테이블': '화장지 원재료' }
-      ];
-      var ws = XLSX.utils.json_to_sheet(templateData);
-      var colWidths = [{ wch: 12 }, { wch: 20 }, { wch: 12 }, { wch: 14 }];
-      ws['!cols'] = colWidths;
-      var wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, '자재구분매핑');
-      XLSX.writeFile(wb, '자재구분_매핑_양식.xlsx');
+    // 자재구분 매핑 양식 다운로드 (미매핑 자재 리스트 포함)
+    async function downloadMappingTemplate() {
+      try {
+        var res = await fetch('/api/master/material-mapping?filter=unmapped').then(function(r){return r.json();});
+        var unmappedList = (res && res.data) ? res.data : [];
+        
+        var templateData = [];
+        if (unmappedList.length > 0) {
+          unmappedList.forEach(function(d) {
+            templateData.push({
+              '자재코드': d.material_code_short || d.material_code,
+              '자재명': d.material_name || '',
+              '대분류': d.material_group_major_name || '',
+              '원부구분': d.category === 'RAW' ? '원재료' : '부재료',
+              '자재구분': ''  // 사용자가 입력할 컬럼
+            });
+          });
+        } else {
+          templateData.push({
+            '자재코드': '(미매핑 자재 없음)',
+            '자재명': '',
+            '대분류': '',
+            '원부구분': '',
+            '자재구분': ''
+          });
+        }
+        
+        var ws = XLSX.utils.json_to_sheet(templateData);
+        var colWidths = [{ wch: 12 }, { wch: 25 }, { wch: 15 }, { wch: 10 }, { wch: 15 }];
+        ws['!cols'] = colWidths;
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '미매핑자재');
+        XLSX.writeFile(wb, '자재구분_매핑_양식_미매핑' + unmappedList.length + '건.xlsx');
+      } catch(e) {
+        console.error('Mapping template download error:', e);
+        alert('양식 다운로드 오류: ' + e.message);
+      }
     }
 
     async function loadMasterIdx(tab) {
@@ -4213,49 +4236,55 @@ export function mainPage(): string {
       var tbody = document.getElementById('fc-detail-body');
       if (!tbody) return;
       var trs = tbody.querySelectorAll('tr');
-      var rows = fcCurData.rows;
-      var rowIdx = 0;
-      var groupKeys = {};
-      rows.forEach(function(r) {
-        var gk = r.material_group_name || r.material_group_major_name;
-        if (!groupKeys[gk]) groupKeys[gk] = [];
-        groupKeys[gk].push(r.material_code);
-      });
 
-      // 그룹 헤더/소계 포함하여 순회
       var currentGroupVisible = false;
-      var trIdx = 0;
-      var gkList = Object.keys(groupKeys);
-      var gkIdx = 0;
-      var itemIdx = 0;
-
       trs.forEach(function(tr) {
         if (tr.classList.contains('bg-slate-50') && tr.querySelector('td[colspan]')) {
-          // 그룹 헤더행
-          if (allowedCodes === null) {
-            tr.style.display = '';
-          } else {
-            // 이 그룹에 보여줄 자재가 있는지 확인
-            var gk = gkList[gkIdx] || '';
-            var groupCodes = groupKeys[gk] || [];
-            currentGroupVisible = groupCodes.some(function(c) { return allowedCodes[c]; });
-            tr.style.display = currentGroupVisible ? '' : 'none';
-          }
+          // 그룹 헤더행 — 다음 데이터 행들이 보이는지에 따라 나중에 처리
+          tr._isGroupHeader = true;
+          tr._groupHasVisible = false;
+          tr.style.display = 'none'; // 일단 숨김
         } else if (tr.classList.contains('bg-slate-100/70')) {
           // 그룹 소계행
           tr.style.display = (allowedCodes === null || currentGroupVisible) ? '' : 'none';
-          gkIdx++;
+          // 이전 그룹 헤더도 업데이트
         } else {
-          // 자재 데이터행
+          // 자재 데이터행 (data-mat 속성으로 판별)
+          var matCode = tr.getAttribute('data-mat');
           if (allowedCodes === null) {
             tr.style.display = '';
+            currentGroupVisible = true;
           } else {
-            var r = rows[rowIdx];
-            tr.style.display = (r && allowedCodes[r.material_code]) ? '' : 'none';
+            var visible = matCode && allowedCodes[matCode];
+            tr.style.display = visible ? '' : 'none';
+            if (visible) currentGroupVisible = true;
           }
-          rowIdx++;
         }
       });
+
+      // 두 번째 패스: 그룹 헤더 표시 여부 결정
+      var groupHeader = null;
+      var groupHasVisible = false;
+      trs.forEach(function(tr) {
+        if (tr.classList.contains('bg-slate-50') && tr.querySelector('td[colspan]')) {
+          // 이전 그룹 헤더 처리
+          if (groupHeader) groupHeader.style.display = groupHasVisible ? '' : 'none';
+          groupHeader = tr;
+          groupHasVisible = false;
+        } else if (tr.classList.contains('bg-slate-100/70')) {
+          // 소계행 — 그룹 마감
+          if (groupHeader) {
+            groupHeader.style.display = groupHasVisible ? '' : 'none';
+            tr.style.display = groupHasVisible ? '' : 'none';
+          }
+          groupHeader = null;
+          groupHasVisible = false;
+        } else {
+          if (tr.style.display !== 'none') groupHasVisible = true;
+        }
+      });
+      // 마지막 그룹 처리
+      if (groupHeader) groupHeader.style.display = groupHasVisible ? '' : 'none';
     }
 
     function renderFcDetail() {
@@ -4322,7 +4351,7 @@ export function mainPage(): string {
           }
 
           var rid = 'fc-r-' + rowIdx;
-          html += '<tr class="hover:bg-blue-50/30 border-b border-slate-50">';
+          html += '<tr class="hover:bg-blue-50/30 border-b border-slate-50" data-mat="' + r.material_code + '">';
           // 구분/자재
           html += '<td class="px-1.5 py-0.5 text-[10px] font-mono text-gray-400 border-r border-slate-100">' + shortCode + '</td>';
           html += '<td class="px-1.5 py-0.5 text-xs border-r border-slate-300">' + r.material_name + '</td>';
