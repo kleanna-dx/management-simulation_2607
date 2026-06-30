@@ -3987,7 +3987,7 @@ export function mainPage(): string {
       filtered.forEach(function(d) {
         var key = d.product_type;
         if (!typeMap[key]) typeMap[key] = 0;
-        typeMap[key] += (Number(d.production_qty) || 0) / 1000;
+        typeMap[key] += (Number(d.total_production) || Number(d.production_qty) || 0) / 1000;
       });
 
       // 수기입력 저장 생산량 조회 (차월 예상 기본값) — 소스가 manual일 때만
