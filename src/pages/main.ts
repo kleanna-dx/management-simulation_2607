@@ -6298,7 +6298,8 @@ export function mainPage(): string {
       ];
       var wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, '수기입력양식');
-      var filename = '수기입력_양식_' + (mnMachine || 'PM2') + '_' + document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0') + '.xlsx';
+      var today = new Date(); var td = today.getFullYear() + String(today.getMonth()+1).padStart(2,'0') + String(today.getDate()).padStart(2,'0');
+      var filename = '수기입력_양식_' + (mnMachine || 'PM2') + '_' + document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0') + '_' + td + '.xlsx';
       XLSX.writeFile(wb, filename);
     }
 
