@@ -6564,7 +6564,8 @@ export function mainPage(): string {
             '자재코드': m.code || '',
             '자재명': m.name || '',
             '자재그룹': m.group_name || '',
-            '원단위(kg/톤)': '',
+            '전월실적_원단위(kg/톤)': '',
+            '당월예상_원단위(kg/톤)': '',
             '기초재고수량(톤)': '',
             '기초재고단가(원/kg)': '',
             '입고수량(톤)': '',
@@ -6580,7 +6581,8 @@ export function mainPage(): string {
             '자재코드': '',
             '자재명': '',
             '자재그룹': '',
-            '원단위(kg/톤)': '',
+            '전월실적_원단위(kg/톤)': '',
+            '당월예상_원단위(kg/톤)': '',
             '기초재고수량(톤)': '',
             '기초재고단가(원/kg)': '',
             '입고수량(톤)': '',
@@ -6593,7 +6595,7 @@ export function mainPage(): string {
       var ws = XLSX.utils.json_to_sheet(rows);
       // 컬럼 너비 설정
       ws['!cols'] = [
-        {wch: 14}, {wch: 25}, {wch: 14}, {wch: 14},
+        {wch: 14}, {wch: 25}, {wch: 14}, {wch: 20}, {wch: 20},
         {wch: 16}, {wch: 18},
         {wch: 14}, {wch: 18},
         {wch: 14}, {wch: 20}
@@ -6765,13 +6767,20 @@ export function mainPage(): string {
         var spEl = document.getElementById(rid + '-sp');
         var spVal = uploaded['기초재고단가(원/kg)'] !== undefined && uploaded['기초재고단가(원/kg)'] !== null ? uploaded['기초재고단가(원/kg)'] : (uploaded['stock_price'] !== undefined && uploaded['stock_price'] !== null ? uploaded['stock_price'] : (uploaded['기초재고단가'] !== undefined && uploaded['기초재고단가'] !== null ? uploaded['기초재고단가'] : undefined));
         if (spEl && spVal !== undefined && spVal !== null && spVal !== '') { spEl.value = Math.round(Number(spVal)).toLocaleString(); appliedSp++; }
-        // 원단위(kg/톤) — 값이 있으면 사용량 역산
+        // 원단위(kg/톤) — 당월 예상: 값이 있으면 사용량 역산
         var cucEl = document.getElementById(rid + '-cuc');
-        var ucVal = uploaded['원단위(kg/톤)'] !== undefined && uploaded['원단위(kg/톤)'] !== null ? uploaded['원단위(kg/톤)'] : (uploaded['원단위'] !== undefined && uploaded['원단위'] !== null ? uploaded['원단위'] : (uploaded['cur_uc'] !== undefined && uploaded['cur_uc'] !== null ? uploaded['cur_uc'] : undefined));
+        var ucVal = uploaded['당월예상_원단위(kg/톤)'] !== undefined && uploaded['당월예상_원단위(kg/톤)'] !== null ? uploaded['당월예상_원단위(kg/톤)'] : (uploaded['원단위(kg/톤)'] !== undefined && uploaded['원단위(kg/톤)'] !== null ? uploaded['원단위(kg/톤)'] : (uploaded['원단위'] !== undefined && uploaded['원단위'] !== null ? uploaded['원단위'] : (uploaded['cur_uc'] !== undefined && uploaded['cur_uc'] !== null ? uploaded['cur_uc'] : undefined)));
         if (cucEl && ucVal !== undefined && ucVal !== null && ucVal !== '') {
           cucEl.value = Number(ucVal);
           cucEl.setAttribute('data-manual', '1');
           // 역산은 모든 매핑 완료 후 일괄 처리
+        }
+        // 전월 실적 원단위(kg/톤)
+        var pucEl = document.getElementById(rid + '-puc');
+        var pucVal = uploaded['전월실적_원단위(kg/톤)'] !== undefined && uploaded['전월실적_원단위(kg/톤)'] !== null ? uploaded['전월실적_원단위(kg/톤)'] : (uploaded['전월_원단위'] !== undefined && uploaded['전월_원단위'] !== null ? uploaded['전월_원단위'] : (uploaded['prev_uc'] !== undefined && uploaded['prev_uc'] !== null ? uploaded['prev_uc'] : undefined));
+        if (pucEl && pucVal !== undefined && pucVal !== null && pucVal !== '') {
+          pucEl.value = Number(pucVal);
+          // 전월 역산도 모든 매핑 완료 후 일괄 처리
         }
         // 사용단가(원/kg)
         var upEl = document.getElementById(rid + '-up');
@@ -6849,9 +6858,15 @@ export function mainPage(): string {
 
       // 원단위 입력된 행들 → 사용량 역산 (생산량 정보가 필요하므로 매핑 완료 후 일괄 처리)
       mnMaterials.forEach(function(m, idx) {
+        // 당월 예상 원단위 → 당월 사용량 역산
         var cucEl = document.getElementById('mn-r-' + idx + '-cuc');
         if (cucEl && cucEl.getAttribute('data-manual') === '1' && Number(cucEl.value) > 0) {
           onUnitCostInput(idx);
+        }
+        // 전월 실적 원단위 → 전월 사용량 역산
+        var pucEl = document.getElementById('mn-r-' + idx + '-puc');
+        if (pucEl && Number(pucEl.value) > 0) {
+          onPrevUnitCostInput(idx);
         }
       });
 
