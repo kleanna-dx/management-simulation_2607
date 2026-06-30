@@ -6041,8 +6041,7 @@ export function mainPage(): string {
 
         // 2) 해당 호기 자재 목록 로드 (전월 실적 기반)
         var prevYm = getPrevYm(ym);
-        var machineName = machine === 'PM2' ? '제지 2호기' : '제지 3호기';
-        var matRes = await fetch('/api/manual-input/materials?ym=' + prevYm + '&machine=' + encodeURIComponent(machineName));
+        var matRes = await fetch('/api/manual-input/materials?ym=' + prevYm + '&machine=' + encodeURIComponent(machine));
         var matJson = await matRes.json();
         var materials = matJson.materials || [];
 
@@ -6054,7 +6053,7 @@ export function mainPage(): string {
         }
 
         // 3) 생산량 로드
-        var prodRes = await fetch('/api/manual-input/production?ym=' + prevYm + '&machine=' + encodeURIComponent(machineName));
+        var prodRes = await fetch('/api/manual-input/production?ym=' + prevYm + '&machine=' + encodeURIComponent(machine));
         var prodJson = await prodRes.json();
         var prevProd = prodJson.production || {};
 
