@@ -2309,9 +2309,7 @@ app.get('/api/manual-input/materials', async (c) => {
     SELECT 
       material_code as code,
       SUM(CAST(actual_alloc_qty AS REAL)) as usage_qty,
-      CASE WHEN SUM(CAST(actual_alloc_qty AS REAL)) > 0 
-        THEN SUM(CAST(issue_amount AS REAL)) / SUM(CAST(actual_alloc_qty AS REAL))
-        ELSE 0 END as unit_price
+      MAX(CAST(actual_unit_price AS REAL)) as unit_price
     FROM raw_records
     WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
       ${machineFilter}
