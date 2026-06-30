@@ -3990,9 +3990,9 @@ export function mainPage(): string {
         typeMap[key] += (Number(d.production_qty) || 0) / 1000;
       });
 
-      // 수기입력 저장 생산량 조회 (차월 예상 기본값)
+      // 수기입력 저장 생산량 조회 (차월 예상 기본값) — 소스가 manual일 때만
       var mnProdMap = null;
-      if (fcSavedManual && fcSavedManual.production) {
+      if (simSource === 'manual' && fcSavedManual && fcSavedManual.production) {
         mnProdMap = fcSavedManual.production;
       }
 
@@ -4200,9 +4200,9 @@ export function mainPage(): string {
           grandUsage += r.usage_qty;
           grandCost += r.cost_million * 1000000;
 
-          // 수기입력 저장 데이터에서 차월값 조회
+          // 수기입력 저장 데이터에서 차월값 조회 — 소스가 manual일 때만
           var mnSaved = null;
-          if (fcSavedManual && fcSavedManual.materials) {
+          if (simSource === 'manual' && fcSavedManual && fcSavedManual.materials) {
             mnSaved = fcSavedManual.materials[r.material_code] || fcSavedManual.materials[shortCode] || null;
           }
           var mnUsage = mnSaved ? (mnSaved.cur_usage || '') : '';
@@ -4588,9 +4588,13 @@ export function mainPage(): string {
       var manualRadio = document.getElementById('sim-source-manual');
       simSource = (manualRadio && manualRadio.checked) ? 'manual' : 'actual';
       simSourceUserSet = true; // 사용자가 직접 선택함
+      // 시뮬레이션 데이터 갱신
       initSimRows();
       renderSimTable();
       calcSimProfit();
+      // forecast 서브탭도 갱신 (소스에 따라 수기입력/전월실적 전환)
+      renderFcProduction();
+      renderFcDetail();
     }
 
     async function loadSimProfitBase() {
