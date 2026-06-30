@@ -6334,10 +6334,21 @@ export function mainPage(): string {
       if (!modal) return;
       modal.classList.remove('hidden');
 
-      var cols = Object.keys(data[0]);
+      // 모든 행에서 유니크 컬럼명 수집 (첫 행에 빈 셀이 있으면 키가 누락되므로)
+      var colSet = {};
+      var cols = [];
+      data.forEach(function(row) {
+        Object.keys(row).forEach(function(k) {
+          if (!colSet[k]) { colSet[k] = true; cols.push(k); }
+        });
+      });
+      // 컬럼 헤더 강조 (입고/사용량 관련 컬럼은 파란색으로)
+      var dataColNames = ['입고수량(톤)', '입고단가(원/kg)', '사용량(kg)', '입고수량', '입고단가', '사용량', 'incoming_qty', 'incoming_price', 'cur_usage'];
       var theadHtml = '<th class="px-2 py-1.5 text-center font-semibold text-gray-600 border-b border-slate-200 w-10">상태</th>';
       cols.forEach(function(col) {
-        theadHtml += '<th class="px-2 py-1.5 text-left font-semibold text-gray-600 border-b border-slate-200 whitespace-nowrap">' + col + '</th>';
+        var isDataCol = dataColNames.indexOf(col) >= 0;
+        var colCls = isDataCol ? 'px-2 py-1.5 text-left font-semibold text-blue-700 border-b border-blue-200 whitespace-nowrap bg-blue-50/50' : 'px-2 py-1.5 text-left font-semibold text-gray-600 border-b border-slate-200 whitespace-nowrap';
+        theadHtml += '<th class="' + colCls + '">' + col + '</th>';
       });
       document.getElementById('mn-preview-thead').innerHTML = theadHtml;
 
@@ -6379,11 +6390,17 @@ export function mainPage(): string {
       document.getElementById('mn-preview-tbody').innerHTML = tbodyHtml;
 
       // 요약 정보
+      var dataRowCount = 0;
+      data.forEach(function(r) {
+        if ((r['입고수량(톤)'] !== undefined && r['입고수량(톤)'] !== null && r['입고수량(톤)'] !== '') ||
+            (r['사용량(kg)'] !== undefined && r['사용량(kg)'] !== null && r['사용량(kg)'] !== '') ||
+            (r['입고수량'] !== undefined && r['입고수량'] !== null && r['입고수량'] !== '')) dataRowCount++;
+      });
       var summaryParts = ['<span class="font-medium text-gray-700">시트: ' + data.length + '행</span>'];
       if (matchCount > 0) summaryParts.push('<span class="text-emerald-600 font-medium">기존 매칭: ' + matchCount + '건</span>');
       if (newCount > 0) summaryParts.push('<span class="text-amber-600 font-semibold"><i class="fas fa-plus-circle mr-0.5"></i>신규 자재: ' + newCount + '건</span>');
+      if (dataRowCount > 0) summaryParts.push('<span class="text-blue-600 font-medium">입고/사용량 데이터: ' + dataRowCount + '건</span>');
       if (matchCount === 0 && newCount === 0) summaryParts.push('<span class="text-red-500">자재코드 매칭 확인 필요</span>');
-      summaryParts.push('<span class="text-gray-400 text-[10px]">컬럼: ' + cols.join(', ').substring(0, 100) + '</span>');
       document.getElementById('mn-preview-summary').innerHTML = summaryParts.join(' | ');
       document.getElementById('mn-preview-count').textContent = '총 ' + data.length + '행 중 ' + maxRows + '행 표시' + (newCount > 0 ? ' (신규 ' + newCount + '건 포함)' : '');
     }
@@ -6397,7 +6414,8 @@ export function mainPage(): string {
       if (!mnPreviewData || !mnPreviewData.length) { alert('적용할 데이터가 없습니다.'); return; }
       if (!mnMaterials || !mnMaterials.length) { alert('먼저 호기를 선택하고 불러오기를 실행해주세요.'); return; }
 
-      var applied = 0;
+      var appliedUsage = 0, appliedIq = 0, appliedIp = 0, appliedSq = 0, appliedSp = 0;
+      var matchCount = 0;
       var newMaterials = [];
       // 엑셀 데이터 매핑 (자재코드 기준)
       var uploadMap = {};
@@ -6422,26 +6440,34 @@ export function mainPage(): string {
         // 매칭된 코드 기록
         matchedCodes[code] = true;
         matchedCodes[code.replace(/^0+/,'')] = true;
+        matchCount++;
 
         var rid = 'mn-r-' + idx;
+        // 사용량(kg)
         var cuEl = document.getElementById(rid + '-cu');
         var usageVal = uploaded['사용량(kg)'] !== undefined && uploaded['사용량(kg)'] !== null ? uploaded['사용량(kg)'] : (uploaded['당월_사용량(kg)'] !== undefined && uploaded['당월_사용량(kg)'] !== null ? uploaded['당월_사용량(kg)'] : (uploaded['cur_usage'] !== undefined && uploaded['cur_usage'] !== null ? uploaded['cur_usage'] : (uploaded['사용량'] !== undefined && uploaded['사용량'] !== null ? uploaded['사용량'] : undefined)));
-        if (cuEl && usageVal !== undefined && usageVal !== null && usageVal !== '') { cuEl.value = Math.round(Number(usageVal)).toLocaleString(); applied++; }
+        if (cuEl && usageVal !== undefined && usageVal !== null && usageVal !== '') { cuEl.value = Math.round(Number(usageVal)).toLocaleString(); appliedUsage++; }
+        // 입고수량(톤)
         var iqEl = document.getElementById(rid + '-iq');
         var iqVal = uploaded['입고수량(톤)'] !== undefined && uploaded['입고수량(톤)'] !== null ? uploaded['입고수량(톤)'] : (uploaded['incoming_qty'] !== undefined && uploaded['incoming_qty'] !== null ? uploaded['incoming_qty'] : (uploaded['입고수량'] !== undefined && uploaded['입고수량'] !== null ? uploaded['입고수량'] : undefined));
-        if (iqEl && iqVal !== undefined && iqVal !== null && iqVal !== '') iqEl.value = Number(iqVal).toLocaleString();
+        if (iqEl && iqVal !== undefined && iqVal !== null && iqVal !== '') { iqEl.value = Number(iqVal).toLocaleString(); appliedIq++; }
+        // 입고단가(원/kg)
         var ipEl = document.getElementById(rid + '-ip');
         var ipVal = uploaded['입고단가(원/kg)'] !== undefined && uploaded['입고단가(원/kg)'] !== null ? uploaded['입고단가(원/kg)'] : (uploaded['incoming_price'] !== undefined && uploaded['incoming_price'] !== null ? uploaded['incoming_price'] : (uploaded['입고단가'] !== undefined && uploaded['입고단가'] !== null ? uploaded['입고단가'] : undefined));
-        if (ipEl && ipVal !== undefined && ipVal !== null && ipVal !== '') ipEl.value = Math.round(Number(ipVal)).toLocaleString();
+        if (ipEl && ipVal !== undefined && ipVal !== null && ipVal !== '') { ipEl.value = Math.round(Number(ipVal)).toLocaleString(); appliedIp++; }
+        // 기초재고수량(톤)
         var sqEl = document.getElementById(rid + '-sq');
         var sqVal = uploaded['기초재고수량(톤)'] !== undefined && uploaded['기초재고수량(톤)'] !== null ? uploaded['기초재고수량(톤)'] : (uploaded['stock_qty'] !== undefined && uploaded['stock_qty'] !== null ? uploaded['stock_qty'] : (uploaded['기초재고수량'] !== undefined && uploaded['기초재고수량'] !== null ? uploaded['기초재고수량'] : undefined));
-        if (sqEl && sqVal !== undefined && sqVal !== null && sqVal !== '') sqEl.value = Number(sqVal).toLocaleString();
+        if (sqEl && sqVal !== undefined && sqVal !== null && sqVal !== '') { sqEl.value = Number(sqVal).toLocaleString(); appliedSq++; }
+        // 기초재고단가(원/kg)
         var spEl = document.getElementById(rid + '-sp');
         var spVal = uploaded['기초재고단가(원/kg)'] !== undefined && uploaded['기초재고단가(원/kg)'] !== null ? uploaded['기초재고단가(원/kg)'] : (uploaded['stock_price'] !== undefined && uploaded['stock_price'] !== null ? uploaded['stock_price'] : (uploaded['기초재고단가'] !== undefined && uploaded['기초재고단가'] !== null ? uploaded['기초재고단가'] : undefined));
-        if (spEl && spVal !== undefined && spVal !== null && spVal !== '') spEl.value = Math.round(Number(spVal)).toLocaleString();
+        if (spEl && spVal !== undefined && spVal !== null && spVal !== '') { spEl.value = Math.round(Number(spVal)).toLocaleString(); appliedSp++; }
+        // 사용단가(원/kg)
         var upEl = document.getElementById(rid + '-up');
         var upVal = uploaded['사용단가(원/kg)'] !== undefined && uploaded['사용단가(원/kg)'] !== null ? uploaded['사용단가(원/kg)'] : (uploaded['use_price'] !== undefined && uploaded['use_price'] !== null ? uploaded['use_price'] : (uploaded['사용단가'] !== undefined && uploaded['사용단가'] !== null ? uploaded['사용단가'] : undefined));
         if (upEl && upVal !== undefined && upVal !== null && upVal !== '') upEl.value = Math.round(Number(upVal)).toLocaleString();
+        // 이슈사항
         var issueEl = document.getElementById(rid + '-issue');
         var issueVal = uploaded['이슈사항'] || uploaded['issue'] || uploaded['비고'];
         if (issueEl && issueVal !== undefined) issueEl.value = String(issueVal);
@@ -6492,7 +6518,7 @@ export function mainPage(): string {
         });
         // 테이블 재렌더링 (신규 포함)
         renderManualDetail();
-        applied += newMaterials.length;
+        matchCount += newMaterials.length;
       }
 
       // 4) 생산량 매핑 (엑셀에 '지종' 컬럼 있으면)
@@ -6512,9 +6538,15 @@ export function mainPage(): string {
       closeManualPreview();
       calcManualProfit();
       onManualProdChange();
-      var msg = '엑셀 데이터 적용 완료! (기존 매칭: ' + applied + '건';
-      if (newMaterials.length > 0) msg += ', 신규 추가: ' + newMaterials.length + '건';
-      msg += ')' + String.fromCharCode(10) + '확인 후 [저장] 버튼을 눌러주세요.';
+      var details = [];
+      details.push('자재 매칭: ' + matchCount + '건');
+      if (appliedIq > 0) details.push('입고수량: ' + appliedIq + '건');
+      if (appliedIp > 0) details.push('입고단가: ' + appliedIp + '건');
+      if (appliedUsage > 0) details.push('사용량: ' + appliedUsage + '건');
+      if (appliedSq > 0) details.push('기초재고수량: ' + appliedSq + '건');
+      if (appliedSp > 0) details.push('기초재고단가: ' + appliedSp + '건');
+      if (newMaterials.length > 0) details.push('신규 추가: ' + newMaterials.length + '건');
+      var msg = '엑셀 데이터 적용 완료!' + String.fromCharCode(10) + details.join(', ') + String.fromCharCode(10) + '확인 후 [저장] 버튼을 눌러주세요.';
       alert(msg);
     }
 
