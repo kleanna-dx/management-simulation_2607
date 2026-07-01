@@ -2403,16 +2403,27 @@ app.get('/api/manual-input/saved', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
   const machine = c.req.query('machine') || ''
+  const deptType = c.req.query('dept_type') || ''
 
   if (!ym || !machine) return c.json({})
 
   try {
-    const result = await db.prepare(
-      'SELECT data, saved_by, updated_at FROM manual_inputs WHERE ym = ? AND machine_code = ? ORDER BY updated_at DESC LIMIT 1'
-    ).bind(ym, machine).first()
+    let result
+    if (deptType) {
+      // 특정 부서 타입 데이터만 조회
+      result = await db.prepare(
+        'SELECT data, saved_by, updated_at, dept_type FROM manual_inputs WHERE ym = ? AND machine_code = ? AND dept_type = ? ORDER BY updated_at DESC LIMIT 1'
+      ).bind(ym, machine, deptType).first()
+    }
+    // dept_type 미지정이거나 결과 없으면 최신 데이터 (하위호환)
+    if (!result) {
+      result = await db.prepare(
+        'SELECT data, saved_by, updated_at, dept_type FROM manual_inputs WHERE ym = ? AND machine_code = ? ORDER BY updated_at DESC LIMIT 1'
+      ).bind(ym, machine).first()
+    }
 
     if (result && result.data) {
-      return c.json({ data: JSON.parse(result.data as string), saved_by: result.saved_by, updated_at: result.updated_at })
+      return c.json({ data: JSON.parse(result.data as string), saved_by: result.saved_by, updated_at: result.updated_at, dept_type: result.dept_type || 'all' })
     }
   } catch (e) {
     // 테이블이 없으면 무시
@@ -2424,7 +2435,7 @@ app.get('/api/manual-input/saved', async (c) => {
 // 수기입력 데이터 저장
 app.post('/api/manual-input/save', async (c) => {
   const db = c.env.DB
-  const { ym, machine, data, saved_by } = await c.req.json()
+  const { ym, machine, dept_type, data, saved_by } = await c.req.json()
 
   if (!ym || !machine || !data) return c.json({ error: 'ym, machine, data required' }, 400)
 
@@ -2434,6 +2445,7 @@ app.post('/api/manual-input/save', async (c) => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       ym TEXT NOT NULL,
       machine_code TEXT NOT NULL,
+      dept_type TEXT DEFAULT 'all',
       data TEXT NOT NULL,
       saved_by TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -2441,6 +2453,12 @@ app.post('/api/manual-input/save', async (c) => {
     )
   `).run()
 
+  // 기존 테이블에 dept_type 컬럼이 없으면 추가
+  try {
+    await db.prepare(`ALTER TABLE manual_inputs ADD COLUMN dept_type TEXT DEFAULT 'all'`).run()
+  } catch (e) {
+    // 이미 있으면 무시
+  }
   // 기존 테이블에 saved_by 컬럼이 없으면 추가
   try {
     await db.prepare(`ALTER TABLE manual_inputs ADD COLUMN saved_by TEXT DEFAULT ''`).run()
@@ -2450,9 +2468,9 @@ app.post('/api/manual-input/save', async (c) => {
 
   // INSERT (히스토리 유지를 위해 UPSERT 대신 INSERT)
   await db.prepare(`
-    INSERT INTO manual_inputs (ym, machine_code, data, saved_by, updated_at)
-    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-  `).bind(ym, machine, JSON.stringify(data), saved_by || '').run()
+    INSERT INTO manual_inputs (ym, machine_code, dept_type, data, saved_by, updated_at)
+    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+  `).bind(ym, machine, dept_type || 'all', JSON.stringify(data), saved_by || '').run()
 
   return c.json({ success: true })
 })

@@ -815,6 +815,16 @@ export function mainPage(): string {
         <div class="flex items-center justify-between flex-wrap gap-3">
           <div class="flex items-center gap-3">
             <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-edit text-emerald-500 mr-1.5"></i>전월대비 예상실적 (수기입력)</h3>
+            <!-- 부서 구분 토글 -->
+            <div class="flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5">
+              <button onclick="setManualDept('production')" id="mn-dept-production" class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all bg-blue-500 text-white shadow-sm">
+                <i class="fas fa-industry mr-1"></i>생산
+              </button>
+              <button onclick="setManualDept('purchase')" id="mn-dept-purchase" class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all text-gray-500 hover:text-gray-700">
+                <i class="fas fa-truck mr-1"></i>구매
+              </button>
+            </div>
+            <div class="w-px h-5 bg-slate-200"></div>
             <div class="flex items-center gap-1">
               <button onclick="setManualMachine('PM2')" id="mn-mc-pm2" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">PM2</button>
               <button onclick="setManualMachine('PM3')" id="mn-mc-pm3" class="pill-tab pill-tab-active text-xs !px-3 !py-1">PM3</button>
@@ -834,6 +844,11 @@ export function mainPage(): string {
             <button onclick="loadManualData()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-gray-600 hover:bg-slate-200 transition font-medium"><i class="fas fa-sync-alt mr-1"></i>불러오기</button>
             <button onclick="toggleManualHistory()" class="text-xs px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 transition font-medium"><i class="fas fa-history mr-1"></i>히스토리</button>
           </div>
+        </div>
+        <!-- 부서 안내 배너 -->
+        <div id="mn-dept-banner" class="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-100">
+          <i class="fas fa-info-circle text-blue-400 text-xs"></i>
+          <span class="text-[11px] text-blue-700" id="mn-dept-desc"><b>생산부서</b> — 사용량(kg)과 원단위(kg/톤)를 입력합니다.</span>
         </div>
         <!-- 마지막 저장 정보 표시 -->
         <div id="mn-last-save-info" class="mt-2 hidden">
@@ -932,34 +947,7 @@ export function mainPage(): string {
         </div>
         <div class="overflow-x-auto" style="max-height:calc(100vh - 340px)">
           <table class="w-full text-[11px] border-collapse whitespace-nowrap" id="mn-detail-table">
-            <thead class="sticky top-0 z-10">
-              <tr class="bg-slate-100 border-b">
-                <th colspan="2" class="px-2 py-1.5 text-left font-semibold text-gray-600 border-r border-slate-300" rowspan="2">자재코드 / 자재명</th>
-                <th colspan="5" class="px-2 py-1.5 text-center font-semibold text-blue-700 border-r border-slate-300" id="mn-prev-header">04월 (실적)</th>
-                <th colspan="9" class="px-2 py-1.5 text-center font-semibold text-emerald-700 border-r border-slate-300" id="mn-cur-header">05월 (예상)</th>
-                <th colspan="3" class="px-2 py-1.5 text-center font-semibold text-amber-700 border-r border-slate-300">전월대비 손익 효과</th>
-                <th class="px-2 py-1.5 text-center font-semibold text-gray-500 border-l border-slate-300" rowspan="2">이슈사항</th>
-              </tr>
-              <tr class="bg-slate-50 border-b text-[10px] text-gray-500">
-                <th class="px-1.5 py-1 text-right border-l border-slate-200">사용량(kg)</th>
-                <th class="px-1.5 py-1 text-right">원단위(kg/톤)</th>
-                <th class="px-1.5 py-1 text-right">사용단가(원/kg)</th>
-                <th class="px-1.5 py-1 text-right">비용(백만원)</th>
-                <th class="px-1.5 py-1 text-right border-r border-slate-300">톤당비용(원/톤)</th>
-                <th class="px-1.5 py-1 text-right">사용량(kg)</th>
-                <th class="px-1.5 py-1 text-right">원단위(kg/톤)</th>
-                <th class="px-1.5 py-1 text-right">입고수량(톤)</th>
-                <th class="px-1.5 py-1 text-right">입고단가(원/kg)</th>
-                <th class="px-1.5 py-1 text-right">기초재고수량(톤)</th>
-                <th class="px-1.5 py-1 text-right">기초재고단가(원/kg)</th>
-                <th class="px-1.5 py-1 text-right">사용단가(원/kg)</th>
-                <th class="px-1.5 py-1 text-right">비용(백만원)</th>
-                <th class="px-1.5 py-1 text-right border-r border-slate-300">톤당비용(원/톤)</th>
-                <th class="px-1.5 py-1 text-right">사용량차이(원)</th>
-                <th class="px-1.5 py-1 text-right">단가차이(원)</th>
-                <th class="px-1.5 py-1 text-right border-r border-slate-300">재료비종합(원)</th>
-              </tr>
-            </thead>
+            <thead class="sticky top-0 z-10" id="mn-detail-thead"></thead>
             <tbody id="mn-detail-body">
               <tr><td colspan="20" class="text-center py-8 text-gray-400"><i class="fas fa-arrow-up mr-2"></i>호기 선택 후 불러오기를 클릭하세요</td></tr>
             </tbody>
@@ -5622,6 +5610,7 @@ export function mainPage(): string {
 
     // ============ MANUAL INPUT (부서 수기 입력) ============
     var mnMachine = 'PM3';
+    var mnDeptType = 'production';  // 'production' | 'purchase'
     var mnMaterials = [];  // 자재 목록
     var mnProdTypes = [];  // 지종 목록
     var mnPrevProd = {};   // 전월 지종별 생산량(톤)
@@ -5658,6 +5647,28 @@ export function mainPage(): string {
       return '';
     }
 
+    function setManualDept(dept) {
+      mnDeptType = dept;
+      var prodBtn = document.getElementById('mn-dept-production');
+      var purchBtn = document.getElementById('mn-dept-purchase');
+      if (dept === 'production') {
+        if (prodBtn) { prodBtn.className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition-all bg-blue-500 text-white shadow-sm'; }
+        if (purchBtn) { purchBtn.className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition-all text-gray-500 hover:text-gray-700'; }
+        var banner = document.getElementById('mn-dept-banner');
+        if (banner) { banner.className = 'mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-100'; }
+        var desc = document.getElementById('mn-dept-desc');
+        if (desc) desc.innerHTML = '<b>생산부서</b> — 사용량(kg)과 원단위(kg/톤)를 입력합니다.';
+      } else {
+        if (prodBtn) { prodBtn.className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition-all text-gray-500 hover:text-gray-700'; }
+        if (purchBtn) { purchBtn.className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition-all bg-amber-500 text-white shadow-sm'; }
+        var banner = document.getElementById('mn-dept-banner');
+        if (banner) { banner.className = 'mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-100'; }
+        var desc = document.getElementById('mn-dept-desc');
+        if (desc) desc.innerHTML = '<b>구매부서</b> — 입고수량(톤)과 입고단가(원/kg)를 입력합니다.';
+      }
+      renderManualDetail();
+    }
+
     async function loadManualData() {
       var year = document.getElementById('analysisYear').value;
       var month = document.getElementById('analysisMonth').value.padStart(2, '0');
@@ -5689,7 +5700,7 @@ export function mainPage(): string {
         var results = await Promise.all([
           fetch('/api/manual-input/materials?ym=' + prevYm + '&machine=' + mnMachine).then(function(r){return r.json();}),
           fetch('/api/manual-input/production?ym=' + prevYm + '&machine=' + mnMachine).then(function(r){return r.json();}),
-          fetch('/api/manual-input/saved?ym=' + ym + '&machine=' + mnMachine).then(function(r){return r.json();}),
+          fetch('/api/manual-input/saved?ym=' + ym + '&machine=' + mnMachine + '&dept_type=' + mnDeptType).then(function(r){return r.json();}),
           fetch('/api/exclusion-rules?machine=' + mnMachine).then(function(r){return r.json();}),
           fetch('/api/inventory-stock/closing-map?month=' + prevYm + '&plant=' + getMachinePlant(mnMachine)).then(function(r){return r.json();})
         ]);
@@ -5794,10 +5805,52 @@ export function mainPage(): string {
 
     function renderManualDetail() {
       var tbody = document.getElementById('mn-detail-body');
-      if (!tbody || !mnMaterials.length) {
-        if (tbody) tbody.innerHTML = '<tr><td colspan="20" class="text-center py-8 text-gray-400">자재 데이터가 없습니다. 전월 데이터를 먼저 업로드해주세요.</td></tr>';
+      var thead = document.getElementById('mn-detail-thead');
+      if (!tbody || !thead) return;
+
+      if (!mnMaterials.length) {
+        thead.innerHTML = '';
+        tbody.innerHTML = '<tr><td colspan="20" class="text-center py-8 text-gray-400">자재 데이터가 없습니다. 전월 데이터를 먼저 업로드해주세요.</td></tr>';
         return;
       }
+
+      // 부서별 테이블 헤더 렌더링
+      var prevHeaderLabel = document.getElementById('mn-prev-prod-header') ? document.getElementById('mn-prev-prod-header').textContent : '전월 (실적)';
+      var curHeaderLabel = document.getElementById('mn-cur-prod-header') ? document.getElementById('mn-cur-prod-header').textContent : '당월 (예상)';
+
+      var theadHtml = '';
+      if (mnDeptType === 'production') {
+        // 생산부서: 전월실적(사용량, 원단위, 단가) + 당월예상(사용량, 원단위) + 이슈
+        theadHtml += '<tr class="bg-slate-100 border-b">';
+        theadHtml += '<th colspan="2" class="px-2 py-1.5 text-left font-semibold text-gray-600 border-r border-slate-300" rowspan="2">자재코드 / 자재명</th>';
+        theadHtml += '<th colspan="3" class="px-2 py-1.5 text-center font-semibold text-blue-700 border-r border-slate-300">' + prevHeaderLabel + '</th>';
+        theadHtml += '<th colspan="2" class="px-2 py-1.5 text-center font-semibold text-emerald-700 border-r border-slate-300">' + curHeaderLabel + '</th>';
+        theadHtml += '<th class="px-2 py-1.5 text-center font-semibold text-gray-500 border-l border-slate-300" rowspan="2">이슈사항</th>';
+        theadHtml += '</tr>';
+        theadHtml += '<tr class="bg-slate-50 border-b text-[10px] text-gray-500">';
+        theadHtml += '<th class="px-1.5 py-1 text-right border-l border-slate-200">사용량(kg)</th>';
+        theadHtml += '<th class="px-1.5 py-1 text-right">원단위(kg/톤)</th>';
+        theadHtml += '<th class="px-1.5 py-1 text-right border-r border-slate-300">사용단가(원/kg)</th>';
+        theadHtml += '<th class="px-1.5 py-1 text-right bg-emerald-50/50">사용량(kg)</th>';
+        theadHtml += '<th class="px-1.5 py-1 text-right border-r border-slate-300 bg-emerald-50/50">원단위(kg/톤)</th>';
+        theadHtml += '</tr>';
+      } else {
+        // 구매부서: 전월실적(사용량, 단가) + 당월예상(입고수량, 입고단가) + 이슈
+        theadHtml += '<tr class="bg-slate-100 border-b">';
+        theadHtml += '<th colspan="2" class="px-2 py-1.5 text-left font-semibold text-gray-600 border-r border-slate-300" rowspan="2">자재코드 / 자재명</th>';
+        theadHtml += '<th colspan="3" class="px-2 py-1.5 text-center font-semibold text-blue-700 border-r border-slate-300">' + prevHeaderLabel + '</th>';
+        theadHtml += '<th colspan="2" class="px-2 py-1.5 text-center font-semibold text-amber-700 border-r border-slate-300">' + curHeaderLabel + '</th>';
+        theadHtml += '<th class="px-2 py-1.5 text-center font-semibold text-gray-500 border-l border-slate-300" rowspan="2">이슈사항</th>';
+        theadHtml += '</tr>';
+        theadHtml += '<tr class="bg-slate-50 border-b text-[10px] text-gray-500">';
+        theadHtml += '<th class="px-1.5 py-1 text-right border-l border-slate-200">사용량(kg)</th>';
+        theadHtml += '<th class="px-1.5 py-1 text-right">사용단가(원/kg)</th>';
+        theadHtml += '<th class="px-1.5 py-1 text-right border-r border-slate-300">비용(백만원)</th>';
+        theadHtml += '<th class="px-1.5 py-1 text-right bg-amber-50/50">입고수량(톤)</th>';
+        theadHtml += '<th class="px-1.5 py-1 text-right border-r border-slate-300 bg-amber-50/50">입고단가(원/kg)</th>';
+        theadHtml += '</tr>';
+      }
+      thead.innerHTML = theadHtml;
 
       // 전월 총 생산량(톤)
       var prevProdTon = 0;
@@ -5833,43 +5886,23 @@ export function mainPage(): string {
 
       var html = '';
       var rowIdx = 0;
+      var colSpan = mnDeptType === 'production' ? 8 : 8;
 
       groups.forEach(function(gk) {
         var items = grouped[gk];
         // 그룹 헤더
         html += '<tr class="bg-slate-50 border-t border-slate-200 mn-group-row" data-group="' + gk + '">';
-        html += '<td colspan="2" class="px-2 py-1.5 text-xs font-semibold text-gray-700 border-r border-slate-300">' + gk + '</td>';
-        html += '<td colspan="5" class="border-r border-slate-300"></td>';
-        html += '<td colspan="9" class="border-r border-slate-300"></td>';
-        html += '<td colspan="3" class="border-r border-slate-300"></td>';
-        html += '<td></td>';
+        html += '<td colspan="' + colSpan + '" class="px-2 py-1.5 text-xs font-semibold text-gray-700">' + gk + '</td>';
         html += '</tr>';
 
         items.forEach(function(m) {
           var saved = (mnInputData.materials && mnInputData.materials[m.code]) || {};
           var shortCode = m.code.replace(/^0+/, '') || m.code;
-          // 기말재고 → 기초재고 자동매핑: 저장값 없으면 inventory_stock 기말재고 사용
-          var closingData = null;
-          if (window.mnClosingMap) {
-            closingData = window.mnClosingMap[m.code] || window.mnClosingMap[shortCode] || null;
-            if (!closingData) {
-              // 앞자리 0 제거 후 재매칭
-              for (var cKey in window.mnClosingMap) {
-                if (cKey.replace(/^0+/, '') === shortCode) { closingData = window.mnClosingMap[cKey]; break; }
-              }
-            }
-          }
-          var autoStockQty = (closingData && closingData.closing_qty) ? closingData.closing_qty : 0;
-          var autoStockPrice = (closingData && closingData.closing_price) ? closingData.closing_price : 0;
           var prevUsage = m.usage_qty || 0;
           var prevUC = prevProdTon > 0 ? prevUsage / prevProdTon : 0;
           var prevPrice = m.unit_price || 0;
           var prevCost = prevUsage * prevPrice;
           var prevCostMil = prevCost / 1000000;
-          var prevCostPerTon = prevProdTon > 0 ? prevCost / prevProdTon : 0;
-
-          // 전월 원단위: 사용자 수정 가능 (실적 보정용)
-          var inputPrevUC = saved.prev_uc !== undefined ? saved.prev_uc : (prevUC > 0 ? prevUC.toFixed(1) : '');
 
           var rid = 'mn-r-' + rowIdx;
           var rowCls = m.is_new ? 'bg-amber-50/50 hover:bg-amber-100/40 border-b border-amber-100 mn-mat-row' : 'hover:bg-blue-50/30 border-b border-slate-50 mn-mat-row';
@@ -5877,42 +5910,35 @@ export function mainPage(): string {
           // 자재코드/명
           html += '<td class="px-1.5 py-0.5 text-[10px] font-mono text-gray-400 border-r border-slate-100">' + (m.is_new ? '<span class="text-amber-600 font-semibold">' + shortCode + '</span>' : shortCode) + '</td>';
           html += '<td class="px-1.5 py-0.5 text-xs border-r border-slate-300">' + m.name + (m.is_new ? ' <span class="text-[9px] px-1 py-0.5 bg-amber-100 text-amber-700 rounded font-semibold">NEW</span>' : '') + '</td>';
-          // 전월 실적 5열 (사용량은 표시, 원단위는 자동계산값 표시 + 수정 가능)
-          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-l border-slate-200" id="' + rid + '-pu">' + (prevUsage > 0 ? Math.round(prevUsage).toLocaleString() : '-') + '</td>';
-          html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" step="0.1" class="w-14 text-right text-[10px] font-mono border border-blue-200 rounded px-0.5 py-0.5 bg-blue-50/30 focus:border-blue-400 mn-inp" id="' + rid + '-puc" data-row="' + rowIdx + '" data-field="prev_uc" value="' + inputPrevUC + '" placeholder="-" onchange="onPrevUnitCostInput(' + rowIdx + ')" title="원단위 입력 시 사용량 역산">'
-            + '</td>';
-          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (prevPrice > 0 ? Math.round(prevPrice).toLocaleString() : '-') + '</td>';
-          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (prevCostMil > 0 ? Math.round(prevCostMil).toLocaleString() : '-') + '</td>';
-          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-r border-slate-300">' + (prevCostPerTon > 0 ? Math.round(prevCostPerTon).toLocaleString() : '-') + '</td>';
-          // 당월 예상 9열 (사용량/원단위/입고수량/입고단가/기초재고수량/기초재고단가/사용단가/비용/톤당비용)
-          html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="text" inputmode="numeric" class="w-16 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 bg-emerald-50/30 focus:border-emerald-400 mn-inp comma-fmt" id="' + rid + '-cu" data-row="' + rowIdx + '" data-field="cur_usage" value="' + (saved.cur_usage ? Math.round(saved.cur_usage).toLocaleString() : '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
-            + '</td>';
-          html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="number" step="0.1" class="w-14 text-right text-[10px] font-mono border border-indigo-200 rounded px-0.5 py-0.5 bg-indigo-50/30 focus:border-indigo-400 mn-inp" id="' + rid + '-cuc" data-row="' + rowIdx + '" data-field="cur_uc" data-group="' + (m.group_name || '') + '" value="' + (saved.cur_uc || '') + '" placeholder="-" onchange="onUnitCostInput(' + rowIdx + ')">'
-            + '</td>';
-          html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp comma-fmt" id="' + rid + '-iq" data-row="' + rowIdx + '" data-field="incoming_qty" value="' + (saved.incoming_qty ? Math.round(saved.incoming_qty).toLocaleString() : '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
-            + '</td>';
-          html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp comma-fmt" id="' + rid + '-ip" data-row="' + rowIdx + '" data-field="incoming_price" value="' + (saved.incoming_price ? Math.round(saved.incoming_price).toLocaleString() : '') + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
-            + '</td>';
-          html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp comma-fmt" id="' + rid + '-sq" data-row="' + rowIdx + '" data-field="stock_qty" value="' + (saved.stock_qty ? Math.round(saved.stock_qty).toLocaleString() : (autoStockQty > 0 ? Math.round(autoStockQty).toLocaleString() : '')) + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
-            + '</td>';
-          html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-emerald-200 rounded px-0.5 py-0.5 focus:border-emerald-400 mn-inp comma-fmt" id="' + rid + '-sp" data-row="' + rowIdx + '" data-field="stock_price" value="' + (saved.stock_price ? Math.round(saved.stock_price).toLocaleString() : (autoStockPrice > 0 ? Math.round(autoStockPrice).toLocaleString() : '')) + '" placeholder="-" onchange="calcManualRow(' + rowIdx + ')">'
-            + '</td>';
-          html += '<td class="px-1.5 py-0.5 text-right">'
-            + '<input type="text" inputmode="numeric" class="w-14 text-right text-[10px] font-mono border border-slate-200 rounded px-0.5 py-0.5 bg-gray-100 text-gray-600 mn-inp comma-fmt" id="' + rid + '-up" data-row="' + rowIdx + '" data-field="use_price" value="' + ((saved.use_price || (prevPrice > 0 ? Math.round(prevPrice) : '')) ? Math.round(saved.use_price || prevPrice).toLocaleString() : '') + '" placeholder="-" readonly title="자동계산 (가중평균)">'
-            + '</td>';
-          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs" id="' + rid + '-cc">-</td>';
-          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-r border-slate-300" id="' + rid + '-ct">-</td>';
-          // 손익 효과 3열
-          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs" id="' + rid + '-du">-</td>';
-          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs" id="' + rid + '-dp">-</td>';
-          html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs font-semibold border-r border-slate-300" id="' + rid + '-dt">-</td>';
+
+          if (mnDeptType === 'production') {
+            // ===== 생산부서 모드: 전월(사용량, 원단위, 단가) + 당월(사용량, 원단위) =====
+            // 전월 실적 3열
+            html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-l border-slate-200" id="' + rid + '-pu">' + (prevUsage > 0 ? Math.round(prevUsage).toLocaleString() : '-') + '</td>';
+            html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (prevUC > 0 ? prevUC.toFixed(1) : '-') + '</td>';
+            html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-r border-slate-300">' + (prevPrice > 0 ? Math.round(prevPrice).toLocaleString() : '-') + '</td>';
+            // 당월 예상 2열: 사용량(kg) 입력, 원단위(kg/톤) 입력
+            html += '<td class="px-1.5 py-0.5 text-right bg-emerald-50/20">'
+              + '<input type="text" inputmode="numeric" class="w-20 text-right text-[10px] font-mono border border-emerald-300 rounded px-1 py-1 bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 mn-inp comma-fmt" id="' + rid + '-cu" data-row="' + rowIdx + '" data-field="cur_usage" value="' + (saved.cur_usage ? Math.round(saved.cur_usage).toLocaleString() : '') + '" placeholder="사용량" onchange="calcManualRow(' + rowIdx + ')">'
+              + '</td>';
+            html += '<td class="px-1.5 py-0.5 text-right border-r border-slate-300 bg-emerald-50/20">'
+              + '<input type="number" step="0.1" class="w-16 text-right text-[10px] font-mono border border-emerald-300 rounded px-1 py-1 bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 mn-inp" id="' + rid + '-cuc" data-row="' + rowIdx + '" data-field="cur_uc" data-group="' + (m.group_name || '') + '" value="' + (saved.cur_uc || '') + '" placeholder="원단위" onchange="onUnitCostInput(' + rowIdx + ')">'
+              + '</td>';
+          } else {
+            // ===== 구매부서 모드: 전월(사용량, 단가, 비용) + 당월(입고수량, 입고단가) =====
+            // 전월 실적 3열
+            html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-l border-slate-200">' + (prevUsage > 0 ? Math.round(prevUsage).toLocaleString() : '-') + '</td>';
+            html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs">' + (prevPrice > 0 ? Math.round(prevPrice).toLocaleString() : '-') + '</td>';
+            html += '<td class="px-1.5 py-0.5 text-right font-mono text-xs border-r border-slate-300">' + (prevCostMil > 0 ? prevCostMil.toFixed(1) : '-') + '</td>';
+            // 당월 예상 2열: 입고수량(톤) 입력, 입고단가(원/kg) 입력
+            html += '<td class="px-1.5 py-0.5 text-right bg-amber-50/20">'
+              + '<input type="text" inputmode="numeric" class="w-20 text-right text-[10px] font-mono border border-amber-300 rounded px-1 py-1 bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-200 mn-inp comma-fmt" id="' + rid + '-iq" data-row="' + rowIdx + '" data-field="incoming_qty" value="' + (saved.incoming_qty ? Math.round(saved.incoming_qty).toLocaleString() : '') + '" placeholder="입고수량" onchange="calcManualRow(' + rowIdx + ')">'
+              + '</td>';
+            html += '<td class="px-1.5 py-0.5 text-right border-r border-slate-300 bg-amber-50/20">'
+              + '<input type="text" inputmode="numeric" class="w-20 text-right text-[10px] font-mono border border-amber-300 rounded px-1 py-1 bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-200 mn-inp comma-fmt" id="' + rid + '-ip" data-row="' + rowIdx + '" data-field="incoming_price" value="' + (saved.incoming_price ? Math.round(saved.incoming_price).toLocaleString() : '') + '" placeholder="입고단가" onchange="calcManualRow(' + rowIdx + ')">'
+              + '</td>';
+          }
+
           // 이슈사항
           html += '<td class="px-1.5 py-0.5 border-l border-slate-300">'
             + '<input type="text" class="w-32 text-[10px] border border-slate-200 rounded px-1 py-0.5 focus:border-blue-300 mn-inp" id="' + rid + '-issue" data-row="' + rowIdx + '" data-field="issue" value="' + (saved.issue || '') + '" placeholder="">'
@@ -5923,8 +5949,6 @@ export function mainPage(): string {
       });
 
       tbody.innerHTML = html;
-      // 초기 계산
-      calcManualProfit();
     }
 
     function calcManualRow(idx) {
@@ -6705,52 +6729,51 @@ export function mainPage(): string {
     var mnPreviewData = null; // 엑셀 파싱 결과 임시 저장
 
     function downloadManualTemplate() {
-      // 자재 목록이 있으면 자재코드/자재명 포함, 없으면 빈 양식
+      // 부서별 다른 양식 컬럼 생성
       var rows = [];
       if (mnMaterials && mnMaterials.length) {
         mnMaterials.forEach(function(m) {
-          rows.push({
+          var row = {
             '자재코드': m.code || '',
             '자재명': m.name || '',
-            '자재그룹': m.group_name || '',
-            '원단위(kg/톤)': '',
-            '기초재고수량(톤)': '',
-            '기초재고단가(원/kg)': '',
-            '입고수량(톤)': '',
-            '입고단가(원/kg)': '',
-            '사용량(kg)': '',
-            '이슈사항': ''
-          });
+            '자재그룹': m.group_name || ''
+          };
+          if (mnDeptType === 'production') {
+            row['사용량(kg)'] = '';
+            row['원단위(kg/톤)'] = '';
+          } else {
+            row['입고수량(톤)'] = '';
+            row['입고단가(원/kg)'] = '';
+          }
+          row['이슈사항'] = '';
+          rows.push(row);
         });
       } else {
         // 빈 샘플 행 3개
         for (var i = 0; i < 3; i++) {
-          rows.push({
-            '자재코드': '',
-            '자재명': '',
-            '자재그룹': '',
-            '원단위(kg/톤)': '',
-            '기초재고수량(톤)': '',
-            '기초재고단가(원/kg)': '',
-            '입고수량(톤)': '',
-            '입고단가(원/kg)': '',
-            '사용량(kg)': '',
-            '이슈사항': ''
-          });
+          var row = { '자재코드': '', '자재명': '', '자재그룹': '' };
+          if (mnDeptType === 'production') {
+            row['사용량(kg)'] = '';
+            row['원단위(kg/톤)'] = '';
+          } else {
+            row['입고수량(톤)'] = '';
+            row['입고단가(원/kg)'] = '';
+          }
+          row['이슈사항'] = '';
+          rows.push(row);
         }
       }
       var ws = XLSX.utils.json_to_sheet(rows);
       // 컬럼 너비 설정
       ws['!cols'] = [
-        {wch: 14}, {wch: 25}, {wch: 14}, {wch: 14},
-        {wch: 16}, {wch: 18},
-        {wch: 14}, {wch: 18},
-        {wch: 14}, {wch: 20}
+        {wch: 14}, {wch: 25}, {wch: 14}, {wch: 16}, {wch: 16}, {wch: 20}
       ];
       var wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, '수기입력양식');
+      var sheetName = mnDeptType === 'production' ? '생산_수기입력' : '구매_수기입력';
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
       var today = new Date(); var td = today.getFullYear() + String(today.getMonth()+1).padStart(2,'0') + String(today.getDate()).padStart(2,'0');
-      var filename = '수기입력_양식_' + (mnMachine || 'PM2') + '_' + document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0') + '_' + td + '.xlsx';
+      var deptLabel = mnDeptType === 'production' ? '생산' : '구매';
+      var filename = '수기입력_' + deptLabel + '_' + (mnMachine || 'PM2') + '_' + document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0') + '_' + td + '.xlsx';
       XLSX.writeFile(wb, filename);
     }
 
@@ -7109,13 +7132,21 @@ export function mainPage(): string {
         if (t) production[t] = Number(inp.value) || 0;
       });
 
-      // 자재별 데이터 수집
+      // 자재별 데이터 수집 (부서별로 다른 필드)
       var materials = {};
+      var fieldsToCollect, suffixMap;
+      if (mnDeptType === 'production') {
+        fieldsToCollect = ['cur_usage','cur_uc','issue'];
+        suffixMap = {cur_usage:'-cu',cur_uc:'-cuc',issue:'-issue'};
+      } else {
+        fieldsToCollect = ['incoming_qty','incoming_price','issue'];
+        suffixMap = {incoming_qty:'-iq',incoming_price:'-ip',issue:'-issue'};
+      }
       mnMaterials.forEach(function(m, idx) {
         var rid = 'mn-r-' + idx;
         var row = {};
-        ['prev_uc','cur_uc','cur_usage','incoming_qty','incoming_price','stock_qty','stock_price','use_price','issue'].forEach(function(field) {
-          var suffix = {prev_uc:'-puc',cur_uc:'-cuc',cur_usage:'-cu',incoming_qty:'-iq',incoming_price:'-ip',stock_qty:'-sq',stock_price:'-sp',use_price:'-up',issue:'-issue'}[field];
+        fieldsToCollect.forEach(function(field) {
+          var suffix = suffixMap[field];
           var el = document.getElementById(rid + suffix);
           if (el) {
             var v = el.value;
@@ -7136,7 +7167,7 @@ export function mainPage(): string {
         }
       });
 
-      var payload = { ym: ym, machine: mnMachine, data: { production: production, materials: materials, new_materials: newMaterialsMeta }, saved_by: savedBy };
+      var payload = { ym: ym, machine: mnMachine, dept_type: mnDeptType, data: { production: production, materials: materials, new_materials: newMaterialsMeta }, saved_by: savedBy };
 
       try {
         var res = await fetch('/api/manual-input/save', {
