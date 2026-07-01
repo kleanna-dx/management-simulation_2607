@@ -2403,24 +2403,14 @@ app.get('/api/manual-input/saved', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
   const machine = c.req.query('machine') || ''
-  const deptType = c.req.query('dept_type') || ''
 
   if (!ym || !machine) return c.json({})
 
   try {
-    let result
-    if (deptType) {
-      // 특정 부서 타입 데이터만 조회
-      result = await db.prepare(
-        'SELECT data, saved_by, updated_at, dept_type FROM manual_inputs WHERE ym = ? AND machine_code = ? AND dept_type = ? ORDER BY updated_at DESC LIMIT 1'
-      ).bind(ym, machine, deptType).first()
-    }
-    // dept_type 미지정이거나 결과 없으면 최신 데이터 (하위호환)
-    if (!result) {
-      result = await db.prepare(
-        'SELECT data, saved_by, updated_at, dept_type FROM manual_inputs WHERE ym = ? AND machine_code = ? ORDER BY updated_at DESC LIMIT 1'
-      ).bind(ym, machine).first()
-    }
+    // 항상 최신 통합 레코드 1건 반환 (부서별 merge된 상태)
+    const result = await db.prepare(
+      'SELECT data, saved_by, updated_at, dept_type FROM manual_inputs WHERE ym = ? AND machine_code = ? ORDER BY id DESC LIMIT 1'
+    ).bind(ym, machine).first()
 
     if (result && result.data) {
       return c.json({ data: JSON.parse(result.data as string), saved_by: result.saved_by, updated_at: result.updated_at, dept_type: result.dept_type || 'all' })
@@ -2432,14 +2422,15 @@ app.get('/api/manual-input/saved', async (c) => {
   return c.json({})
 })
 
-// 수기입력 데이터 저장
+// 수기입력 데이터 저장 (부서별 merge 방식)
+// 같은 ym+machine의 최신 레코드에서 기존 데이터를 읽고, 현재 부서 필드만 병합하여 저장
 app.post('/api/manual-input/save', async (c) => {
   const db = c.env.DB
   const { ym, machine, dept_type, data, saved_by } = await c.req.json()
 
   if (!ym || !machine || !data) return c.json({ error: 'ym, machine, data required' }, 400)
 
-  // 테이블 생성 (없으면) - 히스토리 지원 (UNIQUE 제거하고 다건 저장)
+  // 테이블 생성 (없으면)
   await db.prepare(`
     CREATE TABLE IF NOT EXISTS manual_inputs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2453,26 +2444,88 @@ app.post('/api/manual-input/save', async (c) => {
     )
   `).run()
 
-  // 기존 테이블에 dept_type 컬럼이 없으면 추가
+  // 기존 테이블에 dept_type/saved_by 컬럼이 없으면 추가
+  try { await db.prepare(`ALTER TABLE manual_inputs ADD COLUMN dept_type TEXT DEFAULT 'all'`).run() } catch (e) {}
+  try { await db.prepare(`ALTER TABLE manual_inputs ADD COLUMN saved_by TEXT DEFAULT ''`).run() } catch (e) {}
+
+  // === Merge 로직 ===
+  // 1) 같은 ym+machine의 최신 레코드에서 기존 통합 데이터 로드
+  let existingData: any = { production: {}, materials: {}, new_materials: [] }
   try {
-    await db.prepare(`ALTER TABLE manual_inputs ADD COLUMN dept_type TEXT DEFAULT 'all'`).run()
-  } catch (e) {
-    // 이미 있으면 무시
-  }
-  // 기존 테이블에 saved_by 컬럼이 없으면 추가
-  try {
-    await db.prepare(`ALTER TABLE manual_inputs ADD COLUMN saved_by TEXT DEFAULT ''`).run()
-  } catch (e) {
-    // 이미 있으면 무시
+    const existing = await db.prepare(
+      'SELECT data FROM manual_inputs WHERE ym = ? AND machine_code = ? ORDER BY id DESC LIMIT 1'
+    ).bind(ym, machine).first()
+    if (existing && existing.data) {
+      existingData = JSON.parse(existing.data as string)
+    }
+  } catch (e) {}
+
+  // 2) 부서별 필드 정의
+  const productionFields = ['cur_usage', 'cur_uc']  // 생산부서 필드
+  const purchaseFields = ['incoming_qty', 'incoming_price']  // 구매부서 필드
+  const commonFields = ['issue']  // 공통 필드 (마지막 저장자 우선)
+
+  // 3) 기존 materials에 현재 부서 데이터 merge
+  const mergedMaterials = { ...(existingData.materials || {}) }
+  const incomingMaterials = data.materials || {}
+
+  for (const matCode of Object.keys(incomingMaterials)) {
+    const incoming = incomingMaterials[matCode]
+    const existing = mergedMaterials[matCode] || {}
+
+    if (dept_type === 'production') {
+      // 생산부서: cur_usage, cur_uc만 덮어쓰기
+      productionFields.forEach(f => {
+        if (incoming[f] !== undefined) existing[f] = incoming[f]
+      })
+    } else if (dept_type === 'purchase') {
+      // 구매부서: incoming_qty, incoming_price만 덮어쓰기
+      purchaseFields.forEach(f => {
+        if (incoming[f] !== undefined) existing[f] = incoming[f]
+      })
+    } else {
+      // 부서 미지정(all) — 전체 필드 덮어쓰기 (하위호환)
+      Object.assign(existing, incoming)
+    }
+    // 공통 필드(이슈) — 값이 있으면 덮어쓰기
+    commonFields.forEach(f => {
+      if (incoming[f] !== undefined && incoming[f] !== '') existing[f] = incoming[f]
+    })
+
+    mergedMaterials[matCode] = existing
   }
 
-  // INSERT (히스토리 유지를 위해 UPSERT 대신 INSERT)
+  // 4) 생산량 merge: 생산부서가 입력하면 덮어쓰기
+  const mergedProduction = { ...(existingData.production || {}) }
+  if (data.production && Object.keys(data.production).length > 0) {
+    Object.assign(mergedProduction, data.production)
+  }
+
+  // 5) 신규 자재 merge
+  const mergedNewMats = existingData.new_materials || []
+  if (data.new_materials && data.new_materials.length) {
+    data.new_materials.forEach((nm: any) => {
+      const exists = mergedNewMats.some((e: any) => e.code === nm.code)
+      if (!exists) mergedNewMats.push(nm)
+    })
+  }
+
+  // 6) 최종 통합 데이터
+  const mergedData = {
+    production: mergedProduction,
+    materials: mergedMaterials,
+    new_materials: mergedNewMats
+  }
+
+  // 7) INSERT (히스토리 유지)
+  const deptLabel = dept_type || 'all'
+  const savedByLabel = saved_by ? `${saved_by}(${deptLabel === 'production' ? '생산' : deptLabel === 'purchase' ? '구매' : '전체'})` : ''
   await db.prepare(`
     INSERT INTO manual_inputs (ym, machine_code, dept_type, data, saved_by, updated_at)
     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-  `).bind(ym, machine, dept_type || 'all', JSON.stringify(data), saved_by || '').run()
+  `).bind(ym, machine, deptLabel, JSON.stringify(mergedData), savedByLabel).run()
 
-  return c.json({ success: true })
+  return c.json({ success: true, merged: true })
 })
 
 // 수기입력 히스토리 조회

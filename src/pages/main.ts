@@ -5700,7 +5700,7 @@ export function mainPage(): string {
         var results = await Promise.all([
           fetch('/api/manual-input/materials?ym=' + prevYm + '&machine=' + mnMachine).then(function(r){return r.json();}),
           fetch('/api/manual-input/production?ym=' + prevYm + '&machine=' + mnMachine).then(function(r){return r.json();}),
-          fetch('/api/manual-input/saved?ym=' + ym + '&machine=' + mnMachine + '&dept_type=' + mnDeptType).then(function(r){return r.json();}),
+          fetch('/api/manual-input/saved?ym=' + ym + '&machine=' + mnMachine).then(function(r){return r.json();}),
           fetch('/api/exclusion-rules?machine=' + mnMachine).then(function(r){return r.json();}),
           fetch('/api/inventory-stock/closing-map?month=' + prevYm + '&plant=' + getMachinePlant(mnMachine)).then(function(r){return r.json();})
         ]);
