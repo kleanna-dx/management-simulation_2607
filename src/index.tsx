@@ -2463,7 +2463,6 @@ app.post('/api/manual-input/save', async (c) => {
   // 2) 부서별 필드 정의
   const productionFields = ['cur_usage', 'cur_uc']  // 생산부서 필드
   const purchaseFields = ['incoming_qty', 'incoming_price']  // 구매부서 필드
-  const commonFields = ['issue']  // 공통 필드 (마지막 저장자 우선)
 
   // 3) 기존 materials에 현재 부서 데이터 merge
   const mergedMaterials = { ...(existingData.materials || {}) }
@@ -2487,10 +2486,23 @@ app.post('/api/manual-input/save', async (c) => {
       // 부서 미지정(all) — 전체 필드 덮어쓰기 (하위호환)
       Object.assign(existing, incoming)
     }
-    // 공통 필드(이슈) — 값이 있으면 덮어쓰기
-    commonFields.forEach(f => {
-      if (incoming[f] !== undefined && incoming[f] !== '') existing[f] = incoming[f]
-    })
+    // 이슈사항 — 기존 값에 줄바꿈으로 append (부서 라벨 포함)
+    if (incoming.issue !== undefined && incoming.issue !== '') {
+      const deptLabel = dept_type === 'production' ? '[생산]' : dept_type === 'purchase' ? '[구매]' : ''
+      const newIssue = deptLabel ? `${deptLabel} ${incoming.issue}` : incoming.issue
+      if (existing.issue && existing.issue !== '') {
+        // 같은 부서 이슈가 이미 있으면 해당 라인 교체, 없으면 append
+        if (deptLabel) {
+          const lines = existing.issue.split('\n').filter((l: string) => !l.startsWith(deptLabel))
+          lines.push(newIssue)
+          existing.issue = lines.join('\n')
+        } else {
+          existing.issue = existing.issue + '\n' + newIssue
+        }
+      } else {
+        existing.issue = newIssue
+      }
+    }
 
     mergedMaterials[matCode] = existing
   }

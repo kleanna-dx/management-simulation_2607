@@ -5939,9 +5939,30 @@ export function mainPage(): string {
               + '</td>';
           }
 
-          // 이슈사항
-          html += '<td class="px-1.5 py-0.5 border-l border-slate-300">'
-            + '<input type="text" class="w-32 text-[10px] border border-slate-200 rounded px-1 py-0.5 focus:border-blue-300 mn-inp" id="' + rid + '-issue" data-row="' + rowIdx + '" data-field="issue" value="' + (saved.issue || '') + '" placeholder="">'
+          // 이슈사항 — 자기 부서 이슈만 편집 가능, 타 부서 이슈는 읽기전용 표시
+          var rawIssue = (saved.issue || '');
+          var myPrefix = mnDeptType === 'production' ? '[생산]' : '[구매]';
+          var otherPrefix = mnDeptType === 'production' ? '[구매]' : '[생산]';
+          var issueLines = rawIssue ? rawIssue.split(String.fromCharCode(10)) : [];
+          if (issueLines.length <= 1) issueLines = rawIssue.split('\\n');
+          var myIssue = '';
+          var otherIssue = '';
+          issueLines.forEach(function(line) {
+            var trimmed = line.trim();
+            if (trimmed.startsWith(myPrefix)) {
+              myIssue = trimmed.substring(myPrefix.length).trim();
+            } else if (trimmed.startsWith(otherPrefix)) {
+              otherIssue = trimmed;
+            } else if (trimmed) {
+              // 접두사 없는 레거시 이슈 → 현재 부서 것으로 취급
+              if (!myIssue) myIssue = trimmed;
+            }
+          });
+          html += '<td class="px-1.5 py-0.5 border-l border-slate-300">';
+          if (otherIssue) {
+            html += '<div class="text-[9px] text-gray-400 mb-0.5 truncate" title="' + otherIssue.replace(/"/g,'&quot;') + '">' + otherIssue + '</div>';
+          }
+          html += '<input type="text" class="w-36 text-[10px] border border-slate-200 rounded px-1 py-0.5 focus:border-blue-300 mn-inp" id="' + rid + '-issue" data-row="' + rowIdx + '" data-field="issue" value="' + myIssue.replace(/"/g,'&quot;') + '" placeholder="이슈 입력">'
             + '</td>';
           html += '</tr>';
           rowIdx++;
