@@ -120,8 +120,8 @@ export function mainPage(): string {
               <option value="2025">2025년</option>
             </select>
             <select id="analysisMonth" class="bg-transparent border-none text-sm font-semibold text-gray-700 focus:ring-0 pr-6 cursor-pointer" onchange="updatePeriodHint()">
-              <option value="6" selected>6월</option>
-              <option value="5">5월</option>
+              <option value="6">6월</option>
+              <option value="5" selected>5월</option>
               <option value="4">4월</option>
               <option value="3">3월</option>
               <option value="2">2월</option>

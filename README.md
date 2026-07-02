@@ -7,7 +7,7 @@
 
 ---
 
-## 탭 구성 (7개)
+## 탭 구성 (8개)
 
 | 순서 | 탭명 | 설명 |
 |------|------|------|
@@ -18,6 +18,7 @@
 | 5 | 데이터 조회 | raw_records 원본 데이터 검색/조회 |
 | 6 | 상세 분석표 | 전체 항목별 수량/단가/원가 비교 테이블 |
 | 7 | 기준정보 | 자재구분 매핑, 제품분류 기준정보 관리 |
+| 8 | **통합 시뮬레이션** | 🆕 생산량+지종믹스+자재구성을 한곳에서 통합 조정하여 원단위 변동 시뮬레이션 |
 
 ---
 
@@ -237,9 +238,95 @@ curl "http://localhost:3000/api/forecast/unit-by-product?ym=202605&machine=PM2"
 
 ---
 
+## 통합 시뮬레이션 (Unified Simulation) 🆕
+
+### 개요
+한 화면에서 **생산량 변경 + 지종 믹스 조정 + 자재 구성 변경**을 모두 처리하는 통합 시뮬레이션 기능입니다.
+
+### 3단계 워크플로우
+
+**Step 1. 생산량 설정**
+- 전월 실적 자동 로드 (톤)
+- 차월 목표 생산량 직접 입력 가능
+
+**Step 2. 지종 믹스 조정**
+- 현재 지종별 생산량 표시 (SC저평량, SC고평량, ACB, KB 등)
+- 각 지종의 톤수를 직접 수정하여 믹스 비율 변경
+- 합계 자동 계산
+
+**Step 3. 자재 구성 변경**
+- **완전 대체 (Replace)**: 기존 자재를 다른 자재로 100% 대체
+- **비율 변경 (Ratio)**: 기존 자재 사용 비율 조정 + 잔여분 타 자재 배분
+- **신규 추가 (Add)**: 현재 미사용 자재를 새로 추가
+
+### API 엔드포인트
+
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/api/simulation/materials-for-mix?ym=&machine=` | 현재 자재 목록 + 대체 후보 조회 |
+| POST | `/api/simulation/material-mix` | 통합 시뮬레이션 실행 |
+
+**POST /api/simulation/material-mix Request:**
+```json
+{
+  "ym": "202605",
+  "machine": "PM2",
+  "production_ton": 10000,
+  "changes": [
+    { "type": "replace", "source_code": "1200013", "target_code": "1200000", "target_name": "화이트레저(B)", "target_price": 328 },
+    { "type": "ratio", "source_code": "1200003", "ratio": 70, "target_code": "1200021", "target_name": "목분", "target_price": 150 },
+    { "type": "add", "target_code": "NEW001", "target_name": "신규약품", "qty_kg": 50000, "target_price": 500 }
+  ]
+}
+```
+
+**Response (summary):**
+```json
+{
+  "summary": {
+    "base_production_ton": 8368.2,
+    "sim_production_ton": 10000,
+    "base_total_cost": 2738802450,
+    "sim_total_cost": 2873522511,
+    "base_unit_cost_1000won": 327.3,
+    "sim_unit_cost_1000won": 287.4,
+    "unit_cost_diff": -39.9,
+    "savings_million": -135
+  },
+  "changes": [...],
+  "details": [...]
+}
+```
+
+### 핵심 개념
+- **원단위** = 비용원단위 (천원/톤) = total_material_cost ÷ production_ton ÷ 1000
+- **사용단가** = 가중평균(기초재고금액 + 입고금액) ÷ (기초재고수량 + 입고수량) — 기존 '계산결과' 탭에서 구현
+- **시뮬 변수**: 지종(product mix), 호기(machine), 자재(material composition)
+
+---
+
+## Phase 확장 아키텍처 (Spring Boot 마이그레이션 대비)
+
+`module-materialcost/ARCHITECTURE.md` 참조
+
+| Phase | 비용 유형 | 상태 |
+|-------|----------|------|
+| Phase 1 | MATERIAL (원부자재) | ✅ 구현 완료 |
+| Phase 2 | ENERGY (에너지) | 📋 설계 완료 |
+| Phase 3 | LABOR (인건비) | 📋 설계 완료 |
+| Phase 4 | OVERHEAD (경비) | 📋 설계 완료 |
+
+주요 엔티티: `CostItem`, `CostRecord`, `SimScenario`
+
+---
+
 ## 향후 개발 계획
-- [ ] 차월 입고단가/기초재고단가 → 가중평균 사용단가 자동 산출
+- [x] 통합 시뮬레이션 (생산량+지종+자재 한 화면) ✅
+- [x] 자재 구성 변경 시뮬레이션 (replace/ratio/add) ✅
+- [x] Phase 확장 아키텍처 설계 ✅
+- [ ] M+1 rolling: 차월 입고단가/기초재고단가 → 가중평균 사용단가 자동 산출
+- [ ] 시뮬레이션 시나리오 저장/비교 (DB 영속)
 - [ ] 3개월 추이 트렌드 분석
-- [ ] 시뮬레이션 시나리오 저장/비교
+- [ ] 에너지(Phase 2) 비용 통합
 - [ ] 사용자 인증 (Cloudflare Access)
 - [ ] Cloudflare Pages 프로덕션 배포
