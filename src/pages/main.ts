@@ -109,7 +109,7 @@ export function mainPage(): string {
             <i class="fas fa-cog mr-1.5"></i>기준정보
           </button>
           <button onclick="switchTab('simflow')" id="tab-simflow" class="pill-tab pill-tab-inactive">
-            <i class="fas fa-project-diagram mr-1.5"></i>손익 플로우 차트
+            <i class="fas fa-flask mr-1.5"></i>통합 시뮬레이션
           </button>
         </div>
         <!-- Filters -->
@@ -1675,35 +1675,158 @@ export function mainPage(): string {
 
     <!-- ========== 시뮬레이션 플로우 탭 ========== -->
     <div id="content-simflow" class="hidden fade-in">
+      <!-- 통합 시뮬레이션 헤더 -->
       <div class="card px-5 py-4 mb-4">
         <div class="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-project-diagram text-indigo-500 mr-1.5"></i>생산량 변동 시뮬레이션 플로우</h3>
-            <p class="text-[11px] text-gray-400 mt-1">생산량 증감에 따른 원단위·비용·손익 변수들의 연쇄 변화를 시각화합니다.</p>
+            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-flask text-indigo-500 mr-1.5"></i>통합 시뮬레이션</h3>
+            <p class="text-[11px] text-gray-400 mt-1">생산량 조절 · 지종 믹스 · 호기 배분 · 자재 구성 변경을 한 화면에서 시뮬레이션합니다.</p>
           </div>
           <div class="flex items-center gap-3">
             <div class="flex items-center gap-2">
               <label class="text-xs text-gray-500">호기:</label>
-              <select id="sf-machine" class="text-xs border border-slate-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-indigo-200" onchange="initSimFlow()">
+              <select id="usim-machine" class="text-xs border border-slate-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-indigo-200" onchange="loadUnifiedSim()">
                 <option value="PM2">PM2</option>
                 <option value="PM3" selected>PM3</option>
               </select>
             </div>
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-gray-500">생산량 변동:</label>
-              <input type="range" id="sf-prod-slider" min="-30" max="30" value="0" step="1" class="w-40 h-2 accent-indigo-500" oninput="onSimFlowSliderChange()">
-              <span id="sf-prod-pct" class="text-xs font-bold text-indigo-600 w-12 text-center">0%</span>
-            </div>
-            <button onclick="resetSimFlow()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-gray-600 hover:bg-slate-200 transition font-medium"><i class="fas fa-undo mr-1"></i>초기화</button>
+            <button onclick="loadUnifiedSim()" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition font-medium shadow-sm"><i class="fas fa-sync-alt mr-1"></i>데이터 로드</button>
+            <button onclick="resetUnifiedSim()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-gray-600 hover:bg-slate-200 transition font-medium"><i class="fas fa-undo mr-1"></i>초기화</button>
           </div>
         </div>
       </div>
 
-      <!-- Flow Canvas -->
-      <div class="card overflow-hidden" style="height: calc(100vh - 200px); min-height: 600px;">
-        <div id="sf-canvas" class="w-full h-full relative bg-gradient-to-br from-slate-50 via-white to-indigo-50/30" style="overflow:auto;">
-          <svg id="sf-svg" width="1400" height="800" class="absolute top-0 left-0"></svg>
-          <div id="sf-nodes" class="absolute top-0 left-0 w-full h-full pointer-events-none"></div>
+      <!-- Step 1~3 조건 설정 영역 -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+        <!-- Step 1: 호기/생산량 -->
+        <div class="card px-4 py-3">
+          <h4 class="text-xs font-semibold text-gray-600 mb-3 flex items-center"><span class="w-5 h-5 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-[10px] font-bold mr-2">1</span>생산량 조절</h4>
+          <div class="space-y-2" id="usim-production-inputs">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] text-gray-500">전월 실적:</span>
+              <span class="text-[11px] font-semibold text-gray-700" id="usim-prev-prod">-</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-[11px] text-gray-600 w-20">차월 생산량:</label>
+              <input type="text" id="usim-prod-ton" class="flex-1 text-xs border border-slate-200 rounded px-2 py-1.5 text-right font-mono focus:ring-1 focus:ring-indigo-200" placeholder="톤" oninput="onUsimProdChange()">
+              <span class="text-[10px] text-gray-400">톤</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] text-gray-400">변동률:</span>
+              <span class="text-[11px] font-semibold" id="usim-prod-pct">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: 지종 믹스 -->
+        <div class="card px-4 py-3">
+          <h4 class="text-xs font-semibold text-gray-600 mb-3 flex items-center"><span class="w-5 h-5 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-[10px] font-bold mr-2">2</span>지종 믹스 (생산 비중)</h4>
+          <div class="space-y-1.5" id="usim-grade-mix">
+            <div class="text-[10px] text-gray-400 italic">데이터 로드 후 표시됩니다</div>
+          </div>
+          <div class="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+            <span class="text-[10px] text-gray-400">합계:</span>
+            <span class="text-[11px] font-bold" id="usim-grade-total">100%</span>
+          </div>
+        </div>
+
+        <!-- Step 3: 자재 구성 변경 -->
+        <div class="card px-4 py-3">
+          <h4 class="text-xs font-semibold text-gray-600 mb-3 flex items-center"><span class="w-5 h-5 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-[10px] font-bold mr-2">3</span>자재 구성 변경</h4>
+          <div class="space-y-2" id="usim-mat-changes">
+            <div class="text-[10px] text-gray-400 italic">아래 자재 목록에서 변경사항을 추가하세요</div>
+          </div>
+          <div class="mt-2 flex gap-2">
+            <button onclick="openMatChangeModal('replace')" class="flex-1 text-[10px] px-2 py-1.5 rounded bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200 transition font-medium"><i class="fas fa-exchange-alt mr-1"></i>대체</button>
+            <button onclick="openMatChangeModal('ratio')" class="flex-1 text-[10px] px-2 py-1.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition font-medium"><i class="fas fa-percentage mr-1"></i>비율</button>
+            <button onclick="openMatChangeModal('add')" class="flex-1 text-[10px] px-2 py-1.5 rounded bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 transition font-medium"><i class="fas fa-plus mr-1"></i>신규</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 실행 버튼 -->
+      <div class="flex items-center justify-center mb-4">
+        <button onclick="runUnifiedSim()" class="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold text-sm shadow-lg hover:shadow-xl hover:from-indigo-700 hover:to-purple-700 transition-all transform hover:scale-[1.02]">
+          <i class="fas fa-play mr-2"></i>시뮬레이션 실행
+        </button>
+      </div>
+
+      <!-- 결과 영역 -->
+      <div id="usim-result-area" class="hidden space-y-4">
+        <!-- 요약 카드 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div class="card px-4 py-3 text-center">
+            <div class="text-[10px] text-gray-400 uppercase font-semibold">전월 원단위</div>
+            <div class="text-lg font-bold text-gray-700 mt-1" id="usim-r-base-uc">-</div>
+            <div class="text-[10px] text-gray-400">천원/톤</div>
+          </div>
+          <div class="card px-4 py-3 text-center">
+            <div class="text-[10px] text-gray-400 uppercase font-semibold">시뮬 원단위</div>
+            <div class="text-lg font-bold text-indigo-600 mt-1" id="usim-r-sim-uc">-</div>
+            <div class="text-[10px] text-gray-400">천원/톤</div>
+          </div>
+          <div class="card px-4 py-3 text-center">
+            <div class="text-[10px] text-gray-400 uppercase font-semibold">원단위 변화</div>
+            <div class="text-lg font-bold mt-1" id="usim-r-uc-diff">-</div>
+            <div class="text-[10px] text-gray-400">천원/톤</div>
+          </div>
+          <div class="card px-4 py-3 text-center">
+            <div class="text-[10px] text-gray-400 uppercase font-semibold">절감/악화 금액</div>
+            <div class="text-lg font-bold mt-1" id="usim-r-savings">-</div>
+            <div class="text-[10px] text-gray-400">백만원</div>
+          </div>
+        </div>
+
+        <!-- 변경사항 요약 -->
+        <div class="card px-4 py-3" id="usim-changes-summary-card">
+          <h4 class="text-xs font-semibold text-gray-600 mb-2"><i class="fas fa-list-check text-amber-500 mr-1.5"></i>적용된 변경사항</h4>
+          <div id="usim-changes-summary" class="space-y-1"></div>
+        </div>
+
+        <!-- 상세 테이블 -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <h4 class="text-xs font-semibold text-gray-600"><i class="fas fa-table text-slate-400 mr-1.5"></i>자재별 비교 상세</h4>
+            <button onclick="downloadUsimExcel()" class="text-[10px] px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"><i class="fas fa-download mr-1"></i>엑셀 다운로드</button>
+          </div>
+          <div class="overflow-x-auto" style="max-height:400px">
+            <table class="w-full text-[11px] border-collapse whitespace-nowrap">
+              <thead class="sticky top-0 z-10 bg-slate-50">
+                <tr class="border-b">
+                  <th class="px-2 py-2 text-left font-semibold text-gray-600">자재명</th>
+                  <th class="px-2 py-2 text-left font-semibold text-gray-500 text-[10px]">그룹</th>
+                  <th class="px-2 py-2 text-right font-semibold text-blue-600">전월 사용량(kg)</th>
+                  <th class="px-2 py-2 text-right font-semibold text-blue-600">전월 단가(원/kg)</th>
+                  <th class="px-2 py-2 text-right font-semibold text-blue-600">전월 비용(백만원)</th>
+                  <th class="px-2 py-2 text-right font-semibold text-indigo-600">시뮬 사용량(kg)</th>
+                  <th class="px-2 py-2 text-right font-semibold text-indigo-600">시뮬 단가(원/kg)</th>
+                  <th class="px-2 py-2 text-right font-semibold text-indigo-600">시뮬 비용(백만원)</th>
+                  <th class="px-2 py-2 text-right font-semibold text-amber-600">차이(백만원)</th>
+                  <th class="px-2 py-2 text-center font-semibold text-gray-500">상태</th>
+                </tr>
+              </thead>
+              <tbody id="usim-detail-body"></tbody>
+              <tfoot id="usim-detail-foot" class="bg-slate-50 font-semibold"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 자재 구성 변경 모달 -->
+      <div id="usim-mat-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div class="bg-white rounded-xl shadow-2xl w-[600px] max-h-[80vh] overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-700" id="usim-modal-title">자재 구성 변경</h3>
+            <button onclick="closeMatChangeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+          </div>
+          <div class="px-5 py-4 overflow-y-auto" style="max-height:calc(80vh - 140px)">
+            <!-- 모달 내용은 JS에서 동적 생성 -->
+            <div id="usim-modal-body"></div>
+          </div>
+          <div class="px-5 py-3 border-t border-slate-100 flex justify-end gap-2">
+            <button onclick="closeMatChangeModal()" class="px-4 py-2 text-xs rounded-lg bg-slate-100 text-gray-600 hover:bg-slate-200">취소</button>
+            <button onclick="applyMatChange()" class="px-4 py-2 text-xs rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-medium shadow-sm">적용</button>
+          </div>
         </div>
       </div>
     </div><!-- /content-simflow -->
@@ -1795,7 +1918,7 @@ export function mainPage(): string {
         switchProfitSub(subId2);
       } else if (tab === 'simflow') {
         document.getElementById('content-simflow')?.classList.remove('hidden');
-        initSimFlow();
+        loadUnifiedSim();
       } else {
         document.getElementById('content-' + tab)?.classList.remove('hidden');
       }
@@ -6499,7 +6622,455 @@ export function mainPage(): string {
       XLSX.writeFile(wb, filename);
     }
 
-    // ====== 시뮬레이션 플로우 (React Flow 스타일) ======
+    // ====== 통합 시뮬레이션 (Unified Simulation) ======
+    var usimData = null; // 기준 데이터 { current, alternatives, master_raw, master_sub }
+    var usimPrevProd = 0; // 전월 생산량 (톤)
+    var usimMatChanges = []; // 적용할 자재 변경 목록
+    var usimGradeMix = {}; // 지종별 비율
+    var usimCurrentModalType = ''; // 현재 모달 타입
+
+    function onUsimRatioSlide(val) {
+      document.getElementById('usim-ratio-val').textContent = val + '%';
+    }
+
+    async function loadUnifiedSim() {
+      var machine = document.getElementById('usim-machine').value;
+      var year = document.getElementById('analysisYear').value;
+      var month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      var ym = year + month;
+
+      try {
+        var res = await fetch('/api/simulation/materials-for-mix?ym=' + ym + '&machine=' + machine);
+        usimData = await res.json();
+
+        // 전월 생산량 계산
+        var prodRes = await fetch('/api/simulation/profit-base?ym=' + ym + '&machine=' + machine);
+        var prodData = await prodRes.json();
+        usimPrevProd = 0;
+        if (prodData.rows) {
+          prodData.rows.forEach(function(r) {
+            if (r.machine_code === machine) usimPrevProd += (r.cur_production_ton || 0);
+          });
+        }
+
+        // Step 1: 생산량 표시
+        document.getElementById('usim-prev-prod').textContent = Math.round(usimPrevProd).toLocaleString() + ' 톤';
+        document.getElementById('usim-prod-ton').value = Math.round(usimPrevProd).toLocaleString();
+
+        // Step 2: 지종 믹스 로드
+        usimGradeMix = {};
+        if (prodData.rows) {
+          prodData.rows.filter(function(r) { return r.machine_code === machine; }).forEach(function(r) {
+            usimGradeMix[r.product_level2_name] = r.cur_production_ton || 0;
+          });
+        }
+        renderUsimGradeMix();
+
+        // 결과 초기화
+        document.getElementById('usim-result-area').classList.add('hidden');
+        usimMatChanges = [];
+        renderUsimMatChanges();
+
+      } catch(e) {
+        console.error('Unified sim load error:', e);
+      }
+    }
+
+    function renderUsimGradeMix() {
+      var container = document.getElementById('usim-grade-mix');
+      if (!container) return;
+      var total = 0;
+      Object.values(usimGradeMix).forEach(function(v) { total += v; });
+
+      var html = '';
+      Object.keys(usimGradeMix).sort().forEach(function(g) {
+        var pct = total > 0 ? (usimGradeMix[g] / total * 100) : 0;
+        html += '<div class="flex items-center gap-2">';
+        html += '<span class="text-[11px] text-gray-600 w-16 truncate" title="' + g + '">' + g + '</span>';
+        html += '<input type="number" data-grade="' + g + '" class="usim-grade-input flex-1 text-[11px] border border-slate-200 rounded px-1.5 py-1 text-right font-mono w-16" value="' + Math.round(usimGradeMix[g]) + '" oninput="onUsimGradeChange(this)" step="100">';
+        html += '<span class="text-[10px] text-gray-400 w-8">톤</span>';
+        html += '<span class="text-[10px] text-gray-400 w-10 text-right">' + pct.toFixed(1) + '%</span>';
+        html += '</div>';
+      });
+      container.innerHTML = html;
+      updateUsimGradeTotal();
+    }
+
+    function onUsimGradeChange(el) {
+      var grade = el.getAttribute('data-grade');
+      usimGradeMix[grade] = Number(el.value) || 0;
+      updateUsimGradeTotal();
+    }
+
+    function updateUsimGradeTotal() {
+      var total = 0;
+      Object.values(usimGradeMix).forEach(function(v) { total += v; });
+      var el = document.getElementById('usim-grade-total');
+      if (el) el.textContent = Math.round(total).toLocaleString() + ' 톤';
+      // 생산량도 연동
+      var prodEl = document.getElementById('usim-prod-ton');
+      if (prodEl) prodEl.value = Math.round(total).toLocaleString();
+      onUsimProdChange();
+    }
+
+    function onUsimProdChange() {
+      var val = parseComma(document.getElementById('usim-prod-ton').value);
+      var pctEl = document.getElementById('usim-prod-pct');
+      if (usimPrevProd > 0 && val > 0) {
+        var pct = ((val - usimPrevProd) / usimPrevProd * 100);
+        var color = pct > 0 ? 'text-emerald-600' : pct < 0 ? 'text-red-600' : 'text-gray-500';
+        pctEl.className = 'text-[11px] font-semibold ' + color;
+        pctEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
+      } else {
+        pctEl.textContent = '-';
+      }
+    }
+
+    function openMatChangeModal(type) {
+      usimCurrentModalType = type;
+      var modal = document.getElementById('usim-mat-modal');
+      var title = document.getElementById('usim-modal-title');
+      var body = document.getElementById('usim-modal-body');
+      modal.classList.remove('hidden');
+
+      if (type === 'replace') {
+        title.innerHTML = '<i class="fas fa-exchange-alt text-orange-500 mr-2"></i>자재 대체 (기존 → 새 자재)';
+        body.innerHTML = renderReplaceForm();
+      } else if (type === 'ratio') {
+        title.innerHTML = '<i class="fas fa-percentage text-blue-500 mr-2"></i>자재 비율 변경';
+        body.innerHTML = renderRatioForm();
+      } else if (type === 'add') {
+        title.innerHTML = '<i class="fas fa-plus text-green-500 mr-2"></i>신규 자재 추가';
+        body.innerHTML = renderAddForm();
+      }
+    }
+
+    function closeMatChangeModal() {
+      document.getElementById('usim-mat-modal').classList.add('hidden');
+    }
+
+    function renderReplaceForm() {
+      var options = '';
+      if (usimData && usimData.current) {
+        usimData.current.forEach(function(m) {
+          options += '<option value="' + m.material_code + '" data-name="' + m.material_name + '" data-price="' + Math.round(m.unit_price) + '">' + m.material_name + ' (' + Math.round(m.unit_price) + '원/kg)</option>';
+        });
+      }
+      var altOptions = '<option value="">-- 직접 입력 --</option>';
+      if (usimData && usimData.alternatives) {
+        usimData.alternatives.forEach(function(m) {
+          altOptions += '<option value="' + m.material_code + '" data-name="' + m.material_name + '" data-price="' + Math.round(m.unit_price) + '">' + m.material_name + ' (' + Math.round(m.unit_price) + '원/kg)</option>';
+        });
+      }
+      if (usimData && usimData.master_raw) {
+        usimData.master_raw.forEach(function(m) {
+          altOptions += '<option value="' + m.material_code + '" data-name="' + m.material_name + '" data-price="0">[마스터] ' + m.material_name + '</option>';
+        });
+      }
+
+      return '<div class="space-y-4">' +
+        '<div><label class="text-xs font-semibold text-gray-600 block mb-1">대체 대상 (기존 자재)</label>' +
+        '<select id="usim-rep-source" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2" onchange="onRepSourceChange()">' + options + '</select></div>' +
+        '<div class="text-center"><i class="fas fa-arrow-down text-orange-400 text-lg"></i></div>' +
+        '<div><label class="text-xs font-semibold text-gray-600 block mb-1">대체 자재 (선택 또는 직접입력)</label>' +
+        '<select id="usim-rep-target-sel" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 mb-2" onchange="onRepTargetSelect()">' + altOptions + '</select>' +
+        '<div class="grid grid-cols-2 gap-2">' +
+        '<div><label class="text-[10px] text-gray-500">자재코드</label><input id="usim-rep-target-code" class="w-full text-xs border rounded px-2 py-1.5" placeholder="코드"></div>' +
+        '<div><label class="text-[10px] text-gray-500">자재명</label><input id="usim-rep-target-name" class="w-full text-xs border rounded px-2 py-1.5" placeholder="자재명"></div>' +
+        '</div>' +
+        '<div class="mt-2"><label class="text-[10px] text-gray-500">대체 자재 단가 (원/kg)</label><input id="usim-rep-target-price" type="number" class="w-full text-xs border rounded px-2 py-1.5 font-mono" placeholder="단가"></div>' +
+        '</div></div>';
+    }
+
+    function renderRatioForm() {
+      var options = '';
+      if (usimData && usimData.current) {
+        usimData.current.forEach(function(m) {
+          options += '<option value="' + m.material_code + '" data-name="' + m.material_name + '" data-price="' + Math.round(m.unit_price) + '" data-qty="' + Math.round(m.usage_qty) + '">' + m.material_name + ' (현재 ' + Math.round(m.usage_qty).toLocaleString() + 'kg)</option>';
+        });
+      }
+      var altOptions = '<option value="">-- 없음 (단순 축소) --</option>';
+      if (usimData && usimData.current) {
+        usimData.current.forEach(function(m) {
+          altOptions += '<option value="' + m.material_code + '" data-name="' + m.material_name + '" data-price="' + Math.round(m.unit_price) + '">' + m.material_name + '</option>';
+        });
+      }
+      if (usimData && usimData.alternatives) {
+        usimData.alternatives.forEach(function(m) {
+          altOptions += '<option value="' + m.material_code + '" data-name="' + m.material_name + '" data-price="' + Math.round(m.unit_price) + '">[타호기] ' + m.material_name + '</option>';
+        });
+      }
+
+      return '<div class="space-y-4">' +
+        '<div><label class="text-xs font-semibold text-gray-600 block mb-1">비율 변경 대상</label>' +
+        '<select id="usim-ratio-source" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2">' + options + '</select></div>' +
+        '<div><label class="text-xs font-semibold text-gray-600 block mb-1">유지 비율 (%)</label>' +
+        '<div class="flex items-center gap-2"><input id="usim-ratio-pct" type="range" min="10" max="100" value="70" class="flex-1 h-2 accent-blue-500" oninput="onUsimRatioSlide(this.value)">' +
+        '<span id="usim-ratio-val" class="text-xs font-bold text-blue-600 w-10">70%</span></div>' +
+        '<p class="text-[10px] text-gray-400 mt-1">예: 70% = 현재 사용량의 70%만 유지, 나머지 30%를 아래 자재로 이동</p></div>' +
+        '<div><label class="text-xs font-semibold text-gray-600 block mb-1">나머지 물량 배분 대상</label>' +
+        '<select id="usim-ratio-target" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2">' + altOptions + '</select>' +
+        '<div class="mt-2"><label class="text-[10px] text-gray-500">배분 대상 단가 (원/kg, 신규 시)</label><input id="usim-ratio-target-price" type="number" class="w-full text-xs border rounded px-2 py-1.5 font-mono" placeholder="기존 단가 자동 적용"></div>' +
+        '</div></div>';
+    }
+
+    function renderAddForm() {
+      var altOptions = '<option value="">-- 직접 입력 --</option>';
+      if (usimData && usimData.master_raw) {
+        usimData.master_raw.forEach(function(m) {
+          altOptions += '<option value="' + m.material_code + '" data-name="' + m.material_name + '">[마스터 원재료] ' + m.material_name + '</option>';
+        });
+      }
+      if (usimData && usimData.master_sub) {
+        usimData.master_sub.forEach(function(m) {
+          altOptions += '<option value="' + m.material_code + '" data-name="' + m.material_name + '">[마스터 부재료] ' + m.material_name + '</option>';
+        });
+      }
+      if (usimData && usimData.alternatives) {
+        usimData.alternatives.forEach(function(m) {
+          altOptions += '<option value="' + m.material_code + '" data-name="' + m.material_name + '" data-price="' + Math.round(m.unit_price) + '">[타호기] ' + m.material_name + ' (' + Math.round(m.unit_price) + '원)</option>';
+        });
+      }
+
+      return '<div class="space-y-4">' +
+        '<div><label class="text-xs font-semibold text-gray-600 block mb-1">추가할 자재 선택</label>' +
+        '<select id="usim-add-sel" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2" onchange="onAddSelect()">' + altOptions + '</select></div>' +
+        '<div class="grid grid-cols-2 gap-2">' +
+        '<div><label class="text-[10px] text-gray-500">자재코드</label><input id="usim-add-code" class="w-full text-xs border rounded px-2 py-1.5" placeholder="코드"></div>' +
+        '<div><label class="text-[10px] text-gray-500">자재명</label><input id="usim-add-name" class="w-full text-xs border rounded px-2 py-1.5" placeholder="자재명"></div>' +
+        '</div>' +
+        '<div class="grid grid-cols-2 gap-2">' +
+        '<div><label class="text-[10px] text-gray-500">사용량 (kg)</label><input id="usim-add-qty" type="number" class="w-full text-xs border rounded px-2 py-1.5 font-mono" placeholder="kg"></div>' +
+        '<div><label class="text-[10px] text-gray-500">단가 (원/kg)</label><input id="usim-add-price" type="number" class="w-full text-xs border rounded px-2 py-1.5 font-mono" placeholder="단가"></div>' +
+        '</div>' +
+        '<div><label class="text-[10px] text-gray-500">자재그룹</label><input id="usim-add-group" class="w-full text-xs border rounded px-2 py-1.5" placeholder="그룹명 (선택)"></div>' +
+        '</div>';
+    }
+
+    function onRepSourceChange() { /* placeholder */ }
+    function onRepTargetSelect() {
+      var sel = document.getElementById('usim-rep-target-sel');
+      var opt = sel.options[sel.selectedIndex];
+      if (opt.value) {
+        document.getElementById('usim-rep-target-code').value = opt.value;
+        document.getElementById('usim-rep-target-name').value = opt.getAttribute('data-name') || '';
+        document.getElementById('usim-rep-target-price').value = opt.getAttribute('data-price') || '';
+      }
+    }
+    function onAddSelect() {
+      var sel = document.getElementById('usim-add-sel');
+      var opt = sel.options[sel.selectedIndex];
+      if (opt.value) {
+        document.getElementById('usim-add-code').value = opt.value;
+        document.getElementById('usim-add-name').value = opt.getAttribute('data-name') || '';
+        var p = opt.getAttribute('data-price');
+        if (p && p !== '0') document.getElementById('usim-add-price').value = p;
+      }
+    }
+
+    function applyMatChange() {
+      if (usimCurrentModalType === 'replace') {
+        var srcSel = document.getElementById('usim-rep-source');
+        var srcCode = srcSel.value;
+        var srcName = srcSel.options[srcSel.selectedIndex].getAttribute('data-name');
+        var tgtCode = document.getElementById('usim-rep-target-code').value;
+        var tgtName = document.getElementById('usim-rep-target-name').value;
+        var tgtPrice = Number(document.getElementById('usim-rep-target-price').value) || 0;
+        if (!tgtName) { alert('대체 자재명을 입력하세요'); return; }
+        usimMatChanges.push({ type: 'replace', source_code: srcCode, source_name: srcName, target_code: tgtCode, target_name: tgtName, target_price: tgtPrice });
+      } else if (usimCurrentModalType === 'ratio') {
+        var srcSel = document.getElementById('usim-ratio-source');
+        var srcCode = srcSel.value;
+        var srcName = srcSel.options[srcSel.selectedIndex].getAttribute('data-name');
+        var ratio = Number(document.getElementById('usim-ratio-pct').value) || 100;
+        var tgtSel = document.getElementById('usim-ratio-target');
+        var tgtCode = tgtSel.value;
+        var tgtName = tgtSel.value ? tgtSel.options[tgtSel.selectedIndex].getAttribute('data-name') : '';
+        var tgtPrice = Number(document.getElementById('usim-ratio-target-price').value) || 0;
+        usimMatChanges.push({ type: 'ratio', source_code: srcCode, source_name: srcName, ratio: ratio, target_code: tgtCode, target_name: tgtName, target_price: tgtPrice });
+      } else if (usimCurrentModalType === 'add') {
+        var tgtCode = document.getElementById('usim-add-code').value;
+        var tgtName = document.getElementById('usim-add-name').value;
+        var qty = Number(document.getElementById('usim-add-qty').value) || 0;
+        var price = Number(document.getElementById('usim-add-price').value) || 0;
+        var group = document.getElementById('usim-add-group').value;
+        if (!tgtName || !qty) { alert('자재명과 사용량을 입력하세요'); return; }
+        usimMatChanges.push({ type: 'add', target_code: tgtCode, target_name: tgtName, qty_kg: qty, target_price: price, target_group: group });
+      }
+      renderUsimMatChanges();
+      closeMatChangeModal();
+    }
+
+    function renderUsimMatChanges() {
+      var container = document.getElementById('usim-mat-changes');
+      if (!usimMatChanges.length) {
+        container.innerHTML = '<div class="text-[10px] text-gray-400 italic">아래 버튼으로 변경사항을 추가하세요</div>';
+        return;
+      }
+      var html = '';
+      usimMatChanges.forEach(function(ch, idx) {
+        var label = '';
+        var icon = '';
+        var bgColor = '';
+        if (ch.type === 'replace') {
+          icon = 'fa-exchange-alt'; bgColor = 'bg-orange-50 border-orange-200 text-orange-700';
+          label = ch.source_name + ' → ' + ch.target_name;
+        } else if (ch.type === 'ratio') {
+          icon = 'fa-percentage'; bgColor = 'bg-blue-50 border-blue-200 text-blue-700';
+          label = ch.source_name + ' ' + ch.ratio + '% 유지';
+          if (ch.target_name) label += ' → ' + ch.target_name;
+        } else if (ch.type === 'add') {
+          icon = 'fa-plus'; bgColor = 'bg-green-50 border-green-200 text-green-700';
+          label = ch.target_name + ' ' + (ch.qty_kg || 0).toLocaleString() + 'kg 추가';
+        }
+        html += '<div class="flex items-center justify-between px-2 py-1 rounded border text-[10px] ' + bgColor + '">';
+        html += '<span><i class="fas ' + icon + ' mr-1"></i>' + label + '</span>';
+        html += '<button onclick="removeMatChange(' + idx + ')" class="text-red-400 hover:text-red-600 ml-2"><i class="fas fa-times"></i></button>';
+        html += '</div>';
+      });
+      container.innerHTML = html;
+    }
+
+    function removeMatChange(idx) {
+      usimMatChanges.splice(idx, 1);
+      renderUsimMatChanges();
+    }
+
+    function resetUnifiedSim() {
+      usimMatChanges = [];
+      renderUsimMatChanges();
+      document.getElementById('usim-result-area').classList.add('hidden');
+      if (usimPrevProd > 0) {
+        document.getElementById('usim-prod-ton').value = Math.round(usimPrevProd).toLocaleString();
+      }
+      // 지종 믹스 초기화 (재로드)
+      loadUnifiedSim();
+    }
+
+    async function runUnifiedSim() {
+      var machine = document.getElementById('usim-machine').value;
+      var year = document.getElementById('analysisYear').value;
+      var month = document.getElementById('analysisMonth').value.padStart(2, '0');
+      var ym = year + month;
+      var prodTon = parseComma(document.getElementById('usim-prod-ton').value);
+
+      try {
+        var res = await fetch('/api/simulation/material-mix', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ym: ym,
+            machine: machine,
+            production_ton: prodTon,
+            changes: usimMatChanges
+          })
+        });
+        var result = await res.json();
+        renderUsimResult(result);
+      } catch(e) {
+        console.error('Unified sim run error:', e);
+        alert('시뮬레이션 실행 중 오류가 발생했습니다.');
+      }
+    }
+
+    function renderUsimResult(result) {
+      var area = document.getElementById('usim-result-area');
+      area.classList.remove('hidden');
+
+      var s = result.summary;
+
+      // 요약 카드
+      document.getElementById('usim-r-base-uc').textContent = s.base_unit_cost_1000won.toLocaleString();
+      document.getElementById('usim-r-sim-uc').textContent = s.sim_unit_cost_1000won.toLocaleString();
+
+      var diffEl = document.getElementById('usim-r-uc-diff');
+      var diffVal = s.unit_cost_diff;
+      diffEl.textContent = (diffVal >= 0 ? '+' : '') + diffVal.toLocaleString();
+      diffEl.className = 'text-lg font-bold mt-1 ' + (diffVal > 0 ? 'text-red-600' : diffVal < 0 ? 'text-emerald-600' : 'text-gray-500');
+
+      var savEl = document.getElementById('usim-r-savings');
+      var savVal = s.savings_million;
+      savEl.textContent = (savVal >= 0 ? '+' : '') + savVal.toLocaleString();
+      savEl.className = 'text-lg font-bold mt-1 ' + (savVal > 0 ? 'text-emerald-600' : savVal < 0 ? 'text-red-600' : 'text-gray-500');
+
+      // 변경사항 요약
+      var changesDiv = document.getElementById('usim-changes-summary');
+      if (result.changes && result.changes.length) {
+        var cHtml = '';
+        result.changes.forEach(function(ch) {
+          var color = ch.cost_diff > 0 ? 'text-red-600' : 'text-emerald-600';
+          var diffStr = ch.cost_diff !== undefined ? ((ch.cost_diff >= 0 ? '+' : '') + Math.round(ch.cost_diff / 1000000).toLocaleString() + ' 백만원') : '';
+          cHtml += '<div class="flex items-center justify-between text-[11px] px-2 py-1 rounded bg-slate-50">';
+          cHtml += '<span class="text-gray-600"><i class="fas fa-check text-indigo-400 mr-1.5"></i>' + ch.note + '</span>';
+          cHtml += '<span class="font-semibold ' + color + '">' + diffStr + '</span>';
+          cHtml += '</div>';
+        });
+        changesDiv.innerHTML = cHtml;
+        document.getElementById('usim-changes-summary-card').classList.remove('hidden');
+      } else {
+        document.getElementById('usim-changes-summary-card').classList.add('hidden');
+      }
+
+      // 상세 테이블
+      var tbody = document.getElementById('usim-detail-body');
+      var tfoot = document.getElementById('usim-detail-foot');
+      var html = '';
+      var totBase = 0, totSim = 0, totDiff = 0;
+
+      result.details.forEach(function(d) {
+        var diffColor = d.cost_diff > 0 ? 'text-red-600' : d.cost_diff < 0 ? 'text-emerald-600' : 'text-gray-400';
+        var status = d.is_new ? '<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">신규</span>' :
+                    d.is_removed ? '<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">제거</span>' :
+                    d.cost_diff !== 0 ? '<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">변경</span>' :
+                    '<span class="text-[9px] text-gray-300">-</span>';
+
+        html += '<tr class="border-b border-slate-50 hover:bg-slate-50/50">';
+        html += '<td class="px-2 py-1.5 text-left text-[11px] text-gray-700 font-medium">' + d.material_name + '</td>';
+        html += '<td class="px-2 py-1.5 text-left text-[10px] text-gray-400">' + (d.material_group_name || '') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono text-gray-600">' + (d.base_usage_qty > 0 ? Math.round(d.base_usage_qty).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono text-gray-600">' + (d.base_unit_price > 0 ? Math.round(d.base_unit_price).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono text-gray-600">' + (d.base_cost > 0 ? Math.round(d.base_cost / 1000000).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono text-indigo-600">' + (d.sim_usage_qty > 0 ? Math.round(d.sim_usage_qty).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono text-indigo-600">' + (d.sim_unit_price > 0 ? Math.round(d.sim_unit_price).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono text-indigo-600">' + (d.sim_cost > 0 ? Math.round(d.sim_cost / 1000000).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-right font-mono font-semibold ' + diffColor + '">' + (d.cost_diff !== 0 ? (d.cost_diff > 0 ? '+' : '') + Math.round(d.cost_diff / 1000000).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center">' + status + '</td>';
+        html += '</tr>';
+
+        totBase += d.base_cost || 0;
+        totSim += d.sim_cost || 0;
+        totDiff += d.cost_diff || 0;
+      });
+      tbody.innerHTML = html;
+
+      var footColor = totDiff > 0 ? 'text-red-600' : totDiff < 0 ? 'text-emerald-600' : 'text-gray-500';
+      tfoot.innerHTML = '<tr class="border-t-2 border-slate-200"><td colspan="4" class="px-2 py-2 font-semibold text-gray-700">합계</td>' +
+        '<td class="px-2 py-2 text-right font-mono font-bold text-gray-700">' + Math.round(totBase / 1000000).toLocaleString() + '</td>' +
+        '<td colspan="2"></td>' +
+        '<td class="px-2 py-2 text-right font-mono font-bold text-indigo-600">' + Math.round(totSim / 1000000).toLocaleString() + '</td>' +
+        '<td class="px-2 py-2 text-right font-mono font-bold ' + footColor + '">' + (totDiff >= 0 ? '+' : '') + Math.round(totDiff / 1000000).toLocaleString() + '</td>' +
+        '<td></td></tr>';
+    }
+
+    function downloadUsimExcel() {
+      // 간단한 CSV 다운로드
+      var rows = document.querySelectorAll('#usim-detail-body tr');
+      if (!rows.length) return;
+      var csv = '자재명,그룹,전월사용량(kg),전월단가(원/kg),전월비용(백만원),시뮬사용량(kg),시뮬단가(원/kg),시뮬비용(백만원),차이(백만원),상태' + String.fromCharCode(10);
+      rows.forEach(function(tr) {
+        var cells = tr.querySelectorAll('td');
+        var row = [];
+        cells.forEach(function(td) { row.push(td.textContent.replace(/,/g, '').trim()); });
+        csv += row.join(',') + String.fromCharCode(10);
+      });
+      var blob = new Blob([String.fromCharCode(0xFEFF) + csv], { type: 'text/csv;charset=utf-8;' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = '통합시뮬레이션_결과.csv'; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ====== 시뮬레이션 플로우 (레거시 - 유지) ======
     var sfData = null; // 시뮬레이션 기준 데이터
     var sfProdChange = 0; // 생산량 변동 %
 

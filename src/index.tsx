@@ -1716,6 +1716,307 @@ app.get('/api/dashboard/mix-effect', async (c) => {
   })
 })
 
+// ============ 통합 시뮬레이션 API (자재 구성 변경) ============
+
+// 자재 구성 변경 시뮬레이션: 기존 자재 대체/비율변경 + 신규 자재 추가
+app.post('/api/simulation/material-mix', async (c) => {
+  const db = c.env.DB
+  const { ym, machine, production_ton, changes } = await c.req.json()
+  // changes: [{ type: 'replace'|'ratio'|'add', source_code, target_code, target_name, target_price, ratio, qty_kg }]
+
+  if (!ym || !machine) {
+    return c.json({ error: 'ym and machine are required' }, 400)
+  }
+
+  // 1. 전월 실적 데이터 로드 (자재별 사용량/단가/비용)
+  const baseData = await db.prepare(`
+    SELECT 
+      material_code,
+      material_name,
+      material_group_name,
+      material_group_major_name,
+      SUM(CAST(actual_alloc_qty AS REAL)) as usage_qty,
+      CASE WHEN SUM(CAST(actual_alloc_qty AS REAL)) > 0 
+        THEN SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) / SUM(CAST(actual_alloc_qty AS REAL))
+        ELSE 0 END as unit_price,
+      SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as total_cost
+    FROM raw_records
+    WHERE calendar_ym = ? AND machine_code = ? AND calendar_ym != 'CALMONTH'
+      AND CAST(actual_alloc_qty AS REAL) != 0
+    GROUP BY material_code, material_name, material_group_name, material_group_major_name
+    ORDER BY total_cost DESC
+  `).bind(ym, machine).all()
+
+  // 2. 전월 생산량 (톤)
+  const prodResult = await db.prepare(`
+    SELECT SUM(prod) as total_prod FROM (
+      SELECT product_level4, MAX(CAST(total_production AS REAL)) as prod
+      FROM raw_records WHERE calendar_ym = ? AND machine_code = ? AND calendar_ym != 'CALMONTH'
+        AND CAST(total_production AS REAL) > 0
+      GROUP BY product_level4
+    )
+  `).bind(ym, machine).first() as any
+  const baseProdTon = (prodResult?.total_prod || 0) / 1000
+  const simProdTon = production_ton || baseProdTon
+
+  // 3. 기존 자재 맵 구성
+  type MatRow = { material_code: string; material_name: string; material_group_name: string; material_group_major_name: string; usage_qty: number; unit_price: number; total_cost: number }
+  const baseMap = new Map<string, MatRow>()
+  for (const r of baseData.results as any[]) {
+    baseMap.set(r.material_code.replace(/^0+/, ''), {
+      material_code: r.material_code,
+      material_name: r.material_name,
+      material_group_name: r.material_group_name || '',
+      material_group_major_name: r.material_group_major_name || '',
+      usage_qty: Number(r.usage_qty) || 0,
+      unit_price: Number(r.unit_price) || 0,
+      total_cost: Number(r.total_cost) || 0
+    })
+  }
+
+  // 4. 시뮬레이션 적용 — deep copy
+  const simMap = new Map<string, MatRow>()
+  baseMap.forEach((v, k) => simMap.set(k, { ...v }))
+
+  const changeResults: any[] = []
+
+  if (changes && changes.length > 0) {
+    for (const ch of changes) {
+      const srcKey = (ch.source_code || '').replace(/^0+/, '')
+      const srcRow = simMap.get(srcKey)
+
+      if (ch.type === 'replace') {
+        // 기존 자재를 다른 자재로 완전 대체
+        if (srcRow) {
+          const newQty = srcRow.usage_qty  // 사용량 동일
+          const newPrice = ch.target_price || srcRow.unit_price  // 새 단가
+          const newCost = newQty * newPrice
+          const costDiff = newCost - srcRow.total_cost
+
+          // 기존 자재 제거
+          simMap.delete(srcKey)
+          // 새 자재 추가
+          const tgtKey = (ch.target_code || 'NEW_' + Date.now()).replace(/^0+/, '')
+          simMap.set(tgtKey, {
+            material_code: ch.target_code || tgtKey,
+            material_name: ch.target_name || '신규자재',
+            material_group_name: ch.target_group || srcRow.material_group_name,
+            material_group_major_name: srcRow.material_group_major_name,
+            usage_qty: newQty,
+            unit_price: newPrice,
+            total_cost: newCost
+          })
+
+          changeResults.push({
+            type: 'replace',
+            source: srcRow.material_name,
+            target: ch.target_name || '신규자재',
+            before_cost: srcRow.total_cost,
+            after_cost: newCost,
+            cost_diff: costDiff,
+            note: `${srcRow.material_name} → ${ch.target_name || '신규자재'} (단가: ${Math.round(srcRow.unit_price)}→${Math.round(newPrice)})`
+          })
+        }
+      } else if (ch.type === 'ratio') {
+        // 기존 자재 사용량 비율 변경 (예: 70% → 50%)
+        if (srcRow) {
+          const ratio = (ch.ratio || 100) / 100
+          const newQty = srcRow.usage_qty * ratio
+          const newCost = newQty * srcRow.unit_price
+          const costDiff = newCost - srcRow.total_cost
+          const qtyDiff = newQty - srcRow.usage_qty
+
+          simMap.set(srcKey, { ...srcRow, usage_qty: newQty, total_cost: newCost })
+
+          // 나머지 물량을 target에 배분
+          if (ch.target_code) {
+            const tgtKey = ch.target_code.replace(/^0+/, '')
+            const tgtRow = simMap.get(tgtKey)
+            const redistributeQty = srcRow.usage_qty - newQty  // 빠진 양
+            const tgtPrice = ch.target_price || (tgtRow ? tgtRow.unit_price : srcRow.unit_price)
+
+            if (tgtRow) {
+              // 기존 자재에 추가
+              tgtRow.usage_qty += redistributeQty
+              tgtRow.total_cost = tgtRow.usage_qty * tgtRow.unit_price
+            } else {
+              // 신규 자재로 배분
+              simMap.set(tgtKey, {
+                material_code: ch.target_code,
+                material_name: ch.target_name || '대체자재',
+                material_group_name: ch.target_group || srcRow.material_group_name,
+                material_group_major_name: srcRow.material_group_major_name,
+                usage_qty: redistributeQty,
+                unit_price: tgtPrice,
+                total_cost: redistributeQty * tgtPrice
+              })
+            }
+
+            const tgtCost = redistributeQty * tgtPrice
+            changeResults.push({
+              type: 'ratio',
+              source: srcRow.material_name,
+              target: ch.target_name || tgtRow?.material_name || '대체자재',
+              ratio_pct: ch.ratio,
+              redistributed_qty: redistributeQty,
+              before_cost: srcRow.total_cost,
+              after_cost: newCost + tgtCost,
+              cost_diff: (newCost + tgtCost) - srcRow.total_cost,
+              note: `${srcRow.material_name} ${Math.round(ch.ratio)}% 유지, 나머지 ${ch.target_name || tgtRow?.material_name}로 이동`
+            })
+          } else {
+            changeResults.push({
+              type: 'ratio',
+              source: srcRow.material_name,
+              ratio_pct: ch.ratio,
+              before_cost: srcRow.total_cost,
+              after_cost: newCost,
+              cost_diff: costDiff,
+              note: `${srcRow.material_name} 사용량 ${Math.round(ch.ratio)}%로 축소`
+            })
+          }
+        }
+      } else if (ch.type === 'add') {
+        // 신규 자재 추가 (기존에 없던 자재)
+        const addQty = ch.qty_kg || 0
+        const addPrice = ch.target_price || 0
+        const addCost = addQty * addPrice
+        const tgtKey = (ch.target_code || 'NEW_' + Date.now()).replace(/^0+/, '')
+
+        const existing = simMap.get(tgtKey)
+        if (existing) {
+          existing.usage_qty += addQty
+          existing.total_cost = existing.usage_qty * existing.unit_price
+        } else {
+          simMap.set(tgtKey, {
+            material_code: ch.target_code || tgtKey,
+            material_name: ch.target_name || '신규자재',
+            material_group_name: ch.target_group || '',
+            material_group_major_name: ch.target_major || '',
+            usage_qty: addQty,
+            unit_price: addPrice,
+            total_cost: addCost
+          })
+        }
+
+        changeResults.push({
+          type: 'add',
+          target: ch.target_name || '신규자재',
+          qty_kg: addQty,
+          unit_price: addPrice,
+          after_cost: addCost,
+          cost_diff: addCost,
+          note: `신규 추가: ${ch.target_name || '신규자재'} ${Math.round(addQty)}kg × ${Math.round(addPrice)}원`
+        })
+      }
+    }
+  }
+
+  // 5. 결과 계산
+  let baseTotalCost = 0
+  baseMap.forEach(v => { baseTotalCost += v.total_cost })
+  let simTotalCost = 0
+  simMap.forEach(v => { simTotalCost += v.total_cost })
+
+  const baseUnitCost = baseProdTon > 0 ? baseTotalCost / baseProdTon / 1000 : 0  // 천원/톤
+  const simUnitCost = simProdTon > 0 ? simTotalCost / simProdTon / 1000 : 0  // 천원/톤
+
+  // 자재별 비교 상세
+  const details: any[] = []
+  const allKeys = new Set([...baseMap.keys(), ...simMap.keys()])
+  allKeys.forEach(key => {
+    const base = baseMap.get(key)
+    const sim = simMap.get(key)
+    details.push({
+      material_code: sim?.material_code || base?.material_code || key,
+      material_name: sim?.material_name || base?.material_name || '',
+      material_group_name: sim?.material_group_name || base?.material_group_name || '',
+      base_usage_qty: base?.usage_qty || 0,
+      base_unit_price: base?.unit_price || 0,
+      base_cost: base?.total_cost || 0,
+      sim_usage_qty: sim?.usage_qty || 0,
+      sim_unit_price: sim?.unit_price || 0,
+      sim_cost: sim?.total_cost || 0,
+      cost_diff: (sim?.total_cost || 0) - (base?.total_cost || 0),
+      is_new: !base,
+      is_removed: !sim
+    })
+  })
+  details.sort((a, b) => Math.abs(b.cost_diff) - Math.abs(a.cost_diff))
+
+  return c.json({
+    summary: {
+      base_production_ton: baseProdTon,
+      sim_production_ton: simProdTon,
+      base_total_cost: baseTotalCost,
+      sim_total_cost: simTotalCost,
+      total_cost_diff: simTotalCost - baseTotalCost,
+      base_unit_cost_1000won: Math.round(baseUnitCost * 10) / 10,
+      sim_unit_cost_1000won: Math.round(simUnitCost * 10) / 10,
+      unit_cost_diff: Math.round((simUnitCost - baseUnitCost) * 10) / 10,
+      savings_million: Math.round((baseTotalCost - simTotalCost) / 1000000)
+    },
+    changes: changeResults,
+    details,
+    base_ym: ym,
+    machine
+  })
+})
+
+// 통합 시뮬레이션용: 자재 목록 조회 (현재 호기의 자재 + 동일 그룹 대체 가능 자재)
+app.get('/api/simulation/materials-for-mix', async (c) => {
+  const db = c.env.DB
+  const ym = c.req.query('ym') || ''
+  const machine = c.req.query('machine') || ''
+
+  // 해당 호기의 현재 사용 자재
+  const current = await db.prepare(`
+    SELECT 
+      material_code,
+      material_name,
+      material_group_name,
+      material_group_major_name,
+      SUM(CAST(actual_alloc_qty AS REAL)) as usage_qty,
+      CASE WHEN SUM(CAST(actual_alloc_qty AS REAL)) > 0 
+        THEN SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) / SUM(CAST(actual_alloc_qty AS REAL))
+        ELSE 0 END as unit_price,
+      SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as total_cost
+    FROM raw_records
+    WHERE calendar_ym = ? AND machine_code = ? AND calendar_ym != 'CALMONTH'
+      AND CAST(actual_alloc_qty AS REAL) != 0
+    GROUP BY material_code, material_name, material_group_name, material_group_major_name
+    ORDER BY total_cost DESC
+  `).bind(ym, machine).all()
+
+  // 동일 기간 다른 호기에서 사용되는 자재 (대체 후보)
+  const others = await db.prepare(`
+    SELECT DISTINCT
+      material_code,
+      material_name,
+      material_group_name,
+      material_group_major_name,
+      CASE WHEN SUM(CAST(actual_alloc_qty AS REAL)) > 0 
+        THEN SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) / SUM(CAST(actual_alloc_qty AS REAL))
+        ELSE 0 END as unit_price
+    FROM raw_records
+    WHERE calendar_ym = ? AND machine_code != ? AND calendar_ym != 'CALMONTH'
+      AND CAST(actual_alloc_qty AS REAL) != 0
+    GROUP BY material_code, material_name, material_group_name, material_group_major_name
+    ORDER BY material_group_name, material_name
+  `).bind(ym, machine).all()
+
+  // 마스터에 있지만 실적에 없는 자재 (신규 후보)
+  const masterPaperRaw = await db.prepare(`SELECT material_code, material_name, material_group FROM master_paper_raw_materials`).all()
+  const masterPaperSub = await db.prepare(`SELECT material_code, material_name, material_group FROM master_paper_sub_materials`).all()
+
+  return c.json({
+    current: current.results,
+    alternatives: others.results,
+    master_raw: masterPaperRaw.results,
+    master_sub: masterPaperSub.results
+  })
+})
+
 // ============ Raw Records (원본 데이터) 조회 API ============
 
 // 원본 데이터 조회 (필터링, 페이징) + 자재구분 매핑
