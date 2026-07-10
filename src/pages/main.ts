@@ -86,6 +86,10 @@ export function mainPage(): string {
         </div>
         <div class="flex items-center gap-4">
           <span class="text-sm text-white/80"><i class="fas fa-user-circle mr-1.5"></i>관리자</span>
+          <select id="divisionSelect" onchange="onDivisionChange()" class="bg-white/20 backdrop-blur border border-white/30 text-white text-sm font-semibold rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-white/50 cursor-pointer">
+            <option value="PS" class="text-gray-800">PS사업부 (제지)</option>
+            <option value="HL" class="text-gray-800">HL사업부 (생활용품)</option>
+          </select>
         </div>
       </div>
     </div>
@@ -1838,6 +1842,55 @@ export function mainPage(): string {
     let productsCache = [], simResultData = null;
     let unitChartInstance = null, effectChartInstance = null, currentUnitFilter = '', uploadData = [];
 
+    // ============ 사업부 (Division) 관리 ============
+    var currentDivision = 'PS';  // 현재 활성 사업부
+    var divisionConfig = null;   // 현재 사업부 설정 (API로부터)
+    var divisionMachines = [];   // 현재 사업부 호기 목록
+
+    async function onDivisionChange() {
+      var sel = document.getElementById('divisionSelect');
+      currentDivision = sel.value;
+      try {
+        var res = await fetch('/api/divisions/' + currentDivision);
+        divisionConfig = await res.json();
+        divisionMachines = divisionConfig.machines || [];
+        updateMachineSelects();
+        updateDivisionUI();
+        await loadAnalysis();
+      } catch(e) {
+        console.error('Division change error:', e);
+      }
+    }
+
+    function updateMachineSelects() {
+      // 모든 호기 선택 드롭다운을 현재 사업부의 호기로 교체
+      var selectors = ['mnMachine', 'sfMachine', 'usim-machine'];
+      var selectElements = document.querySelectorAll('select[id*="achine"], select[id*="machine"]');
+      selectElements.forEach(function(sel) {
+        var currentVal = sel.value;
+        var html = '';
+        divisionMachines.forEach(function(m) {
+          html += '<option value="' + m.code + '"' + (m.code === currentVal ? ' selected' : '') + '>' + m.code + ' (' + m.name + ')</option>';
+        });
+        if (html) sel.innerHTML = html;
+      });
+    }
+
+    function updateDivisionUI() {
+      // 사업부에 따른 UI 라벨 업데이트
+      var badge = document.getElementById('division-badge');
+      if (badge && divisionConfig) {
+        badge.textContent = divisionConfig.name;
+        badge.className = currentDivision === 'PS' 
+          ? 'text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold'
+          : 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold';
+      }
+    }
+
+    function getDivisionParam() {
+      return '&division=' + currentDivision;
+    }
+
     // 숫자 입력 필드 천원단위 쉼표 포맷팅 유틸
     function commaVal(el) {
       var raw = el.value.replace(/[^0-9.\-]/g, '');
@@ -1858,6 +1911,14 @@ export function mainPage(): string {
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+      // 사업부 설정 초기 로드
+      try {
+        var divRes = await fetch('/api/divisions/' + currentDivision);
+        divisionConfig = await divRes.json();
+        divisionMachines = divisionConfig.machines || [];
+        updateMachineSelects();
+      } catch(e) { console.warn('Division config load failed:', e); }
+
       // 가용 월 목록에서 최신 데이터 월의 다음 달을 기본값으로 설정
       // (시스템 로직: 선택월 = 예상월, 실적 = 선택월-1)
       // 따라서 최신 데이터가 202605이면 → 분석월을 6으로 설정 (5월 실적 → 6월 예상)

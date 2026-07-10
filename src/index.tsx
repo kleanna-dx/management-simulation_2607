@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { mainPage } from './pages/main'
+import { registry } from './core'
 
 type Bindings = {
   DB: D1Database
@@ -9,6 +10,37 @@ type Bindings = {
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.use('/api/*', cors())
+
+// ============ 사업부 (Division) API ============
+
+/** 등록된 사업부 목록 조회 */
+app.get('/api/divisions', (c) => {
+  return c.json(registry.list())
+})
+
+/** 특정 사업부 설정 조회 */
+app.get('/api/divisions/:code', (c) => {
+  const code = c.req.param('code')
+  const division = registry.get(code)
+  if (!division) return c.json({ error: 'Division not found' }, 404)
+  return c.json(division.config)
+})
+
+/** 특정 사업부의 호기 목록 */
+app.get('/api/divisions/:code/machines', (c) => {
+  const code = c.req.param('code')
+  const division = registry.get(code)
+  if (!division) return c.json({ error: 'Division not found' }, 404)
+  return c.json(division.config.machines)
+})
+
+/** 특정 사업부의 자재 그룹 체계 */
+app.get('/api/divisions/:code/material-groups', (c) => {
+  const code = c.req.param('code')
+  const division = registry.get(code)
+  if (!division) return c.json({ error: 'Division not found' }, 404)
+  return c.json(division.config.materialGroups)
+})
 
 // ============ 기본 마스터 API ============
 
