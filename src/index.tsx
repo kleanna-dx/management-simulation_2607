@@ -11,6 +11,18 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 app.use('/api/*', cors())
 
+// ============ Division 필터 헬퍼 ============
+/** API 요청에서 division 파라미터를 추출하여 SQL WHERE 조건 생성 */
+function getDivisionFilter(c: any): { division: string; sql: string; bind: string } {
+  const division = c.req.query('division') || 'PS'
+  return { 
+    division,
+    sql: " AND division = ?",
+    bind: division
+  }
+}
+
+
 // ============ 사업부 (Division) API ============
 
 /** 등록된 사업부 목록 조회 */
@@ -1332,9 +1344,10 @@ app.get('/api/dashboard/material-by-group', async (c) => {
 app.get('/api/dashboard/production-summary', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
+  const div = c.req.query('division') || 'PS'
   
-  let where = '1=1'
-  const params: any[] = []
+  let where = 'division = ?'
+  const params: any[] = [div]
   if (ym) { where += ' AND calendar_ym = ?'; params.push(ym) }
   
   // 총생산량은 제품별로 중복될 수 있으므로, 동일 호기+제품레벨2+자재 조합에서 대표값 사용
@@ -2595,11 +2608,12 @@ app.post('/api/master/material-mapping/bulk-upload', async (c) => {
 // ============ 가용 월 목록 API ============
 app.get('/api/available-months', async (c) => {
   const { env } = c
+  const div = c.req.query('division') || 'PS'
   const result = await env.DB.prepare(`
     SELECT DISTINCT calendar_ym FROM raw_records
-    WHERE calendar_ym != 'CALMONTH' AND calendar_ym IS NOT NULL
+    WHERE calendar_ym != 'CALMONTH' AND calendar_ym IS NOT NULL AND division = ?
     ORDER BY calendar_ym DESC
-  `).all()
+  `).bind(div).all()
   return c.json(result.results.map((r: any) => r.calendar_ym))
 })
 

@@ -829,7 +829,7 @@ export function mainPage(): string {
               </button>
             </div>
             <div class="w-px h-5 bg-slate-200"></div>
-            <div class="flex items-center gap-1">
+            <div id="mn-machine-btns" class="flex items-center gap-1">
               <button onclick="setManualMachine('PM2')" id="mn-mc-pm2" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">PM2</button>
               <button onclick="setManualMachine('PM3')" id="mn-mc-pm3" class="pill-tab pill-tab-active text-xs !px-3 !py-1">PM3</button>
             </div>
@@ -1592,7 +1592,7 @@ export function mainPage(): string {
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
           <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-area text-sage-500 mr-1.5"></i>전월 대비 예상 실적</h3>
-          <div class="flex items-center gap-1">
+          <div id="fc-machine-btns" class="flex items-center gap-1">
             <button onclick="setFcMachineFilter('PM2')" id="fc-mc-pm2" class="pill-tab pill-tab-active text-xs !px-3 !py-1">PM2</button>
             <button onclick="setFcMachineFilter('PM3')" id="fc-mc-pm3" class="pill-tab pill-tab-inactive text-xs !px-3 !py-1">PM3</button>
           </div>
@@ -1856,6 +1856,16 @@ export function mainPage(): string {
         divisionMachines = divisionConfig.machines || [];
         updateMachineSelects();
         updateDivisionUI();
+
+        // 현재 활성 탭에 따라 데이터 재조회
+        var activeTab = document.querySelector('.pill-tab-active');
+        var tabId = '';
+        if (activeTab) {
+          var onclick = activeTab.getAttribute('onclick') || '';
+          var match = onclick.match(/switchTab\(['"](\w+)['"]\)/);
+          if (match) tabId = match[1];
+        }
+        // 어떤 탭이든 대시보드 데이터 재로드
         await loadAnalysis();
       } catch(e) {
         console.error('Division change error:', e);
@@ -1863,17 +1873,48 @@ export function mainPage(): string {
     }
 
     function updateMachineSelects() {
-      // 모든 호기 선택 드롭다운을 현재 사업부의 호기로 교체
-      var selectors = ['mnMachine', 'sfMachine', 'usim-machine'];
-      var selectElements = document.querySelectorAll('select[id*="achine"], select[id*="machine"]');
-      selectElements.forEach(function(sel) {
+      if (!divisionMachines || !divisionMachines.length) return;
+      
+      // 1) select 드롭다운 업데이트 (id 기반)
+      var selectIds = ['dv-unit', 'cr-machine-select', 'excl-machine', 'usim-machine'];
+      selectIds.forEach(function(id) {
+        var sel = document.getElementById(id);
+        if (!sel) return;
         var currentVal = sel.value;
         var html = '';
+        if (id === 'dv-unit') html = '<option value="">전체 호기</option>';
         divisionMachines.forEach(function(m) {
-          html += '<option value="' + m.code + '"' + (m.code === currentVal ? ' selected' : '') + '>' + m.code + ' (' + m.name + ')</option>';
+          html += '<option value="' + m.code + '">' + m.code + ' (' + m.name + ')</option>';
         });
-        if (html) sel.innerHTML = html;
+        sel.innerHTML = html;
+        // 기존 값 유지 시도, 없으면 첫 번째 호기 선택
+        if (currentVal && sel.querySelector('option[value="' + currentVal + '"]')) {
+          sel.value = currentVal;
+        } else if (divisionMachines.length > 0) {
+          sel.value = id === 'dv-unit' ? '' : divisionMachines[0].code;
+        }
       });
+
+      // 2) 버튼형 호기 선택 (수동입력, 예상손익 탭)
+      var mnBtnContainer = document.getElementById('mn-machine-btns');
+      if (mnBtnContainer) {
+        var btnHtml = '';
+        divisionMachines.forEach(function(m, idx) {
+          var cls = idx === 0 ? 'pill-tab pill-tab-active text-xs !px-3 !py-1' : 'pill-tab pill-tab-inactive text-xs !px-3 !py-1';
+          btnHtml += '<button onclick="setManualMachine(' + String.fromCharCode(39) + m.code + String.fromCharCode(39) + ')" id="mn-mc-' + m.code.toLowerCase() + '" class="' + cls + '">' + m.code + '</button>';
+        });
+        mnBtnContainer.innerHTML = btnHtml;
+      }
+
+      var fcBtnContainer = document.getElementById('fc-machine-btns');
+      if (fcBtnContainer) {
+        var btnHtml = '';
+        divisionMachines.forEach(function(m, idx) {
+          var cls = idx === 0 ? 'pill-tab pill-tab-active text-xs !px-3 !py-1' : 'pill-tab pill-tab-inactive text-xs !px-3 !py-1';
+          btnHtml += '<button onclick="setFcMachineFilter(' + String.fromCharCode(39) + m.code + String.fromCharCode(39) + ')" id="fc-mc-' + m.code.toLowerCase() + '" class="' + cls + '">' + m.code + '</button>';
+        });
+        fcBtnContainer.innerHTML = btnHtml;
+      }
     }
 
     function updateDivisionUI() {
@@ -1923,7 +1964,7 @@ export function mainPage(): string {
       // (시스템 로직: 선택월 = 예상월, 실적 = 선택월-1)
       // 따라서 최신 데이터가 202605이면 → 분석월을 6으로 설정 (5월 실적 → 6월 예상)
       try {
-        var months = await fetch('/api/available-months').then(function(r){return r.json();});
+        var months = await fetch('/api/available-months?division=' + currentDivision).then(function(r){return r.json();});
         if (months && months.length > 0) {
           var latestYm = months[0]; // 내림차순이므로 첫 번째가 최신
           var latestYear = parseInt(latestYm.substring(0, 4));
@@ -2655,11 +2696,11 @@ export function mainPage(): string {
       const year = document.getElementById('analysisYear').value;
       const month = document.getElementById('analysisMonth').value;
       const ym = year + month.padStart(2, '0');
-      const params = new URLSearchParams({ year, month });
+      const params = new URLSearchParams({ year, month, division: currentDivision });
       if (currentUnitFilter) params.set('unit_id', currentUnitFilter);
       const [comp, summary] = await Promise.all([
         fetch('/api/analysis/comparison?'+params).then(r=>r.json()),
-        fetch('/api/analysis/unit-summary?'+new URLSearchParams({year,month})).then(r=>r.json())
+        fetch('/api/analysis/unit-summary?'+new URLSearchParams({year,month,division:currentDivision})).then(r=>r.json())
       ]);
       analysisData = comp; unitSummaryData = summary;
       var periodEl = document.getElementById('period-label');
@@ -2691,13 +2732,14 @@ export function mainPage(): string {
     let mixEffectCategoryFilter = 'ALL';
 
     async function loadDashboardSummary(ym) {
+      var dv = '&division=' + currentDivision;
       const [matCost, prodSummary, matGroup, overview, prodAnalysis, mixEffect] = await Promise.all([
-        fetch('/api/dashboard/material-cost-summary?ym=' + ym + (matCostCategoryFilter !== 'ALL' ? '&category=' + matCostCategoryFilter : '')).then(r => r.json()),
-        fetch('/api/dashboard/production-summary?ym=' + ym).then(r => r.json()),
-        fetch('/api/dashboard/material-by-group?ym=' + ym + (matGroupCategoryFilter !== 'ALL' ? '&category=' + matGroupCategoryFilter : '')).then(r => r.json()),
-        fetch('/api/dashboard/material-overview?ym=' + ym + (overviewCategoryFilter !== 'ALL' ? '&category=' + overviewCategoryFilter : '')).then(r => r.json()),
-        fetch('/api/dashboard/production-analysis?ym=' + ym).then(r => r.json()),
-        fetch('/api/dashboard/mix-effect?ym=' + ym + (mixEffectCategoryFilter !== 'ALL' ? '&category=' + mixEffectCategoryFilter : '')).then(r => r.json())
+        fetch('/api/dashboard/material-cost-summary?ym=' + ym + dv + (matCostCategoryFilter !== 'ALL' ? '&category=' + matCostCategoryFilter : '')).then(r => r.json()),
+        fetch('/api/dashboard/production-summary?ym=' + ym + dv).then(r => r.json()),
+        fetch('/api/dashboard/material-by-group?ym=' + ym + dv + (matGroupCategoryFilter !== 'ALL' ? '&category=' + matGroupCategoryFilter : '')).then(r => r.json()),
+        fetch('/api/dashboard/material-overview?ym=' + ym + dv + (overviewCategoryFilter !== 'ALL' ? '&category=' + overviewCategoryFilter : '')).then(r => r.json()),
+        fetch('/api/dashboard/production-analysis?ym=' + ym + dv).then(r => r.json()),
+        fetch('/api/dashboard/mix-effect?ym=' + ym + dv + (mixEffectCategoryFilter !== 'ALL' ? '&category=' + mixEffectCategoryFilter : '')).then(r => r.json())
       ]);
 
       // 원단위 카드 계산 (overview 데이터 기반 - 이미 톤 단위)
