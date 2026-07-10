@@ -2779,7 +2779,7 @@ export function mainPage(): string {
       const year = document.getElementById('analysisYear').value;
       const month = document.getElementById('analysisMonth').value.padStart(2, '0');
       const ym = year + month;
-      fetch('/api/dashboard/material-overview?ym=' + ym + (filter !== 'ALL' ? '&category=' + filter : ''))
+      fetch('/api/dashboard/material-overview?ym=' + ym + getDivisionParam() + (filter !== 'ALL' ? '&category=' + filter : ''))
         .then(r => r.json())
         .then(data => { renderOverview(data); renderProfitSummary(data); });
     }
@@ -3071,7 +3071,7 @@ export function mainPage(): string {
       const year = document.getElementById('analysisYear').value;
       const month = document.getElementById('analysisMonth').value.padStart(2, '0');
       const ym = year + month;
-      fetch('/api/dashboard/material-cost-summary?ym=' + ym + (filter !== 'ALL' ? '&category=' + filter : ''))
+      fetch('/api/dashboard/material-cost-summary?ym=' + ym + getDivisionParam() + (filter !== 'ALL' ? '&category=' + filter : ''))
         .then(r => r.json())
         .then(data => renderMatCostSummary(data));
     }
@@ -3384,7 +3384,7 @@ export function mainPage(): string {
       const year = document.getElementById('analysisYear').value;
       const month = document.getElementById('analysisMonth').value.padStart(2, '0');
       const ym = year + month;
-      fetch('/api/dashboard/material-by-group?ym=' + ym + (filter !== 'ALL' ? '&category=' + filter : ''))
+      fetch('/api/dashboard/material-by-group?ym=' + ym + getDivisionParam() + (filter !== 'ALL' ? '&category=' + filter : ''))
         .then(r => r.json())
         .then(data => renderMatGroupSummary(data));
     }
@@ -3398,7 +3398,7 @@ export function mainPage(): string {
       var year = document.getElementById('analysisYear').value;
       var month = document.getElementById('analysisMonth').value.padStart(2, '0');
       var ym = year + month;
-      fetch('/api/dashboard/mix-effect?ym=' + ym + (filter !== 'ALL' ? '&category=' + filter : ''))
+      fetch('/api/dashboard/mix-effect?ym=' + ym + getDivisionParam() + (filter !== 'ALL' ? '&category=' + filter : ''))
         .then(function(r) { return r.json(); })
         .then(function(data) { renderMixEffect(data); });
     }
@@ -3540,8 +3540,8 @@ export function mainPage(): string {
       try {
         // 전전월(전월실적)과 전월(당월실적) 데이터 동시 로드
         var results = await Promise.all([
-          fetch('/api/forecast/material-detail?ym=' + prevPrevYm).then(function(r){return r.json();}),
-          fetch('/api/forecast/material-detail?ym=' + prevYm).then(function(r){return r.json();})
+          fetch('/api/forecast/material-detail?ym=' + prevPrevYm + getDivisionParam()).then(function(r){return r.json();}),
+          fetch('/api/forecast/material-detail?ym=' + prevYm + getDivisionParam()).then(function(r){return r.json();})
         ]);
         var prevData = results[0]; // 전전월 = 전월실적
         var curData = results[1];  // 전월 = 당월실적

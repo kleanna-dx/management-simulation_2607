@@ -185,6 +185,7 @@ app.get('/api/analysis/unit-summary', async (c) => {
   const db = c.env.DB
   const { year, month } = c.req.query()
   if (!year || !month) return c.json({ error: 'year and month are required' }, 400)
+  const div = c.req.query('division') || 'PS'
   const currentMonth = parseInt(month)
   const currentYear = parseInt(year)
   const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1
@@ -201,9 +202,9 @@ app.get('/api/analysis/unit-summary', async (c) => {
       AVG(CAST(actual_unit_price AS REAL)) as unit_price,
       SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as total_cost
     FROM raw_records
-    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
     GROUP BY machine_code, material_code
-  `).bind(prevYm).all()
+  `).bind(prevYm, div).all()
 
   // 당월 데이터
   const curData = await db.prepare(`
@@ -214,18 +215,18 @@ app.get('/api/analysis/unit-summary', async (c) => {
       SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as total_cost,
       MAX(CAST(production_qty AS REAL)) as production_qty
     FROM raw_records
-    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
     GROUP BY machine_code, material_code
-  `).bind(curYm).all()
+  `).bind(curYm, div).all()
 
   // 호기별 생산량 (전월/당월) - 생산량은 지종별 MAX로 합산
   const prevProdResult = await db.prepare(`
     SELECT machine_code, SUM(prod) as total_prod FROM (
       SELECT machine_code, product_level4, MAX(CAST(production_qty AS REAL)) as prod
-      FROM raw_records WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND CAST(production_qty AS REAL) > 0
+      FROM raw_records WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ? AND CAST(production_qty AS REAL) > 0
       GROUP BY machine_code, product_level4
     ) GROUP BY machine_code
-  `).bind(prevYm).all()
+  `).bind(prevYm, div).all()
   const prevProdMap: Record<string, number> = {}
   for (const r of prevProdResult.results as any[]) {
     prevProdMap[r.machine_code] = Number(r.total_prod) || 0
@@ -234,10 +235,10 @@ app.get('/api/analysis/unit-summary', async (c) => {
   const curProdResult = await db.prepare(`
     SELECT machine_code, SUM(prod) as total_prod FROM (
       SELECT machine_code, product_level4, MAX(CAST(production_qty AS REAL)) as prod
-      FROM raw_records WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND CAST(production_qty AS REAL) > 0
+      FROM raw_records WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ? AND CAST(production_qty AS REAL) > 0
       GROUP BY machine_code, product_level4
     ) GROUP BY machine_code
-  `).bind(curYm).all()
+  `).bind(curYm, div).all()
   const curProdMap: Record<string, number> = {}
   for (const r of curProdResult.results as any[]) {
     curProdMap[r.machine_code] = Number(r.total_prod) || 0
@@ -510,6 +511,7 @@ app.get('/api/simulation/profit-base', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
   const category = c.req.query('category') || '' // ALL, RAW, SUB
+  const div = c.req.query('division') || 'PS'
 
   // 전월 계산
   let prevYm = ''
@@ -539,7 +541,7 @@ app.get('/api/simulation/profit-base', async (c) => {
       END as product_level2_name,
       SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as material_cost
     FROM raw_records
-    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
       AND CAST(actual_alloc_qty AS REAL) != 0
       ${catFilter}
     GROUP BY machine_code, 
@@ -568,7 +570,7 @@ app.get('/api/simulation/profit-base', async (c) => {
         product_level4,
         MAX(CAST(total_production AS REAL)) as total_prod
       FROM raw_records
-      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
         AND CAST(total_production AS REAL) > 0
       GROUP BY machine_code, 
         CASE 
@@ -583,8 +585,8 @@ app.get('/api/simulation/profit-base', async (c) => {
   `
 
   // 당월
-  const curCostResult = await db.prepare(costSql).bind(ym).all()
-  const curProdResult = await db.prepare(prodSql).bind(ym).all()
+  const curCostResult = await db.prepare(costSql).bind(ym, div).all()
+  const curProdResult = await db.prepare(prodSql).bind(ym, div).all()
   const curCostMap = new Map<string, number>()
   const curProdMap = new Map<string, number>()
   for (const r of curCostResult.results as any[]) {
@@ -598,8 +600,8 @@ app.get('/api/simulation/profit-base', async (c) => {
   let prevCostMap = new Map<string, number>()
   let prevProdMap = new Map<string, number>()
   if (prevYm) {
-    const prevCostResult = await db.prepare(costSql).bind(prevYm).all()
-    const prevProdResult = await db.prepare(prodSql).bind(prevYm).all()
+    const prevCostResult = await db.prepare(costSql).bind(prevYm, div).all()
+    const prevProdResult = await db.prepare(prodSql).bind(prevYm, div).all()
     for (const r of prevCostResult.results as any[]) {
       prevCostMap.set(`${r.machine_code}|${r.product_level2_name}`, Number(r.material_cost) || 0)
     }
@@ -652,6 +654,7 @@ app.get('/api/simulation/profit-base', async (c) => {
 app.get('/api/forecast/production', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
+  const div = c.req.query('division') || 'PS'
 
   const sql = `
     SELECT 
@@ -673,7 +676,7 @@ app.get('/api/forecast/production', async (c) => {
         MAX(CAST(production_qty AS REAL)) as prod_qty,
         MAX(CAST(waste_qty AS REAL)) as waste
       FROM raw_records
-      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
         AND CAST(total_production AS REAL) > 0
       GROUP BY machine_code, product_level2_name, product_level4
     )
@@ -686,7 +689,7 @@ app.get('/api/forecast/production', async (c) => {
     ORDER BY machine_code, total_production DESC
   `
 
-  const result = await db.prepare(sql).bind(ym).all()
+  const result = await db.prepare(sql).bind(ym, div).all()
   return c.json(result.results)
 })
 
@@ -695,6 +698,7 @@ app.get('/api/forecast/material-detail', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
   const machine = c.req.query('machine') || ''  // PM2, PM3 or empty for all
+  const div = c.req.query('division') || 'PS'
 
   let machineFilter = ''
   if (machine) {
@@ -712,7 +716,7 @@ app.get('/api/forecast/material-detail', async (c) => {
       SUM(CAST(actual_alloc_qty AS REAL)) as usage_qty,
       SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as total_cost
     FROM raw_records
-    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
       ${machineFilter}
     GROUP BY machine_code, material_group_major_name, material_group_name, material_code, material_name
     ORDER BY machine_code, material_group_major_name, material_group_name, material_code
@@ -729,7 +733,7 @@ app.get('/api/forecast/material-detail', async (c) => {
         product_level4,
         MAX(CAST(total_production AS REAL)) as prod_qty
       FROM raw_records
-      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
         AND CAST(total_production AS REAL) > 0
         ${machineFilter}
       GROUP BY machine_code, product_level4
@@ -738,8 +742,8 @@ app.get('/api/forecast/material-detail', async (c) => {
   `
 
   const [matResult, prodResult] = await Promise.all([
-    db.prepare(matSql).bind(ym).all(),
-    db.prepare(prodSql).bind(ym).all()
+    db.prepare(matSql).bind(ym, div).all(),
+    db.prepare(prodSql).bind(ym, div).all()
   ])
 
   // 호기별 생산량 맵 (kg)
@@ -786,6 +790,7 @@ app.get('/api/forecast/unit-by-product', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
   const machine = c.req.query('machine') || ''
+  const div = c.req.query('division') || 'PS'
 
   let machineFilter = ''
   if (machine) {
@@ -805,7 +810,7 @@ app.get('/api/forecast/unit-by-product', async (c) => {
       SUM(CAST(actual_alloc_qty AS REAL)) as alloc_qty,
       SUM(CAST(production_qty AS REAL)) as prod_qty
     FROM raw_records
-    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
       ${machineFilter}
       AND CAST(actual_alloc_qty AS REAL) != 0
     GROUP BY material_code, material_name,
@@ -817,7 +822,7 @@ app.get('/api/forecast/unit-by-product', async (c) => {
     ORDER BY material_code, product_type
   `
 
-  const result = await db.prepare(sql).bind(ym).all()
+  const result = await db.prepare(sql).bind(ym, div).all()
 
   // 지종별 실제 생산량(톤) 조회 (원단위 계산의 분모) — total_production 사용
   const prodSql = `
@@ -832,14 +837,14 @@ app.get('/api/forecast/unit-by-product', async (c) => {
       SELECT product_level2_name, product_level4,
         MAX(CAST(total_production AS REAL)) as prod_qty
       FROM raw_records
-      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
         AND CAST(total_production AS REAL) > 0
         ${machineFilter}
       GROUP BY product_level2_name, product_level4
     )
     GROUP BY product_type
   `
-  const prodResult = await db.prepare(prodSql).bind(ym).all()
+  const prodResult = await db.prepare(prodSql).bind(ym, div).all()
 
   // 지종별 생산량 맵 (kg)
   const prodMap: Record<string, number> = {}
@@ -1051,6 +1056,7 @@ app.get('/api/dashboard/material-overview', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
   const category = c.req.query('category') || '' // ALL, RAW, SUB
+  const div = c.req.query('division') || 'PS'
 
   // 전월 계산
   let prevYm = ''
@@ -1080,7 +1086,7 @@ app.get('/api/dashboard/material-overview', async (c) => {
       END as product_level2_name,
       SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as material_cost
     FROM raw_records
-    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
       AND CAST(actual_alloc_qty AS REAL) != 0
       ${catFilter}
     GROUP BY machine_code, 
@@ -1109,7 +1115,7 @@ app.get('/api/dashboard/material-overview', async (c) => {
         product_level4,
         MAX(CAST(total_production AS REAL)) as total_prod
       FROM raw_records
-      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
         AND CAST(total_production AS REAL) > 0
       GROUP BY machine_code, 
         CASE 
@@ -1124,9 +1130,9 @@ app.get('/api/dashboard/material-overview', async (c) => {
   `
 
   // 당월 재료비 + 생산량
-  const curCostResult = await db.prepare(costSql).bind(ym).all()
+  const curCostResult = await db.prepare(costSql).bind(ym, div).all()
   const curCostData = curCostResult.results as any[]
-  const curProdResult = await db.prepare(prodSql).bind(ym).all()
+  const curProdResult = await db.prepare(prodSql).bind(ym, div).all()
   const curProdMap = new Map<string, number>()
   for (const p of curProdResult.results as any[]) {
     curProdMap.set(`${p.machine_code}|${p.product_level2_name}`, Number(p.production) || 0)
@@ -1136,11 +1142,11 @@ app.get('/api/dashboard/material-overview', async (c) => {
   let prevCostMap = new Map<string, number>()
   let prevProdMap = new Map<string, number>()
   if (prevYm) {
-    const prevCostResult = await db.prepare(costSql).bind(prevYm).all()
+    const prevCostResult = await db.prepare(costSql).bind(prevYm, div).all()
     for (const row of prevCostResult.results as any[]) {
       prevCostMap.set(`${row.machine_code}|${row.product_level2_name}`, Number(row.material_cost) || 0)
     }
-    const prevProdResult = await db.prepare(prodSql).bind(prevYm).all()
+    const prevProdResult = await db.prepare(prodSql).bind(prevYm, div).all()
     for (const p of prevProdResult.results as any[]) {
       prevProdMap.set(`${p.machine_code}|${p.product_level2_name}`, Number(p.production) || 0)
     }
@@ -1185,6 +1191,7 @@ app.get('/api/dashboard/material-cost-summary', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
   const category = c.req.query('category') || '' // RAW, SUB
+  const div = c.req.query('division') || 'PS'
   
   // 전월 계산
   let prevYm = ''
@@ -1220,7 +1227,7 @@ app.get('/api/dashboard/material-cost-summary', async (c) => {
       SUM(CAST(plan_vs_price_diff AS REAL)) as price_diff,
       COUNT(*) as row_count
     FROM raw_records
-    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
       AND CAST(actual_alloc_qty AS REAL) != 0
       ${catFilter}
     GROUP BY machine_code, 
@@ -1234,13 +1241,13 @@ app.get('/api/dashboard/material-cost-summary', async (c) => {
   `
   
   // 당월 조회
-  const curResult = await db.prepare(baseSql).bind(ym).all()
+  const curResult = await db.prepare(baseSql).bind(ym, div).all()
   const curData = curResult.results as any[]
   
   // 전월 조회
   let prevMap = new Map<string, any>()
   if (prevYm) {
-    const prevResult = await db.prepare(baseSql).bind(prevYm).all()
+    const prevResult = await db.prepare(baseSql).bind(prevYm, div).all()
     for (const row of prevResult.results as any[]) {
       const key = `${row.machine_code}|${row.product_level2_name}|${row.material_group_name}`
       prevMap.set(key, row)
@@ -1269,6 +1276,7 @@ app.get('/api/dashboard/material-by-group', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
   const category = c.req.query('category') || ''
+  const div = c.req.query('division') || 'PS'
   
   // 전월 계산
   let prevYm = ''
@@ -1303,7 +1311,7 @@ app.get('/api/dashboard/material-by-group', async (c) => {
       SUM(CAST(plan_vs_price_diff AS REAL)) as price_diff,
       COUNT(*) as row_count
     FROM raw_records
-    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
       AND CAST(actual_alloc_qty AS REAL) != 0
       ${catFilter}
     GROUP BY machine_code, material_group_major_name,
@@ -1315,12 +1323,12 @@ app.get('/api/dashboard/material-by-group', async (c) => {
     ORDER BY machine_code, material_group_major_name, material_cost DESC
   `
 
-  const curResult = await db.prepare(baseSql).bind(ym).all()
+  const curResult = await db.prepare(baseSql).bind(ym, div).all()
   const curData = curResult.results as any[]
 
   let prevMap = new Map<string, any>()
   if (prevYm) {
-    const prevResult = await db.prepare(baseSql).bind(prevYm).all()
+    const prevResult = await db.prepare(baseSql).bind(prevYm, div).all()
     for (const row of prevResult.results as any[]) {
       const key = `${row.machine_code}|${row.material_group_major_name}|${row.product_level2_name}`
       prevMap.set(key, row)
@@ -1393,6 +1401,7 @@ app.get('/api/dashboard/production-summary', async (c) => {
 app.get('/api/dashboard/production-analysis', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
+  const div = c.req.query('division') || 'PS'
 
   // 전월 계산
   let prevYm = ''
@@ -1425,7 +1434,7 @@ app.get('/api/dashboard/production-analysis', async (c) => {
         MAX(CAST(production_qty AS REAL)) as prod_qty,
         MAX(CAST(waste_qty AS REAL)) as waste
       FROM raw_records
-      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
         AND CAST(total_production AS REAL) > 0
       GROUP BY machine_code, 
         CASE 
@@ -1439,12 +1448,12 @@ app.get('/api/dashboard/production-analysis', async (c) => {
     ORDER BY machine_code, total_production DESC
   `
 
-  const curResult = await db.prepare(prodSql).bind(ym).all()
+  const curResult = await db.prepare(prodSql).bind(ym, div).all()
   const curData = (curResult.results || []) as any[]
 
   let prevData: any[] = []
   if (prevYm) {
-    const prevResult = await db.prepare(prodSql).bind(prevYm).all()
+    const prevResult = await db.prepare(prodSql).bind(prevYm, div).all()
     prevData = (prevResult.results || []) as any[]
   }
 
@@ -1537,6 +1546,7 @@ app.get('/api/dashboard/mix-effect', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
   const category = c.req.query('category') || 'ALL' // RAW, SUB, ALL
+  const div = c.req.query('division') || 'PS'
 
   // 전월 계산
   let prevYm = ''
@@ -1568,7 +1578,7 @@ app.get('/api/dashboard/mix-effect', async (c) => {
       END as product_type,
       SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as material_cost
     FROM raw_records
-    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
       AND CAST(actual_alloc_qty AS REAL) != 0
       ${categoryFilter}
     GROUP BY machine_code, 
@@ -1594,7 +1604,7 @@ app.get('/api/dashboard/mix-effect', async (c) => {
         product_level4,
         MAX(CAST(total_production AS REAL)) as total_prod
       FROM raw_records
-      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
         AND CAST(total_production AS REAL) > 0
       GROUP BY machine_code, 
         CASE 
@@ -1609,10 +1619,10 @@ app.get('/api/dashboard/mix-effect', async (c) => {
 
   // 당월/전월 데이터 조회
   const [curCost, curProd, prevCost, prevProd] = await Promise.all([
-    db.prepare(costSql).bind(ym).all(),
-    db.prepare(prodSql).bind(ym).all(),
-    prevYm ? db.prepare(costSql).bind(prevYm).all() : Promise.resolve({ results: [] }),
-    prevYm ? db.prepare(prodSql).bind(prevYm).all() : Promise.resolve({ results: [] })
+    db.prepare(costSql).bind(ym, div).all(),
+    db.prepare(prodSql).bind(ym, div).all(),
+    prevYm ? db.prepare(costSql).bind(prevYm, div).all() : Promise.resolve({ results: [] }),
+    prevYm ? db.prepare(prodSql).bind(prevYm, div).all() : Promise.resolve({ results: [] })
   ])
 
   // 데이터 맵 구성: { "PM2|ACB": { cost, production, unitCost } }
@@ -1766,7 +1776,8 @@ app.get('/api/dashboard/mix-effect', async (c) => {
 // 자재 구성 변경 시뮬레이션: 기존 자재 대체/비율변경 + 신규 자재 추가
 app.post('/api/simulation/material-mix', async (c) => {
   const db = c.env.DB
-  const { ym, machine, production_ton, changes } = await c.req.json()
+  const { ym, machine, production_ton, changes, division } = await c.req.json()
+  const div = division || 'PS'
   // changes: [{ type: 'replace'|'ratio'|'add', source_code, target_code, target_name, target_price, ratio, qty_kg }]
 
   if (!ym || !machine) {
@@ -1786,21 +1797,21 @@ app.post('/api/simulation/material-mix', async (c) => {
         ELSE 0 END as unit_price,
       SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as total_cost
     FROM raw_records
-    WHERE calendar_ym = ? AND machine_code = ? AND calendar_ym != 'CALMONTH'
+    WHERE calendar_ym = ? AND machine_code = ? AND calendar_ym != 'CALMONTH' AND division = ?
       AND CAST(actual_alloc_qty AS REAL) != 0
     GROUP BY material_code, material_name, material_group_name, material_group_major_name
     ORDER BY total_cost DESC
-  `).bind(ym, machine).all()
+  `).bind(ym, machine, div).all()
 
   // 2. 전월 생산량 (톤)
   const prodResult = await db.prepare(`
     SELECT SUM(prod) as total_prod FROM (
       SELECT product_level4, MAX(CAST(total_production AS REAL)) as prod
-      FROM raw_records WHERE calendar_ym = ? AND machine_code = ? AND calendar_ym != 'CALMONTH'
+      FROM raw_records WHERE calendar_ym = ? AND machine_code = ? AND calendar_ym != 'CALMONTH' AND division = ?
         AND CAST(total_production AS REAL) > 0
       GROUP BY product_level4
     )
-  `).bind(ym, machine).first() as any
+  `).bind(ym, machine, div).first() as any
   const baseProdTon = (prodResult?.total_prod || 0) / 1000
   const simProdTon = production_ton || baseProdTon
 
@@ -2013,6 +2024,7 @@ app.get('/api/simulation/materials-for-mix', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
   const machine = c.req.query('machine') || ''
+  const div = c.req.query('division') || 'PS'
 
   // 해당 호기의 현재 사용 자재
   const current = await db.prepare(`
@@ -2027,11 +2039,11 @@ app.get('/api/simulation/materials-for-mix', async (c) => {
         ELSE 0 END as unit_price,
       SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as total_cost
     FROM raw_records
-    WHERE calendar_ym = ? AND machine_code = ? AND calendar_ym != 'CALMONTH'
+    WHERE calendar_ym = ? AND machine_code = ? AND calendar_ym != 'CALMONTH' AND division = ?
       AND CAST(actual_alloc_qty AS REAL) != 0
     GROUP BY material_code, material_name, material_group_name, material_group_major_name
     ORDER BY total_cost DESC
-  `).bind(ym, machine).all()
+  `).bind(ym, machine, div).all()
 
   // 동일 기간 다른 호기에서 사용되는 자재 (대체 후보)
   const others = await db.prepare(`
@@ -2044,11 +2056,11 @@ app.get('/api/simulation/materials-for-mix', async (c) => {
         THEN SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) / SUM(CAST(actual_alloc_qty AS REAL))
         ELSE 0 END as unit_price
     FROM raw_records
-    WHERE calendar_ym = ? AND machine_code != ? AND calendar_ym != 'CALMONTH'
+    WHERE calendar_ym = ? AND machine_code != ? AND calendar_ym != 'CALMONTH' AND division = ?
       AND CAST(actual_alloc_qty AS REAL) != 0
     GROUP BY material_code, material_name, material_group_name, material_group_major_name
     ORDER BY material_group_name, material_name
-  `).bind(ym, machine).all()
+  `).bind(ym, machine, div).all()
 
   // 마스터에 있지만 실적에 없는 자재 (신규 후보)
   const masterPaperRaw = await db.prepare(`SELECT material_code, material_name, material_group FROM master_paper_raw_materials`).all()
@@ -2072,6 +2084,7 @@ app.get('/api/raw-records', async (c) => {
   const category = c.req.query('category') // RAW, SUB (material_group_major_name 기반)
   const search = c.req.query('search')
   const matGroup = c.req.query('mat_group') // 자재구분 필터
+  const div = c.req.query('division') || 'PS'
   const page = parseInt(c.req.query('page') || '0')
   const limit = parseInt(c.req.query('limit') || '100')
 
@@ -2091,8 +2104,8 @@ app.get('/api/raw-records', async (c) => {
     codeToGroup[r.material_code] = r.category
   }
 
-  let where = '1=1'
-  const params: any[] = []
+  let where = 'division = ?'
+  const params: any[] = [div]
 
   if (ym) { where += ' AND calendar_ym = ?'; params.push(ym) }
   if (machine) { where += ' AND machine_code = ?'; params.push(machine) }
@@ -2176,10 +2189,11 @@ app.delete('/api/raw-records', async (c) => {
 app.get('/api/raw-records/summary', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym')
+  const div = c.req.query('division') || 'PS'
   
-  let ymFilter = ''
-  const params: any[] = []
-  if (ym) { ymFilter = ' WHERE calendar_ym = ?'; params.push(ym) }
+  let ymFilter = ' WHERE division = ?'
+  const params: any[] = [div]
+  if (ym) { ymFilter += ' AND calendar_ym = ?'; params.push(ym) }
 
   const result = await db.prepare(`
     SELECT 
@@ -2629,6 +2643,7 @@ app.get('/api/manual-input/materials', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
   const machine = c.req.query('machine') || ''
+  const div = c.req.query('division') || 'PS'
 
   if (!ym) return c.json({ materials: [], productTypes: [] })
 
@@ -2643,12 +2658,12 @@ app.get('/api/manual-input/materials', async (c) => {
       material_group_name as group_name,
       material_group_major_name as major_group
     FROM raw_records
-    WHERE calendar_ym != 'CALMONTH'
+    WHERE calendar_ym != 'CALMONTH' AND division = ?
       ${machineFilter}
     GROUP BY material_code, material_name, material_group_name, material_group_major_name
     ORDER BY material_group_name, material_code
   `
-  const allMatResult = await db.prepare(allMatSql).all()
+  const allMatResult = await db.prepare(allMatSql).bind(div).all()
   const allMaterials = (allMatResult.results || []) as any[]
 
   // 2) 전월(ym) 사용량/단가 집계
@@ -2658,12 +2673,12 @@ app.get('/api/manual-input/materials', async (c) => {
       SUM(CAST(actual_alloc_qty AS REAL)) as usage_qty,
       MAX(CAST(actual_unit_price AS REAL)) as unit_price
     FROM raw_records
-    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
       ${machineFilter}
       AND CAST(actual_alloc_qty AS REAL) != 0
     GROUP BY material_code
   `
-  const prevMatResult = await db.prepare(prevMatSql).bind(ym).all()
+  const prevMatResult = await db.prepare(prevMatSql).bind(ym, div).all()
   const prevMap: Record<string, any> = {}
   for (const r of (prevMatResult.results || []) as any[]) {
     prevMap[r.code] = r
@@ -2691,11 +2706,11 @@ app.get('/api/manual-input/materials', async (c) => {
         ELSE product_level2_name
       END as product_type
     FROM raw_records
-    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+    WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
       ${machineFilter}
       AND product_level2_name IS NOT NULL AND product_level2_name != ''
   `
-  const typeResult = await db.prepare(typeSql).bind(ym).all()
+  const typeResult = await db.prepare(typeSql).bind(ym, div).all()
   const productTypes = (typeResult.results as any[]).map(r => r.product_type).filter(Boolean)
 
   return c.json({ 
@@ -2709,6 +2724,7 @@ app.get('/api/manual-input/production', async (c) => {
   const db = c.env.DB
   const ym = c.req.query('ym') || ''
   const machine = c.req.query('machine') || ''
+  const div = c.req.query('division') || 'PS'
 
   if (!ym) return c.json({ production: {} })
 
@@ -2727,7 +2743,7 @@ app.get('/api/manual-input/production', async (c) => {
       SELECT product_level2_name, product_level4,
         MAX(CAST(total_production AS REAL)) as prod_qty
       FROM raw_records
-      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH'
+      WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
         ${machineFilter}
         AND CAST(total_production AS REAL) > 0
       GROUP BY product_level2_name, product_level4
@@ -2735,7 +2751,7 @@ app.get('/api/manual-input/production', async (c) => {
     GROUP BY product_type
     ORDER BY product_type
   `
-  const result = await db.prepare(prodSql).bind(ym).all()
+  const result = await db.prepare(prodSql).bind(ym, div).all()
   
   const production: Record<string, number> = {}
   for (const r of result.results as any[]) {
