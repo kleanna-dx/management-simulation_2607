@@ -165,15 +165,10 @@ export function mainPage(): string {
             <div class="w-7 h-7 rounded-lg bg-blue-200/50 flex items-center justify-center"><i class="fas fa-cogs text-blue-500 text-xs"></i></div>
             <span class="text-xs font-medium text-blue-600">호기별 원단위</span>
           </div>
-          <div class="flex items-center gap-3">
+          <div id="s-machine-uc-container" class="flex items-center gap-3">
             <div>
-              <span class="text-[10px] text-gray-400">PM2</span>
-              <p id="s-pm2-uc" class="text-base font-bold text-gray-900">-</p>
-            </div>
-            <div class="text-gray-300">|</div>
-            <div>
-              <span class="text-[10px] text-gray-400">PM3</span>
-              <p id="s-pm3-uc" class="text-base font-bold text-gray-900">-</p>
+              <span class="text-[10px] text-gray-400">-</span>
+              <p class="text-base font-bold text-gray-900">-</p>
             </div>
           </div>
           <p class="text-[10px] text-slate-400 mt-1">천원/톤</p>
@@ -1904,6 +1899,8 @@ export function mainPage(): string {
           btnHtml += '<button onclick="setManualMachine(' + String.fromCharCode(39) + m.code + String.fromCharCode(39) + ')" id="mn-mc-' + m.code.toLowerCase() + '" class="' + cls + '">' + m.code + '</button>';
         });
         mnBtnContainer.innerHTML = btnHtml;
+        // 기본 호기 업데이트
+        if (typeof mnMachine !== 'undefined') mnMachine = divisionMachines[0].code;
       }
 
       var fcBtnContainer = document.getElementById('fc-machine-btns');
@@ -1914,6 +1911,8 @@ export function mainPage(): string {
           btnHtml += '<button onclick="setFcMachineFilter(' + String.fromCharCode(39) + m.code + String.fromCharCode(39) + ')" id="fc-mc-' + m.code.toLowerCase() + '" class="' + cls + '">' + m.code + '</button>';
         });
         fcBtnContainer.innerHTML = btnHtml;
+        // 기본 호기 업데이트
+        if (typeof fcMachineFilter !== 'undefined') fcMachineFilter = divisionMachines[0].code;
       }
     }
 
@@ -2624,7 +2623,7 @@ export function mainPage(): string {
       };
       tr.innerHTML =
         '<td class="px-3 py-1.5 text-gray-400">-</td>' +
-        '<td class="px-3 py-1.5"><select data-field="machine_code" class="text-xs border border-blue-300 rounded px-1.5 py-0.5"><option value="PM2"' + (rule.machine_code === 'PM2' ? ' selected' : '') + '>PM2</option><option value="PM3"' + (rule.machine_code === 'PM3' ? ' selected' : '') + '>PM3</option></select></td>' +
+        '<td class="px-3 py-1.5"><select data-field="machine_code" class="text-xs border border-blue-300 rounded px-1.5 py-0.5">' + ((divisionMachines || [{code:'PM2'},{code:'PM3'}]).map(function(m){ var mc = m.code || m; return '<option value="' + mc + '"' + (rule.machine_code === mc ? ' selected' : '') + '>' + mc + '</option>'; }).join('')) + '</select></td>' +
         '<td class="px-3 py-1.5">' + inp(rule.material_group_keyword, 'material_group_keyword', 'w-32') + '</td>' +
         '<td class="px-3 py-1.5">' + inp(rule.excluded_product_type, 'excluded_product_type', 'w-20') + '</td>' +
         '<td class="px-3 py-1.5">' + inp(rule.description, 'description', 'w-40') + '</td>' +
@@ -2742,24 +2741,39 @@ export function mainPage(): string {
         fetch('/api/dashboard/mix-effect?ym=' + ym + dv + (mixEffectCategoryFilter !== 'ALL' ? '&category=' + mixEffectCategoryFilter : '')).then(r => r.json())
       ]);
 
-      // 원단위 카드 계산 (overview 데이터 기반 - 이미 톤 단위)
-      var pm2Cost = 0, pm2Prod = 0, pm3Cost = 0, pm3Prod = 0;
+      // 원단위 카드 계산 (overview 데이터 기반 - 이미 톤 단위) — 동적 호기
+      var machineCosts = {};
+      var machineProds = {};
       if (overview && overview.length) {
         overview.forEach(function(item) {
           var cost = Number(item.cur_material_cost) || 0;
           var prod = Number(item.cur_production) || 0;
-          if (item.machine_code === 'PM2') { pm2Cost += cost; pm2Prod += prod; }
-          else if (item.machine_code === 'PM3') { pm3Cost += cost; pm3Prod += prod; }
+          var mc = item.machine_code;
+          if (!machineCosts[mc]) { machineCosts[mc] = 0; machineProds[mc] = 0; }
+          machineCosts[mc] += cost;
+          machineProds[mc] += prod;
         });
       }
-      var totalCost = pm2Cost + pm3Cost;
-      var totalProd = pm2Prod + pm3Prod;
+      var totalCost = 0, totalProd = 0;
+      Object.keys(machineCosts).forEach(function(mc) { totalCost += machineCosts[mc]; totalProd += machineProds[mc]; });
       var totalUC = totalProd > 0 ? totalCost / totalProd / 1000 : 0;
-      var pm2UC = pm2Prod > 0 ? pm2Cost / pm2Prod / 1000 : 0;
-      var pm3UC = pm3Prod > 0 ? pm3Cost / pm3Prod / 1000 : 0;
       document.getElementById('s-total-uc').textContent = totalUC > 0 ? totalUC.toFixed(1) : '-';
-      document.getElementById('s-pm2-uc').textContent = pm2UC > 0 ? pm2UC.toFixed(1) : '-';
-      document.getElementById('s-pm3-uc').textContent = pm3UC > 0 ? pm3UC.toFixed(1) : '-';
+
+      // 호기별 원단위 카드 동적 렌더링
+      var ucContainer = document.getElementById('s-machine-uc-container');
+      if (ucContainer) {
+        var machines = divisionMachines || Object.keys(machineCosts);
+        var ucHtml = '';
+        machines.forEach(function(mc, idx) {
+          var mcCode = mc.code || mc;
+          var mcCost = machineCosts[mcCode] || 0;
+          var mcProd = machineProds[mcCode] || 0;
+          var mcUC = mcProd > 0 ? mcCost / mcProd / 1000 : 0;
+          if (idx > 0) ucHtml += '<div class="text-gray-300">|</div>';
+          ucHtml += '<div><span class="text-[10px] text-gray-400">' + mcCode + '</span><p class="text-base font-bold text-gray-900">' + (mcUC > 0 ? mcUC.toFixed(1) : '-') + '</p></div>';
+        });
+        ucContainer.innerHTML = ucHtml || '<div><span class="text-[10px] text-gray-400">-</span><p class="text-base font-bold text-gray-900">-</p></div>';
+      }
 
       renderOverview(overview);
       renderProfitSummary(overview);
@@ -2821,7 +2835,7 @@ export function mainPage(): string {
       const rows = [];
 
       const subtotalRow = (mc) => {
-        const chipClass = mc === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        const chipClass = getCC(mc);
         const mCurUnit = mCurProd > 0 ? mCurCost / mCurProd / 1000 : 0;
         const mPrevUnit = mPrevProd > 0 ? mPrevCost / mPrevProd / 1000 : 0;
         const mEstUnit = mEstProd > 0 ? mEstCost / mEstProd / 1000 : 0;
@@ -2864,7 +2878,7 @@ export function mainPage(): string {
 
         const machineChanged = d.machine_code !== prevMachine;
         prevMachine = d.machine_code;
-        const chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        const chipClass = getCC(d.machine_code);
         const mc = d.machine_code;
 
         // 호기비중: 해당 지종 생산량 / 호기 총생산량 * 100
@@ -2995,7 +3009,7 @@ export function mainPage(): string {
       const rows = [];
 
       const subtotalRow = (mc) => {
-        const chipClass = mc === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        const chipClass = getCC(mc);
         const eokV = mProfit / 100000;
         const cls = eokV < -0.005 ? 'text-red-600' : (eokV > 0.005 ? 'text-steel-400' : 'text-gray-400');
         const val = Math.abs(eokV) < 0.005 ? '-' : (eokV < 0 ? String.fromCharCode(9651) + Math.abs(eokV).toFixed(2) : eokV.toFixed(2));
@@ -3032,7 +3046,7 @@ export function mainPage(): string {
 
         const machineChanged = d.machine_code !== prevMachine;
         prevMachine = d.machine_code;
-        const chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        const chipClass = getCC(d.machine_code);
 
         rows.push('<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-sage-50/30">' +
           '<td class="!py-1.5"><span class="unit-chip '+chipClass+'">'+(d.machine_code||'')+'</span></td>' +
@@ -3104,7 +3118,7 @@ export function mainPage(): string {
       let mCur = 0, mPrev = 0, mUsage = 0, mPrice = 0, mRows = 0;
       const rows = [];
       const subtotalRow = (mc) => {
-        const chipClass = mc === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        const chipClass = getCC(mc);
         const dEl = (v) => { const n=Number(v); if(Math.abs(n)<1) return '<td class="!py-1.5 text-right font-mono text-gray-400">-</td>'; const ev=(Math.abs(n)/100000000).toFixed(2); if(n<0) return '<td class="!py-1.5 text-right font-mono text-red-600">'+String.fromCharCode(9651)+ev+'</td>'; return '<td class="!py-1.5 text-right font-mono">'+ev+'</td>'; };
         return '<tr class="bg-slate-100 font-semibold">' +
           '<td class="!py-1.5"><span class="unit-chip '+chipClass+'">'+mc+'</span></td>' +
@@ -3130,7 +3144,7 @@ export function mainPage(): string {
         mCur += curCost; mPrev += prevCost; mUsage += usageDiff; mPrice += priceDiff; mRows += Number(d.row_count) || 0;
         const machineChanged = d.machine_code !== prevMachine;
         prevMachine = d.machine_code;
-        const chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        const chipClass = getCC(d.machine_code);
         rows.push('<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-sage-50/30">' +
           '<td class="!py-1.5"><span class="unit-chip ' + chipClass + '">' + (d.machine_code||'') + '</span></td>' +
           '<td class="!py-1.5">' + (d.product_level2_name||'-') + '</td>' +
@@ -3173,7 +3187,7 @@ export function mainPage(): string {
         grandTotal += Number(d.total_production) || 0;
         const machineChanged = d.machine_code !== prevMachine;
         prevMachine = d.machine_code;
-        const chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        const chipClass = getCC(d.machine_code);
         return '<tr class="' + (machineChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-sage-50/30">' +
           '<td><span class="unit-chip ' + chipClass + '">' + (d.machine_code||'') + '</span></td>' +
           '<td>' + (d.machine_name||'-') + '</td>' +
@@ -3220,7 +3234,7 @@ export function mainPage(): string {
         var sub = subMap[mc] || {};
         // 호기 소계 행 (볼드)
         html += '<tr class="bg-slate-50 font-semibold border-t-2 border-slate-300">' +
-          '<td class="!py-2"><span class="unit-chip ' + (mc === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3') + '">' + mc + '</span></td>' +
+          '<td class="!py-2"><span class="unit-chip ' + (getCC(mc)) + '">' + mc + '</span></td>' +
           '<td class="!py-2 text-right font-mono">' + fmt(sub.cur_total_production) + '</td>' +
           '<td class="!py-2 text-right font-mono">' + fmt(sub.cur_production_qty) + '</td>' +
           '<td class="!py-2 text-right font-mono border-r border-slate-200">' + fmt(sub.cur_waste_qty) + '</td>' +
@@ -3314,63 +3328,37 @@ export function mainPage(): string {
         '<td colspan="3" class="!py-2"></td>' +
         '</tr>';
 
-      // PM2 지종 믹스
-      var s2pm2 = s2.gradeMix.PM2 || [];
-      var s3pm2 = (s3 && s3.gradeMix.PM2) || [];
-      var pm2Types = data.pm2Types || [];
-      pm2Types.forEach(function(pt, i) {
-        var r2 = s2pm2[i] || { col1:0, col2:0, col3:0 };
-        var r3 = s3pm2[i] || { col1:0, col2:0, col3:0 };
-        html += '<tr class="hover:bg-sage-50/30">' +
-          '<td class="!py-1.5 pl-4 text-[11px]"><span class="text-gray-400 mr-1">PM2</span>' + pt + '</td>' +
-          '<td class="!py-1.5 text-right font-mono">' + fmtV(r2.col1) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono">' + fmtV(r2.col2) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(r2.col3) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono">' + fmtV(r3.col1) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono">' + fmtV(r3.col2) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono font-semibold">' + fmtV(r3.col3) + '</td>' +
+      // 동적 호기별 지종 믹스 렌더링
+      var mixMachineList = data.machineTypesMap ? Object.keys(data.machineTypesMap) : ['PM2','PM3'];
+      mixMachineList.forEach(function(mc) {
+        var mcTypes = data.machineTypesMap ? (data.machineTypesMap[mc] || []) : (mc === 'PM2' ? (data.pm2Types || []) : (data.pm3Types || []));
+        var s2mc = s2.gradeMix[mc] || [];
+        var s3mc = (s3 && s3.gradeMix[mc]) || [];
+        mcTypes.forEach(function(pt, i) {
+          var r2 = s2mc[i] || { col1:0, col2:0, col3:0 };
+          var r3 = s3mc[i] || { col1:0, col2:0, col3:0 };
+          html += '<tr class="hover:bg-sage-50/30">' +
+            '<td class="!py-1.5 pl-4 text-[11px]"><span class="text-gray-400 mr-1">' + mc + '</span>' + pt + '</td>' +
+            '<td class="!py-1.5 text-right font-mono">' + fmtV(r2.col1) + '</td>' +
+            '<td class="!py-1.5 text-right font-mono">' + fmtV(r2.col2) + '</td>' +
+            '<td class="!py-1.5 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(r2.col3) + '</td>' +
+            '<td class="!py-1.5 text-right font-mono">' + fmtV(r3.col1) + '</td>' +
+            '<td class="!py-1.5 text-right font-mono">' + fmtV(r3.col2) + '</td>' +
+            '<td class="!py-1.5 text-right font-mono font-semibold">' + fmtV(r3.col3) + '</td>' +
+            '</tr>';
+        });
+
+        // 호기 소계
+        var s2mcSum = s2mc.reduce(function(a,b){ return a + (b.col3||0); }, 0);
+        var s3mcSum = s3mc.reduce(function(a,b){ return a + (b.col3||0); }, 0);
+        html += '<tr class="bg-slate-50 font-semibold border-t border-slate-200">' +
+          '<td class="!py-1.5 pl-4 text-[11px] text-gray-600">' + mc + ' \uc18c\uacc4</td>' +
+          '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
+          '<td class="!py-1.5 text-right font-mono border-r border-slate-200">' + fmtV(s2mcSum) + '</td>' +
+          '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
+          '<td class="!py-1.5 text-right font-mono">' + fmtV(s3mcSum) + '</td>' +
           '</tr>';
       });
-
-      // PM2 소계
-      var s2pm2Sum = s2pm2.reduce(function(a,b){ return a + (b.col3||0); }, 0);
-      var s3pm2Sum = s3pm2.reduce(function(a,b){ return a + (b.col3||0); }, 0);
-      html += '<tr class="bg-slate-50 font-semibold border-t border-slate-200">' +
-        '<td class="!py-1.5 pl-4 text-[11px] text-gray-600">PM2 \uc18c\uacc4</td>' +
-        '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
-        '<td class="!py-1.5 text-right font-mono border-r border-slate-200">' + fmtV(s2pm2Sum) + '</td>' +
-        '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
-        '<td class="!py-1.5 text-right font-mono">' + fmtV(s3pm2Sum) + '</td>' +
-        '</tr>';
-
-      // PM3 지종 믹스
-      var s2pm3 = s2.gradeMix.PM3 || [];
-      var s3pm3 = (s3 && s3.gradeMix.PM3) || [];
-      var pm3Types = data.pm3Types || [];
-      pm3Types.forEach(function(pt, i) {
-        var r2 = s2pm3[i] || { col1:0, col2:0, col3:0 };
-        var r3 = s3pm3[i] || { col1:0, col2:0, col3:0 };
-        html += '<tr class="hover:bg-sage-50/30">' +
-          '<td class="!py-1.5 pl-4 text-[11px]"><span class="text-gray-400 mr-1">PM3</span>' + pt + '</td>' +
-          '<td class="!py-1.5 text-right font-mono">' + fmtV(r2.col1) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono">' + fmtV(r2.col2) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono font-semibold border-r border-slate-200">' + fmtV(r2.col3) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono">' + fmtV(r3.col1) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono">' + fmtV(r3.col2) + '</td>' +
-          '<td class="!py-1.5 text-right font-mono font-semibold">' + fmtV(r3.col3) + '</td>' +
-          '</tr>';
-      });
-
-      // PM3 소계
-      var s2pm3Sum = s2pm3.reduce(function(a,b){ return a + (b.col3||0); }, 0);
-      var s3pm3Sum = s3pm3.reduce(function(a,b){ return a + (b.col3||0); }, 0);
-      html += '<tr class="bg-slate-50 font-semibold border-t border-slate-200">' +
-        '<td class="!py-1.5 pl-4 text-[11px] text-gray-600">PM3 \uc18c\uacc4</td>' +
-        '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
-        '<td class="!py-1.5 text-right font-mono border-r border-slate-200">' + fmtV(s2pm3Sum) + '</td>' +
-        '<td class="!py-1.5"></td><td class="!py-1.5"></td>' +
-        '<td class="!py-1.5 text-right font-mono">' + fmtV(s3pm3Sum) + '</td>' +
-        '</tr>';
 
       tbody.innerHTML = html;
     }
@@ -3438,7 +3426,7 @@ export function mainPage(): string {
         const groupKey = d.machine_code + '|' + d.material_group_major_name;
         const groupChanged = groupKey !== prevGroup;
         prevGroup = groupKey;
-        const chipClass = d.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        const chipClass = getCC(d.machine_code);
         return '<tr class="' + (groupChanged ? 'border-t-2 border-slate-200' : '') + ' hover:bg-sage-50/30">' +
           '<td class="!py-1.5"><span class="unit-chip ' + chipClass + '">' + (d.machine_code||'') + '</span></td>' +
           '<td class="!py-1.5">' + (d.material_group_major_name||'-') + '</td>' +
@@ -3590,7 +3578,7 @@ export function mainPage(): string {
           var qtyEffect = (curUsage - prevUsage) * prevPrice;
           var priceEffect = (curPrice - prevPrice) * curUsage;
 
-          var chipClass = r.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+          var chipClass = getCC(r.machine_code);
           var catLabel = (r.material_group_major_name || '').includes('원') ? '원' : '부';
           var catClass = catLabel === '원' ? 'bg-steel-50 text-steel-400' : 'bg-sage-50 text-sage-600';
 
@@ -3982,7 +3970,7 @@ export function mainPage(): string {
           var previewHeaders2 = ['\uae30\uac04','\ud638\uae30','\uc790\uc7ac\ucf54\ub4dc','\uc790\uc7ac\uba85','\uc790\uc7ac\uadf8\ub8f9','\uc81c\ud488\uad6c\ubd84','\ucd1d\uc0dd\uc0b0\ub7c9','\uc2e4\uc81c\ubc30\ubd80\uc218\ub7c9','\uc2e4\uc81c\ub2e8\uac00'];
           document.getElementById('preview-head').innerHTML = '<tr>'+previewHeaders2.map(function(x){return '<th class="text-xs">'+x+'</th>';}).join('')+'</tr>';
           document.getElementById('preview-body').innerHTML = parsed.rawRows.slice(0,20).map(function(r) {
-            return '<tr><td>'+r.calendar_ym+'</td><td><span class="unit-chip '+(r.machine_code==='PM2'?'unit-chip-pm2':'unit-chip-pm3')+'">'+r.machine_code+'</span></td><td class="font-mono text-xs">'+r.material_code+'</td><td>'+r.material_name+'</td><td>'+r.material_group_major_name+'</td><td class="text-xs">'+r.product_level2_name+'</td><td class="text-right">'+Math.round(r.total_production).toLocaleString()+'</td><td class="text-right">'+Math.round(r.actual_alloc_qty).toLocaleString()+'</td><td class="text-right">'+Math.round(r.actual_unit_price).toLocaleString()+'</td></tr>';
+            return '<tr><td>'+r.calendar_ym+'</td><td><span class="unit-chip '+getCC(r.machine_code)+'">'+r.machine_code+'</span></td><td class="font-mono text-xs">'+r.material_code+'</td><td>'+r.material_name+'</td><td>'+r.material_group_major_name+'</td><td class="text-xs">'+r.product_level2_name+'</td><td class="text-right">'+Math.round(r.total_production).toLocaleString()+'</td><td class="text-right">'+Math.round(r.actual_alloc_qty).toLocaleString()+'</td><td class="text-right">'+Math.round(r.actual_unit_price).toLocaleString()+'</td></tr>';
           }).join('');
         } else if (isSAP) {
           uploadMode = 'sap';
@@ -4000,7 +3988,7 @@ export function mainPage(): string {
           const previewHeaders = ['기간','호기','자재코드','자재명','자재그룹','제품구분','출고수량','실제단가','출고금액','생산수량'];
           document.getElementById('preview-head').innerHTML = '<tr>'+previewHeaders.map(x=>'<th class="text-xs">'+x+'</th>').join('')+'</tr>';
           document.getElementById('preview-body').innerHTML = parsed.slice(0,20).map(r => 
-            '<tr><td>'+r.period+'</td><td><span class="unit-chip '+(r.machine==='PM2'?'unit-chip-pm2':'unit-chip-pm3')+'">'+r.machine+'</span></td><td class="font-mono text-xs">'+r.mat_code+'</td><td>'+r.mat_name+'</td><td>'+r.mat_group_desc+'</td><td class="text-xs text-gray-400">'+r.product_type+'</td><td class="text-right">'+fmt(r.issue_qty)+'</td><td class="text-right">'+fmt(Math.round(r.actual_unit_price))+'</td><td class="text-right">'+fmt(r.issue_amount)+'</td><td class="text-right">'+fmt(Math.round(r.production_qty))+'</td></tr>'
+            '<tr><td>'+r.period+'</td><td><span class="unit-chip '+getCC(r.machine)+'">'+r.machine+'</span></td><td class="font-mono text-xs">'+r.mat_code+'</td><td>'+r.mat_name+'</td><td>'+r.mat_group_desc+'</td><td class="text-xs text-gray-400">'+r.product_type+'</td><td class="text-right">'+fmt(r.issue_qty)+'</td><td class="text-right">'+fmt(Math.round(r.actual_unit_price))+'</td><td class="text-right">'+fmt(r.issue_amount)+'</td><td class="text-right">'+fmt(Math.round(r.production_qty))+'</td></tr>'
           ).join('');
         } else {
           uploadMode = 'simple';
@@ -4038,7 +4026,8 @@ export function mainPage(): string {
             const payload = {
               rows: i === 0 ? uploadData : [],  // monthly rows는 첫 청크에만
               rawRows: rawChunk,
-              fileName: document.getElementById('upload-filename')?.textContent || ''
+              fileName: document.getElementById('upload-filename')?.textContent || '',
+              division: currentDivision || 'PS'
             };
             
             const res = await fetch('/api/upload/smart', {
@@ -4216,7 +4205,13 @@ export function mainPage(): string {
     }
 
     // Utilities
-    function getCC(c) { return c==='PM2'?'unit-chip-pm2':c==='PM3'?'unit-chip-pm3':c==='CHEM'?'unit-chip-chem':c==='TISSUE'?'unit-chip-tissue':'bg-gray-100 text-gray-600'; }
+    function getCC(c) { 
+      var colors = {'PM2':'unit-chip-pm2','PM3':'unit-chip-pm3','CHEM':'unit-chip-chem','TISSUE':'unit-chip-tissue',
+        'TM5':'unit-chip-pm2','TM6':'unit-chip-pm3','CV1':'unit-chip-chem','CV2':'unit-chip-tissue',
+        'CV3':'unit-chip-pm2','CV4':'unit-chip-pm3','CV5':'unit-chip-chem','CV6':'unit-chip-tissue',
+        'WT1':'unit-chip-pm2','PD1':'unit-chip-pm3'};
+      return colors[c] || 'bg-gray-100 text-gray-600'; 
+    }
     function fmt(n) { return n==null?'-':Math.round(n).toLocaleString('ko-KR'); }
     function fmtS(n) { if(n==null) return '-'; const v=Math.round(n); if(v>0) return '+'+v.toLocaleString('ko-KR'); if(v<0) return '\u25B3'+Math.abs(v).toLocaleString('ko-KR'); return '-'; }
     function formatWon(n) {
@@ -4242,7 +4237,7 @@ export function mainPage(): string {
     }
 
     // ============ FORECAST (전월 대비 예상 실적) ============
-    let fcMachineFilter = 'PM2';
+    let fcMachineFilter = (divisionMachines && divisionMachines.length) ? (divisionMachines[0].code || divisionMachines[0]) : 'PM2';
     let fcCurData = null;  // 당월 자재 상세
     let fcCurProd = null;  // 당월 생산량
     let fcUnitByProduct = null;  // 자재코드 × 지종별 원단위
@@ -4252,7 +4247,9 @@ export function mainPage(): string {
 
     function setFcMachineFilter(mc) {
       fcMachineFilter = mc;
-      ['PM2','PM3'].forEach(function(k) {
+      var fcMachineList = (divisionMachines || []).map(function(m){ return m.code || m; });
+      if (!fcMachineList.length) fcMachineList = ['PM2','PM3'];
+      fcMachineList.forEach(function(k) {
         var btn = document.getElementById('fc-mc-' + k.toLowerCase());
         if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(k === mc ? 'pill-tab-active' : 'pill-tab-inactive'); }
       });
@@ -4962,33 +4959,35 @@ export function mainPage(): string {
 
       try {
         // 기준 데이터(전월 실적) + 수기입력 데이터(기준월) 동시 로드
-        var results = await Promise.all([
-          fetch('/api/simulation/profit-base?ym=' + prevYm + catParam).then(function(r){return r.json();}),
-          fetch('/api/manual-input/saved?ym=' + ym + '&machine=PM2').then(function(r){return r.json();}),
-          fetch('/api/manual-input/saved?ym=' + ym + '&machine=PM3').then(function(r){return r.json();})
-        ]);
+        var simMachineList = (divisionMachines || []).map(function(m){ return m.code || m; });
+        if (!simMachineList.length) simMachineList = ['PM2','PM3'];
+        var fetchList = [
+          fetch('/api/simulation/profit-base?ym=' + prevYm + catParam + getDivisionParam()).then(function(r){return r.json();})
+        ];
+        simMachineList.forEach(function(mc) {
+          fetchList.push(fetch('/api/manual-input/saved?ym=' + ym + '&machine=' + mc + getDivisionParam()).then(function(r){return r.json();}));
+        });
+        var results = await Promise.all(fetchList);
 
         simBaseData = results[0].rows || [];
 
-        // 수기입력 데이터 병합 (PM2+PM3)
-        var pm2Data = (results[1] && results[1].data) ? results[1].data : null;
-        var pm3Data = (results[2] && results[2].data) ? results[2].data : null;
+        // 수기입력 데이터 병합 (동적 호기)
         simManualData = null;
-
-        if (pm2Data || pm3Data) {
-          simManualData = { production: {}, materials: {}, saved_by: '' };
-          if (pm2Data) {
-            simManualData.production.PM2 = pm2Data.production || {};
-            simManualData.saved_by = results[1].saved_by || '';
+        var hasAnyManual = false;
+        simMachineList.forEach(function(mc, idx) {
+          var mcResult = results[idx + 1];
+          var mcData = (mcResult && mcResult.data) ? mcResult.data : null;
+          if (mcData) {
+            if (!simManualData) simManualData = { production: {}, materials: {}, saved_by: '' };
+            simManualData.production[mc] = mcData.production || {};
+            if (!simManualData.saved_by) simManualData.saved_by = mcResult.saved_by || '';
+            hasAnyManual = true;
           }
-          if (pm3Data) {
-            simManualData.production.PM3 = pm3Data.production || {};
-            if (!simManualData.saved_by) simManualData.saved_by = results[2].saved_by || '';
-          }
-        }
+        });
 
         // 소스 선택 UI 상태 업데이트
-        updateSimSourcePanel(simManualData, results[1].saved_by, results[1].updated_at);
+        var firstManualResult = results[1] || {};
+        updateSimSourcePanel(simManualData, firstManualResult.saved_by, firstManualResult.updated_at);
 
         initSimRows();
         renderSimTable();
@@ -5037,7 +5036,9 @@ export function mainPage(): string {
         // 수기입력 기반: 생산량 데이터를 시뮬레이션 행으로 변환
         simRows = [];
         var rowId = 0;
-        ['PM2','PM3'].forEach(function(mc) {
+        var simMcList = (divisionMachines || []).map(function(m){ return m.code || m; });
+        if (!simMcList.length) simMcList = ['PM2','PM3'];
+        simMcList.forEach(function(mc) {
           var prodMap = simManualData.production[mc];
           if (!prodMap) return;
           Object.keys(prodMap).forEach(function(pt) {
@@ -5146,7 +5147,7 @@ export function mainPage(): string {
       simRows.forEach(function(row) {
         var machineChanged = row.machine_code !== prevMachine;
         prevMachine = row.machine_code;
-        var chipClass = row.machine_code === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+        var chipClass = getCC(row.machine_code);
         var baseCost = row.base_unit_cost * row.base_prod * 1000;  // 원 (원단위*kg)
         var baseCostEok = baseCost / 100000000;  // 억원
 
@@ -5416,7 +5417,7 @@ export function mainPage(): string {
         const numFmt = (v) => v != null ? Number(v).toLocaleString(undefined, {maximumFractionDigits:2}) : '-';
         tbody.innerHTML = dvPageData.map((d, idx) => {
           const rowNum = start + idx + 1;
-          const chipClass = (d.machine_code||'') === 'PM2' ? 'unit-chip-pm2' : 'unit-chip-pm3';
+          const chipClass = getCC(d.machine_code||'');
           return '<tr class="hover:bg-sage-50/30">' +
             '<td class="!px-2 text-gray-400">' + rowNum + '</td>' +
             '<td class="!px-2">' + (d.calendar_ym||'') + '</td>' +
@@ -5835,7 +5836,7 @@ export function mainPage(): string {
     }
 
     // ============ MANUAL INPUT (부서 수기 입력) ============
-    var mnMachine = 'PM3';
+    var mnMachine = (divisionMachines && divisionMachines.length) ? (divisionMachines[divisionMachines.length-1].code || divisionMachines[divisionMachines.length-1]) : 'PM3';
     var mnDeptType = 'production';  // 'production' | 'purchase'
     var mnMaterials = [];  // 자재 목록
     var mnProdTypes = [];  // 지종 목록
@@ -5859,7 +5860,9 @@ export function mainPage(): string {
 
     function setManualMachine(mc) {
       mnMachine = mc;
-      ['PM2','PM3'].forEach(function(k) {
+      var mnMachineList = (divisionMachines || []).map(function(m){ return m.code || m; });
+      if (!mnMachineList.length) mnMachineList = ['PM2','PM3'];
+      mnMachineList.forEach(function(k) {
         var btn = document.getElementById('mn-mc-' + k.toLowerCase());
         if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(k === mc ? 'pill-tab-active' : 'pill-tab-inactive'); }
       });
@@ -5869,7 +5872,9 @@ export function mainPage(): string {
     // 호기 → 플랜트 매핑
     function getMachinePlant(machine) {
       if (machine === 'PM2' || machine === 'PM3') return 'P100';
-      if (machine === '화장지' || machine === 'TM') return 'P200';
+      if (machine === '화장지' || machine === 'TM' || machine === 'TM5' || machine === 'TM6') return 'P200';
+      if (machine === 'CV1' || machine === 'CV2' || machine === 'CV3' || machine === 'CV4' || machine === 'CV5' || machine === 'CV6') return 'P200';
+      if (machine === 'WT1' || machine === 'PD1') return 'P200';
       return '';
     }
 
@@ -5974,12 +5979,18 @@ export function mainPage(): string {
       var types = mnProdTypes.length > 0 ? mnProdTypes : Object.keys(mnPrevProd);
       if (types.length === 0) {
         // 호기별 기본 지종 설정
-        if (mnMachine === '화장지' || mnMachine === 'TM') {
+        if (mnMachine === '화장지' || mnMachine === 'TM' || mnMachine === 'TM5' || mnMachine === 'TM6') {
           types = ['RT-고지','RT-펄프','FT','KT','PCMC','기타 펄프'];
         } else if (mnMachine === 'PM2') {
           types = ['SC','IV','KB'];
         } else if (mnMachine === 'PM3') {
           types = ['SC고평량','SC저평량','IV','ACB','CB'];
+        } else if (mnMachine === 'CV1' || mnMachine === 'CV2' || mnMachine === 'CV3' || mnMachine === 'CV4' || mnMachine === 'CV5' || mnMachine === 'CV6') {
+          types = ['물티슈'];
+        } else if (mnMachine === 'WT1') {
+          types = ['여성용품'];
+        } else if (mnMachine === 'PD1') {
+          types = ['기저귀'];
         } else {
           types = ['기본'];
         }

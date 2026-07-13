@@ -875,7 +875,8 @@ app.get('/api/forecast/unit-by-product', async (c) => {
 app.post('/api/upload/smart', async (c) => {
   try {
   const db = c.env.DB
-  const { rows, rawRows, fileName } = await c.req.json()
+  const { rows, rawRows, fileName, division } = await c.req.json()
+  const div = division || 'PS'
   // rows: 집계용 파싱 데이터 (기존 호환)
   // rawRows: SAP 엑셀 원본 37컬럼 전체 (신규)
 
@@ -892,8 +893,8 @@ app.post('/api/upload/smart', async (c) => {
         plan_unit_price, plan_alloc_qty, total_production, production_qty, waste_qty,
         actual_unit_consumption, actual_alloc_qty, actual_unit_price,
         issue_qty, issue_amount, plan_vs_usage_diff, plan_vs_price_diff,
-        data_source, file_name
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        data_source, file_name, division
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `)
 
     const batchSize = 50
@@ -909,7 +910,7 @@ app.post('/api/upload/smart', async (c) => {
         r.plan_unit_price, r.plan_alloc_qty, r.total_production, r.production_qty, r.waste_qty,
         r.actual_unit_consumption, r.actual_alloc_qty, r.actual_unit_price,
         r.issue_qty, r.issue_amount, r.plan_vs_usage_diff, r.plan_vs_price_diff,
-        'SAP_BW', fileName || ''
+        'SAP_BW', fileName || '', div
       ))
       await db.batch(batch)
     }
@@ -1671,17 +1672,18 @@ app.get('/api/dashboard/mix-effect', async (c) => {
   const curSub = calcSubtotals(curMap)
   const prevSub = calcSubtotals(prevMap)
 
-  // 지종 목록 (PM2, PM3 별도)
-  const pm2Types: string[] = []
-  const pm3Types: string[] = []
+  // 지종 목록 (호기별 동적 집계)
+  const machineTypesMap: Record<string, string[]> = {}
   const allKeys = new Set([...Object.keys(curMap), ...Object.keys(prevMap)])
   for (const key of allKeys) {
     const [mc, pt] = key.split('|')
-    if (mc === 'PM2' && !pm2Types.includes(pt)) pm2Types.push(pt)
-    if (mc === 'PM3' && !pm3Types.includes(pt)) pm3Types.push(pt)
+    if (!machineTypesMap[mc]) machineTypesMap[mc] = []
+    if (!machineTypesMap[mc].includes(pt)) machineTypesMap[mc].push(pt)
   }
-  pm2Types.sort()
-  pm3Types.sort()
+  Object.keys(machineTypesMap).forEach(mc => machineTypesMap[mc].sort())
+  // 하위 호환: pm2Types, pm3Types
+  const pm2Types = machineTypesMap['PM2'] || []
+  const pm3Types = machineTypesMap['PM3'] || []
 
   // ======== 믹스 효과 계산 ========
 
@@ -1706,8 +1708,10 @@ app.get('/api/dashboard/mix-effect', async (c) => {
     const prevTotalUnitCost = prevSub['TOTAL'] ? prevSub['TOTAL'].unitCost : 0
     const curTotalProd = curSub['TOTAL'] ? curSub['TOTAL'].production : 0
     const prevTotalProd = prevSub['TOTAL'] ? prevSub['TOTAL'].production : 0
+    const machineList = Object.keys(machineTypesMap)
+    if (!machineList.length) machineList.push('PM2', 'PM3')
 
-    return ['PM2', 'PM3'].map(mc => {
+    return machineList.map(mc => {
       const curMcUnitCost = curSub[mc] ? curSub[mc].unitCost : 0
       const curMcProd = curSub[mc] ? curSub[mc].production : 0
       const prevMcProd = prevSub[mc] ? prevSub[mc].production : 0
@@ -1747,9 +1751,17 @@ app.get('/api/dashboard/mix-effect', async (c) => {
   const s2_pm2GradeMix = calcGradeMix('PM2', pm2Types, s2_prevPM2UnitCost, curSub['PM2']?.production || 0, prevSub['PM2']?.production || 0, false)
   const s2_pm3GradeMix = calcGradeMix('PM3', pm3Types, s2_prevPM3UnitCost, curSub['PM3']?.production || 0, prevSub['PM3']?.production || 0, false)
 
+  // 동적 호기별 지종 믹스 (시나리오 2)
+  const s2_gradeMixDynamic: Record<string, any[]> = {}
+  Object.keys(machineTypesMap).forEach(mc => {
+    const prevMcUnitCost = prevSub[mc] ? prevSub[mc].unitCost : 0
+    s2_gradeMixDynamic[mc] = calcGradeMix(mc, machineTypesMap[mc], prevMcUnitCost, curSub[mc]?.production || 0, prevSub[mc]?.production || 0, false)
+  })
+
   return c.json({
     ym, prevYm,
     pm2Types, pm3Types,
+    machineTypesMap,
     curSubtotals: curSub,
     prevSubtotals: prevSub,
     scenario1: {
@@ -1760,12 +1772,12 @@ app.get('/api/dashboard/mix-effect', async (c) => {
     scenario2: {
       label: '당월',
       machineMix: scenario2_machineMix,
-      gradeMix: { PM2: s2_pm2GradeMix, PM3: s2_pm3GradeMix }
+      gradeMix: s2_gradeMixDynamic
     },
     scenario3: {
       label: '예상',
       machineMix: [],
-      gradeMix: { PM2: [], PM3: [] },
+      gradeMix: {},
       note: '예상 데이터 미구현 (추후 입력 예정)'
     }
   })
