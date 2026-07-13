@@ -1840,7 +1840,7 @@ export function mainPage(): string {
         <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <div class="flex items-center gap-3">
             <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-clock text-amber-500 mr-1.5"></i>월별 가동시간 관리</h3>
-            <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">월 총일수 - 비가동일수 = 가동일수</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">계획운휴 + 가동일수 + 비가동일수 = 총 조업일수</span>
           </div>
           <div class="flex items-center gap-2">
             <select id="ot-year" class="text-xs border border-gray-200 rounded-lg px-2 py-1" onchange="loadOperatingTime()">
@@ -1862,7 +1862,7 @@ export function mainPage(): string {
         <div id="ot-summary-cards" class="px-6 py-3 bg-gradient-to-r from-amber-50/50 to-white border-b border-slate-100">
           <div class="flex items-center gap-4">
             <div class="text-center">
-              <p class="text-[10px] text-gray-400">총 가동일수</p>
+              <p class="text-[10px] text-gray-400">가동일수 소계</p>
               <p id="ot-total-operating" class="text-base font-bold text-gray-800">-</p>
             </div>
             <div class="w-px h-8 bg-slate-200"></div>
@@ -1877,8 +1877,13 @@ export function mainPage(): string {
             </div>
             <div class="w-px h-8 bg-slate-200"></div>
             <div class="text-center">
-              <p class="text-[10px] text-gray-400">비가동 합계(일)</p>
+              <p class="text-[10px] text-gray-400">비가동 소계</p>
               <p id="ot-total-stop" class="text-base font-bold text-red-500">-</p>
+            </div>
+            <div class="w-px h-8 bg-slate-200"></div>
+            <div class="text-center">
+              <p class="text-[10px] text-gray-400">계획운휴</p>
+              <p id="ot-shutdown" class="text-base font-bold text-orange-500">-</p>
             </div>
           </div>
         </div>
@@ -1888,17 +1893,25 @@ export function mainPage(): string {
           <table class="w-full text-xs">
             <thead>
               <tr class="bg-slate-50 text-gray-500">
-                <th class="px-3 py-2 text-left font-medium">호기</th>
-                <th class="px-3 py-2 text-center font-medium">월 총일수<br><span class="text-[9px] text-gray-400">(달력일수)</span></th>
-                <th class="px-3 py-2 text-center font-medium text-red-400">운휴<br><span class="text-[9px]">(일)</span></th>
-                <th class="px-3 py-2 text-center font-medium text-orange-400">정기점검<br><span class="text-[9px]">(일)</span></th>
-                <th class="px-3 py-2 text-center font-medium text-rose-400">폐품<br><span class="text-[9px]">(일)</span></th>
-                <th class="px-3 py-2 text-center font-medium text-purple-400">품종교체<br><span class="text-[9px]">(일)</span></th>
-                <th class="px-3 py-2 text-center font-medium text-gray-400">기타정지<br><span class="text-[9px]">(일)</span></th>
-                <th class="px-3 py-2 text-center font-medium text-emerald-600">가동일수<br><span class="text-[9px]">(자동계산)</span></th>
-                <th class="px-3 py-2 text-center font-medium text-blue-600">가동률<br><span class="text-[9px]">(%)</span></th>
-                <th class="px-3 py-2 text-center font-medium text-indigo-600">최대생산<br><span class="text-[9px]">(톤)</span></th>
-                <th class="px-3 py-2 text-center font-medium">비고</th>
+                <th class="px-2 py-2 text-left font-medium" rowspan="2">호기</th>
+                <th class="px-2 py-2 text-center font-medium" rowspan="2">월<br>총일수</th>
+                <th class="px-2 py-2 text-center font-medium bg-orange-50 text-orange-600" rowspan="2">계획<br>운휴</th>
+                <th class="px-2 py-2 text-center font-medium bg-emerald-50 text-emerald-600" colspan="6">가동일수</th>
+                <th class="px-2 py-2 text-center font-medium bg-red-50 text-red-500" colspan="4">비가동일수</th>
+                <th class="px-2 py-2 text-center font-medium text-blue-600" rowspan="2">최대생산<br><span class="text-[9px]">(톤)</span></th>
+                <th class="px-2 py-2 text-center font-medium" rowspan="2">비고</th>
+              </tr>
+              <tr class="bg-slate-50 text-gray-500 text-[10px]">
+                <th class="px-1 py-1 text-center text-emerald-600">정상</th>
+                <th class="px-1 py-1 text-center text-emerald-600">폐품</th>
+                <th class="px-1 py-1 text-center text-emerald-600">비계획</th>
+                <th class="px-1 py-1 text-center text-emerald-600">초출</th>
+                <th class="px-1 py-1 text-center text-emerald-600">절지</th>
+                <th class="px-1 py-1 text-center font-bold text-emerald-700 bg-emerald-100">소계</th>
+                <th class="px-1 py-1 text-center text-red-500">정비</th>
+                <th class="px-1 py-1 text-center text-red-500">세척</th>
+                <th class="px-1 py-1 text-center text-red-500">사고등</th>
+                <th class="px-1 py-1 text-center font-bold text-red-600 bg-red-100">소계</th>
               </tr>
             </thead>
             <tbody id="ot-table-body">
@@ -8338,7 +8351,7 @@ export function mainPage(): string {
       XLSX.writeFile(wb, fileName);
     }
 
-    // ============ 가동시간 (Operating Time) 모듈 — 일(day) 단위 ============
+    // ============ 가동시간 (Operating Time) 모듈 — 재설계 ============
     var otData = [];  // 현재 월의 가동시간 데이터
     var otCapacity = [];  // 호기별 시간당 생산능력
 
@@ -8376,109 +8389,149 @@ export function mainPage(): string {
       var machines = (divisionMachines || CC.machines || []).map(function(m) { return m.code || m; });
       var daysInMonth = getDaysInMonth(ym);
 
-      // 기존 데이터를 machine_code로 인덱싱
       var dataMap = {};
       otData.forEach(function(d) { dataMap[d.machine_code] = d; });
-
-      // 시간당생산능력 인덱싱
       var capMap = {};
       otCapacity.forEach(function(c) { capMap[c.machine_code] = c.hourly_capacity || 0; });
 
       var html = '';
-      var totals = { total: 0, shutdown: 0, maint: 0, breakdown: 0, gc: 0, other: 0, operating: 0, maxProd: 0 };
+      var totals = { total: 0, shutdown: 0, opNormal: 0, opWaste: 0, opUnplanned: 0, opStartup: 0, opCutting: 0, opSub: 0, dtMaint: 0, dtClean: 0, dtAccident: 0, dtSub: 0, maxProd: 0 };
 
       machines.forEach(function(mc) {
         var d = dataMap[mc] || {};
         var total = d.total_days || daysInMonth;
-        var shutdown = d.shutdown_days || 0;
-        var maint = d.maintenance_days || 0;
-        var breakdown = d.breakdown_days || 0;
-        var gc = d.grade_change_days || 0;
-        var other = d.other_stop_days || 0;
-        var operating = total - shutdown - maint - breakdown - gc - other;
+        var shutdown = d.planned_shutdown_days || 0;
+        var opNormal = d.operation_normal_days || 0;
+        var opWaste = d.operation_waste_days || 0;
+        var opUnplanned = d.operation_unplanned_days || 0;
+        var opStartup = d.operation_startup_days || 0;
+        var opCutting = d.operation_cutting_days || 0;
+        var opSub = d.operation_subtotal || (opNormal + opWaste + opUnplanned + opStartup + opCutting);
+        var dtMaint = d.downtime_maintenance_days || 0;
+        var dtClean = d.downtime_cleaning_days || 0;
+        var dtAccident = d.downtime_accident_days || 0;
+        var dtSub = d.downtime_subtotal || (dtMaint + dtClean + dtAccident);
         var cap = capMap[mc] || 0;
-        var maxProd = operating * 24 * cap;  // 가동일수 × 24h × 시간당생산량
-        var util = total > 0 ? (operating / total * 100).toFixed(1) : '0.0';
+        var maxProd = opSub * 24 * cap;
 
-        totals.total += total;
-        totals.shutdown += shutdown;
-        totals.maint += maint;
-        totals.breakdown += breakdown;
-        totals.gc += gc;
-        totals.other += other;
-        totals.operating += operating;
+        totals.total += total; totals.shutdown += shutdown;
+        totals.opNormal += opNormal; totals.opWaste += opWaste; totals.opUnplanned += opUnplanned;
+        totals.opStartup += opStartup; totals.opCutting += opCutting; totals.opSub += opSub;
+        totals.dtMaint += dtMaint; totals.dtClean += dtClean; totals.dtAccident += dtAccident; totals.dtSub += dtSub;
         totals.maxProd += maxProd;
 
         var chipClass = getCC(mc);
         html += '<tr class="border-b border-slate-100 hover:bg-amber-50/30" data-mc="' + mc + '">' +
-          '<td class="px-3 py-2"><span class="unit-chip ' + chipClass + '">' + mc + '</span></td>' +
-          '<td class="px-2 py-1 text-center"><input type="number" step="0.5" data-field="total_days" value="' + total + '" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
-          '<td class="px-2 py-1 text-center"><input type="number" step="0.5" data-field="shutdown_days" value="' + shutdown + '" class="w-14 text-center text-xs border border-red-200 rounded px-1 py-0.5 bg-red-50/50 ot-input" onchange="recalcOtRow(this)"></td>' +
-          '<td class="px-2 py-1 text-center"><input type="number" step="0.5" data-field="maintenance_days" value="' + maint + '" class="w-14 text-center text-xs border border-orange-200 rounded px-1 py-0.5 bg-orange-50/50 ot-input" onchange="recalcOtRow(this)"></td>' +
-          '<td class="px-2 py-1 text-center"><input type="number" step="0.5" data-field="breakdown_days" value="' + breakdown + '" class="w-14 text-center text-xs border border-rose-200 rounded px-1 py-0.5 bg-rose-50/50 ot-input" onchange="recalcOtRow(this)"></td>' +
-          '<td class="px-2 py-1 text-center"><input type="number" step="0.5" data-field="grade_change_days" value="' + gc + '" class="w-14 text-center text-xs border border-purple-200 rounded px-1 py-0.5 bg-purple-50/50 ot-input" onchange="recalcOtRow(this)"></td>' +
-          '<td class="px-2 py-1 text-center"><input type="number" step="0.5" data-field="other_stop_days" value="' + other + '" class="w-14 text-center text-xs border border-gray-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
-          '<td class="px-3 py-2 text-center font-semibold text-emerald-700 ot-operating">' + operating.toFixed(1) + '</td>' +
-          '<td class="px-3 py-2 text-center font-semibold ot-util ' + (parseFloat(util) >= 80 ? 'text-emerald-600' : parseFloat(util) >= 60 ? 'text-amber-600' : 'text-red-600') + '">' + util + '%</td>' +
-          '<td class="px-3 py-2 text-center font-mono text-blue-700 ot-maxprod">' + Math.round(maxProd).toLocaleString('ko-KR') + '</td>' +
-          '<td class="px-2 py-1"><input type="text" data-field="note" value="' + (d.note || '') + '" class="w-20 text-[10px] border border-gray-200 rounded px-1 py-0.5 ot-input" placeholder="메모"></td>' +
+          '<td class="px-2 py-1.5"><span class="unit-chip ' + chipClass + '">' + mc + '</span></td>' +
+          '<td class="px-1 py-1 text-center"><input type="number" step="1" data-field="total_days" value="' + total + '" class="w-12 text-center text-xs border border-gray-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-1 py-1 text-center bg-orange-50/30"><input type="number" step="0.5" data-field="planned_shutdown_days" value="' + shutdown + '" class="w-12 text-center text-xs border border-orange-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-1 py-1 text-center bg-emerald-50/20"><input type="number" step="0.5" data-field="operation_normal_days" value="' + opNormal + '" class="w-12 text-center text-xs border border-emerald-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-1 py-1 text-center bg-emerald-50/20"><input type="number" step="0.1" data-field="operation_waste_days" value="' + opWaste + '" class="w-12 text-center text-xs border border-emerald-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-1 py-1 text-center bg-emerald-50/20"><input type="number" step="0.5" data-field="operation_unplanned_days" value="' + opUnplanned + '" class="w-12 text-center text-xs border border-emerald-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-1 py-1 text-center bg-emerald-50/20"><input type="number" step="0.1" data-field="operation_startup_days" value="' + opStartup + '" class="w-12 text-center text-xs border border-emerald-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-1 py-1 text-center bg-emerald-50/20"><input type="number" step="0.1" data-field="operation_cutting_days" value="' + opCutting + '" class="w-12 text-center text-xs border border-emerald-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-1 py-1 text-center font-semibold text-emerald-700 bg-emerald-100/50 ot-op-sub">' + opSub.toFixed(1) + '</td>' +
+          '<td class="px-1 py-1 text-center bg-red-50/20"><input type="number" step="0.5" data-field="downtime_maintenance_days" value="' + dtMaint + '" class="w-12 text-center text-xs border border-red-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-1 py-1 text-center bg-red-50/20"><input type="number" step="0.1" data-field="downtime_cleaning_days" value="' + dtClean + '" class="w-12 text-center text-xs border border-red-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-1 py-1 text-center bg-red-50/20"><input type="number" step="0.1" data-field="downtime_accident_days" value="' + dtAccident + '" class="w-12 text-center text-xs border border-red-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-1 py-1 text-center font-semibold text-red-600 bg-red-100/50 ot-dt-sub">' + dtSub.toFixed(1) + '</td>' +
+          '<td class="px-2 py-1 text-center font-mono text-blue-700 ot-maxprod">' + Math.round(maxProd).toLocaleString('ko-KR') + '</td>' +
+          '<td class="px-1 py-1"><input type="text" data-field="note" value="' + (d.note || '') + '" class="w-16 text-[10px] border border-gray-200 rounded px-1 py-0.5 ot-input" placeholder="메모"></td>' +
           '</tr>';
       });
       tbody.innerHTML = html;
 
-      // 합계행
-      var totalUtil = totals.total > 0 ? (totals.operating / totals.total * 100).toFixed(1) : '0.0';
+      var utilRate = totals.total > 0 ? (totals.opSub / totals.total * 100).toFixed(1) : '0.0';
       tfoot.innerHTML = '<tr>' +
-        '<td class="px-3 py-2 font-bold">합계</td>' +
-        '<td class="px-3 py-2 text-center">' + totals.total.toFixed(1) + '</td>' +
-        '<td class="px-3 py-2 text-center text-red-600">' + totals.shutdown.toFixed(1) + '</td>' +
-        '<td class="px-3 py-2 text-center text-orange-600">' + totals.maint.toFixed(1) + '</td>' +
-        '<td class="px-3 py-2 text-center text-rose-600">' + totals.breakdown.toFixed(1) + '</td>' +
-        '<td class="px-3 py-2 text-center text-purple-600">' + totals.gc.toFixed(1) + '</td>' +
-        '<td class="px-3 py-2 text-center">' + totals.other.toFixed(1) + '</td>' +
-        '<td class="px-3 py-2 text-center font-bold text-emerald-700">' + totals.operating.toFixed(1) + '</td>' +
-        '<td class="px-3 py-2 text-center font-bold">' + totalUtil + '%</td>' +
-        '<td class="px-3 py-2 text-center font-bold text-blue-700">' + Math.round(totals.maxProd).toLocaleString('ko-KR') + '</td>' +
-        '<td class="px-3 py-2"></td>' +
+        '<td class="px-2 py-2 font-bold">합계</td>' +
+        '<td class="px-1 py-2 text-center">' + totals.total.toFixed(0) + '</td>' +
+        '<td class="px-1 py-2 text-center text-orange-600">' + totals.shutdown.toFixed(1) + '</td>' +
+        '<td class="px-1 py-2 text-center text-emerald-600">' + totals.opNormal.toFixed(1) + '</td>' +
+        '<td class="px-1 py-2 text-center text-emerald-600">' + totals.opWaste.toFixed(1) + '</td>' +
+        '<td class="px-1 py-2 text-center text-emerald-600">' + totals.opUnplanned.toFixed(1) + '</td>' +
+        '<td class="px-1 py-2 text-center text-emerald-600">' + totals.opStartup.toFixed(1) + '</td>' +
+        '<td class="px-1 py-2 text-center text-emerald-600">' + totals.opCutting.toFixed(1) + '</td>' +
+        '<td class="px-1 py-2 text-center font-bold text-emerald-700 bg-emerald-100/50">' + totals.opSub.toFixed(1) + '</td>' +
+        '<td class="px-1 py-2 text-center text-red-500">' + totals.dtMaint.toFixed(1) + '</td>' +
+        '<td class="px-1 py-2 text-center text-red-500">' + totals.dtClean.toFixed(1) + '</td>' +
+        '<td class="px-1 py-2 text-center text-red-500">' + totals.dtAccident.toFixed(1) + '</td>' +
+        '<td class="px-1 py-2 text-center font-bold text-red-600 bg-red-100/50">' + totals.dtSub.toFixed(1) + '</td>' +
+        '<td class="px-2 py-2 text-center font-bold text-blue-700">' + Math.round(totals.maxProd).toLocaleString('ko-KR') + '</td>' +
+        '<td class="px-1 py-2 text-xs text-gray-500">가동률 ' + utilRate + '%</td>' +
         '</tr>';
 
-      // 요약 카드 업데이트
       var elOp = document.getElementById('ot-total-operating');
       var elUtil = document.getElementById('ot-utilization');
       var elMax = document.getElementById('ot-max-production');
       var elStop = document.getElementById('ot-total-stop');
-      if (elOp) elOp.textContent = totals.operating.toFixed(1) + '일';
-      if (elUtil) elUtil.textContent = totalUtil + '%';
+      var elShutdown = document.getElementById('ot-shutdown');
+      if (elOp) elOp.textContent = totals.opSub.toFixed(1) + '일';
+      if (elUtil) elUtil.textContent = utilRate + '%';
       if (elMax) elMax.textContent = Math.round(totals.maxProd).toLocaleString('ko-KR') + ' 톤';
-      if (elStop) elStop.textContent = (totals.shutdown + totals.maint + totals.breakdown + totals.gc + totals.other).toFixed(1) + '일';
+      if (elStop) elStop.textContent = totals.dtSub.toFixed(1) + '일';
+      if (elShutdown) elShutdown.textContent = totals.shutdown.toFixed(1) + '일';
 
-      // 시간당 생산능력 설정 렌더
       renderCapacityInputs(machines, capMap);
     }
 
     function recalcOtRow(el) {
       var tr = el.closest('tr');
       if (!tr) return;
-      var total = parseFloat(tr.querySelector('[data-field="total_days"]').value) || 0;
-      var shutdown = parseFloat(tr.querySelector('[data-field="shutdown_days"]').value) || 0;
-      var maint = parseFloat(tr.querySelector('[data-field="maintenance_days"]').value) || 0;
-      var breakdown = parseFloat(tr.querySelector('[data-field="breakdown_days"]').value) || 0;
-      var gc = parseFloat(tr.querySelector('[data-field="grade_change_days"]').value) || 0;
-      var other = parseFloat(tr.querySelector('[data-field="other_stop_days"]').value) || 0;
-      var operating = total - shutdown - maint - breakdown - gc - other;
-      var util = total > 0 ? (operating / total * 100).toFixed(1) : '0.0';
-
+      var opNormal = parseFloat(tr.querySelector('[data-field="operation_normal_days"]').value) || 0;
+      var opWaste = parseFloat(tr.querySelector('[data-field="operation_waste_days"]').value) || 0;
+      var opUnplanned = parseFloat(tr.querySelector('[data-field="operation_unplanned_days"]').value) || 0;
+      var opStartup = parseFloat(tr.querySelector('[data-field="operation_startup_days"]').value) || 0;
+      var opCutting = parseFloat(tr.querySelector('[data-field="operation_cutting_days"]').value) || 0;
+      var opSub = opNormal + opWaste + opUnplanned + opStartup + opCutting;
+      var dtMaint = parseFloat(tr.querySelector('[data-field="downtime_maintenance_days"]').value) || 0;
+      var dtClean = parseFloat(tr.querySelector('[data-field="downtime_cleaning_days"]').value) || 0;
+      var dtAccident = parseFloat(tr.querySelector('[data-field="downtime_accident_days"]').value) || 0;
+      var dtSub = dtMaint + dtClean + dtAccident;
       var mc = tr.dataset.mc;
       var capMap = {};
       otCapacity.forEach(function(c) { capMap[c.machine_code] = c.hourly_capacity || 0; });
       var cap = capMap[mc] || 0;
-      var maxProd = operating * 24 * cap;  // 가동일수 × 24h × 시간당생산량
-
-      tr.querySelector('.ot-operating').textContent = operating.toFixed(1);
-      var utilEl = tr.querySelector('.ot-util');
-      utilEl.textContent = util + '%';
-      utilEl.className = 'px-3 py-2 text-center font-semibold ot-util ' + (parseFloat(util) >= 80 ? 'text-emerald-600' : parseFloat(util) >= 60 ? 'text-amber-600' : 'text-red-600');
+      var maxProd = opSub * 24 * cap;
+      tr.querySelector('.ot-op-sub').textContent = opSub.toFixed(1);
+      tr.querySelector('.ot-dt-sub').textContent = dtSub.toFixed(1);
       tr.querySelector('.ot-maxprod').textContent = Math.round(maxProd).toLocaleString('ko-KR');
+    }
+
+    async function saveOperatingTime() {
+      var ym = getOtYm();
+      var div = currentDivision || 'PS';
+      var rows = document.querySelectorAll('#ot-table-body tr[data-mc]');
+      var entries = [];
+      rows.forEach(function(tr) {
+        entries.push({
+          machine_code: tr.dataset.mc,
+          total_days: parseFloat(tr.querySelector('[data-field="total_days"]').value) || 0,
+          planned_shutdown_days: parseFloat(tr.querySelector('[data-field="planned_shutdown_days"]').value) || 0,
+          operation_normal_days: parseFloat(tr.querySelector('[data-field="operation_normal_days"]').value) || 0,
+          operation_waste_days: parseFloat(tr.querySelector('[data-field="operation_waste_days"]').value) || 0,
+          operation_unplanned_days: parseFloat(tr.querySelector('[data-field="operation_unplanned_days"]').value) || 0,
+          operation_startup_days: parseFloat(tr.querySelector('[data-field="operation_startup_days"]').value) || 0,
+          operation_cutting_days: parseFloat(tr.querySelector('[data-field="operation_cutting_days"]').value) || 0,
+          downtime_maintenance_days: parseFloat(tr.querySelector('[data-field="downtime_maintenance_days"]').value) || 0,
+          downtime_cleaning_days: parseFloat(tr.querySelector('[data-field="downtime_cleaning_days"]').value) || 0,
+          downtime_accident_days: parseFloat(tr.querySelector('[data-field="downtime_accident_days"]').value) || 0,
+          note: tr.querySelector('[data-field="note"]')?.value || ''
+        });
+      });
+      try {
+        var res = await fetch('/api/operating-time/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ division: div, ym: ym, entries: entries, saved_by: document.getElementById('mn-user-name')?.value || '' })
+        });
+        var result = await res.json();
+        if (result.success) {
+          alert('가동시간 저장 완료! (' + result.count + '건)');
+          loadOperatingTime();
+        } else {
+          alert('저장 실패: ' + (result.error || ''));
+        }
+      } catch(e) { alert('저장 오류: ' + e.message); }
     }
 
     function renderCapacityInputs(machines, capMap) {

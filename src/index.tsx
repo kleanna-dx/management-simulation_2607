@@ -3365,7 +3365,7 @@ app.post('/api/machine-capacity', async (c) => {
   return c.json({ success: true })
 })
 
-/** 월별 가동시간 조회 (호기별 + 생산능력 계산 포함, 일 단위) */
+/** 월별 가동시간 조회 (호기별 + 생산능력 계산 포함) */
 app.get('/api/operating-time', async (c) => {
   const db = c.env.DB
   const div = c.req.query('division') || 'PS'
@@ -3373,7 +3373,7 @@ app.get('/api/operating-time', async (c) => {
 
   let query = `
     SELECT ot.*, mc.hourly_capacity, mc.basis_weight_ref,
-           ot.operating_days * 24 * COALESCE(mc.hourly_capacity, 0) as max_production_ton
+           ot.operation_subtotal * 24 * COALESCE(mc.hourly_capacity, 0) as max_production_ton
     FROM machine_operating_time ot
     LEFT JOIN machine_capacity mc ON mc.division = ot.division AND mc.machine_code = ot.machine_code
       AND mc.valid_from <= ot.ym AND mc.valid_to >= ot.ym
@@ -3391,36 +3391,49 @@ app.get('/api/operating-time', async (c) => {
   return c.json(results.results)
 })
 
-/** 월별 가동시간 저장/수정 (Upsert, 일 단위) */
+/** 월별 가동시간 저장/수정 (Upsert) */
 app.post('/api/operating-time', async (c) => {
   const db = c.env.DB
   const body = await c.req.json() as any
-  const { division, machine_code, ym, total_days, shutdown_days, maintenance_days, 
-          breakdown_days, grade_change_days, other_stop_days, note, saved_by } = body
+  const { division, machine_code, ym, total_days, planned_shutdown_days,
+          operation_normal_days, operation_waste_days, operation_unplanned_days,
+          operation_startup_days, operation_cutting_days,
+          downtime_maintenance_days, downtime_cleaning_days, downtime_accident_days,
+          note, saved_by } = body
   const div = division || 'PS'
 
   await db.prepare(`
     INSERT INTO machine_operating_time 
-      (division, machine_code, ym, total_days, shutdown_days, maintenance_days, 
-       breakdown_days, grade_change_days, other_stop_days, note, saved_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (division, machine_code, ym, total_days, planned_shutdown_days,
+       operation_normal_days, operation_waste_days, operation_unplanned_days,
+       operation_startup_days, operation_cutting_days,
+       downtime_maintenance_days, downtime_cleaning_days, downtime_accident_days,
+       note, saved_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(division, machine_code, ym) DO UPDATE SET
       total_days = excluded.total_days,
-      shutdown_days = excluded.shutdown_days,
-      maintenance_days = excluded.maintenance_days,
-      breakdown_days = excluded.breakdown_days,
-      grade_change_days = excluded.grade_change_days,
-      other_stop_days = excluded.other_stop_days,
+      planned_shutdown_days = excluded.planned_shutdown_days,
+      operation_normal_days = excluded.operation_normal_days,
+      operation_waste_days = excluded.operation_waste_days,
+      operation_unplanned_days = excluded.operation_unplanned_days,
+      operation_startup_days = excluded.operation_startup_days,
+      operation_cutting_days = excluded.operation_cutting_days,
+      downtime_maintenance_days = excluded.downtime_maintenance_days,
+      downtime_cleaning_days = excluded.downtime_cleaning_days,
+      downtime_accident_days = excluded.downtime_accident_days,
       note = excluded.note,
       saved_by = excluded.saved_by,
       updated_at = CURRENT_TIMESTAMP
-  `).bind(div, machine_code, ym, total_days || 0, shutdown_days || 0, maintenance_days || 0,
-          breakdown_days || 0, grade_change_days || 0, other_stop_days || 0, note || null, saved_by || null).run()
+  `).bind(div, machine_code, ym, total_days || 0, planned_shutdown_days || 0,
+          operation_normal_days || 0, operation_waste_days || 0, operation_unplanned_days || 0,
+          operation_startup_days || 0, operation_cutting_days || 0,
+          downtime_maintenance_days || 0, downtime_cleaning_days || 0, downtime_accident_days || 0,
+          note || null, saved_by || null).run()
 
   return c.json({ success: true })
 })
 
-/** 월별 가동시간 일괄 저장 (여러 호기 한 번에, 일 단위) */
+/** 월별 가동시간 일괄 저장 (여러 호기 한 번에) */
 app.post('/api/operating-time/batch', async (c) => {
   const db = c.env.DB
   const { division, ym, entries, saved_by } = await c.req.json() as any
@@ -3430,31 +3443,41 @@ app.post('/api/operating-time/batch', async (c) => {
 
   const stmt = db.prepare(`
     INSERT INTO machine_operating_time 
-      (division, machine_code, ym, total_days, shutdown_days, maintenance_days, 
-       breakdown_days, grade_change_days, other_stop_days, note, saved_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (division, machine_code, ym, total_days, planned_shutdown_days,
+       operation_normal_days, operation_waste_days, operation_unplanned_days,
+       operation_startup_days, operation_cutting_days,
+       downtime_maintenance_days, downtime_cleaning_days, downtime_accident_days,
+       note, saved_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(division, machine_code, ym) DO UPDATE SET
       total_days = excluded.total_days,
-      shutdown_days = excluded.shutdown_days,
-      maintenance_days = excluded.maintenance_days,
-      breakdown_days = excluded.breakdown_days,
-      grade_change_days = excluded.grade_change_days,
-      other_stop_days = excluded.other_stop_days,
+      planned_shutdown_days = excluded.planned_shutdown_days,
+      operation_normal_days = excluded.operation_normal_days,
+      operation_waste_days = excluded.operation_waste_days,
+      operation_unplanned_days = excluded.operation_unplanned_days,
+      operation_startup_days = excluded.operation_startup_days,
+      operation_cutting_days = excluded.operation_cutting_days,
+      downtime_maintenance_days = excluded.downtime_maintenance_days,
+      downtime_cleaning_days = excluded.downtime_cleaning_days,
+      downtime_accident_days = excluded.downtime_accident_days,
       note = excluded.note,
       saved_by = excluded.saved_by,
       updated_at = CURRENT_TIMESTAMP
   `)
 
   const batch = entries.map((e: any) => stmt.bind(
-    div, e.machine_code, ym, e.total_days || 0, e.shutdown_days || 0, e.maintenance_days || 0,
-    e.breakdown_days || 0, e.grade_change_days || 0, e.other_stop_days || 0, e.note || null, saved_by || null
+    div, e.machine_code, ym, e.total_days || 0, e.planned_shutdown_days || 0,
+    e.operation_normal_days || 0, e.operation_waste_days || 0, e.operation_unplanned_days || 0,
+    e.operation_startup_days || 0, e.operation_cutting_days || 0,
+    e.downtime_maintenance_days || 0, e.downtime_cleaning_days || 0, e.downtime_accident_days || 0,
+    e.note || null, saved_by || null
   ))
   await db.batch(batch)
 
   return c.json({ success: true, count: entries.length })
 })
 
-/** 가동시간 요약 (대시보드용 — 월별 전체 호기 집계, 일 단위) */
+/** 가동시간 요약 (대시보드용 — 월별 전체 호기 집계) */
 app.get('/api/operating-time/summary', async (c) => {
   const db = c.env.DB
   const div = c.req.query('division') || 'PS'
@@ -3462,11 +3485,14 @@ app.get('/api/operating-time/summary', async (c) => {
   if (!ym) return c.json({ error: 'ym required' }, 400)
 
   const results = await db.prepare(`
-    SELECT ot.machine_code, ot.total_days, ot.shutdown_days, ot.maintenance_days,
-           ot.breakdown_days, ot.grade_change_days, ot.other_stop_days, ot.operating_days,
+    SELECT ot.machine_code, ot.total_days, ot.planned_shutdown_days,
+           ot.operation_normal_days, ot.operation_waste_days, ot.operation_unplanned_days,
+           ot.operation_startup_days, ot.operation_cutting_days, ot.operation_subtotal,
+           ot.downtime_maintenance_days, ot.downtime_cleaning_days, ot.downtime_accident_days,
+           ot.downtime_subtotal, ot.total_operating_days,
            mc.hourly_capacity,
-           ot.operating_days * 24 * COALESCE(mc.hourly_capacity, 0) as max_production_ton,
-           CASE WHEN ot.total_days > 0 THEN ROUND(ot.operating_days * 100.0 / ot.total_days, 1) ELSE 0 END as utilization_rate
+           ot.operation_subtotal * 24 * COALESCE(mc.hourly_capacity, 0) as max_production_ton,
+           CASE WHEN ot.total_days > 0 THEN ROUND(ot.operation_subtotal * 100.0 / ot.total_days, 1) ELSE 0 END as utilization_rate
     FROM machine_operating_time ot
     LEFT JOIN machine_capacity mc ON mc.division = ot.division AND mc.machine_code = ot.machine_code
       AND mc.valid_from <= ot.ym AND mc.valid_to >= ot.ym
@@ -3474,15 +3500,15 @@ app.get('/api/operating-time/summary', async (c) => {
     ORDER BY ot.machine_code
   `).bind(div, ym).all()
 
-  // 합계 계산
   const rows = results.results as any[]
   const totals = rows.reduce((acc, r) => ({
     total_days: acc.total_days + (r.total_days || 0),
-    operating_days: acc.operating_days + (r.operating_days || 0),
+    planned_shutdown_days: acc.planned_shutdown_days + (r.planned_shutdown_days || 0),
+    operation_subtotal: acc.operation_subtotal + (r.operation_subtotal || 0),
+    downtime_subtotal: acc.downtime_subtotal + (r.downtime_subtotal || 0),
     max_production_ton: acc.max_production_ton + (r.max_production_ton || 0),
-    shutdown_days: acc.shutdown_days + (r.shutdown_days || 0),
-    maintenance_days: acc.maintenance_days + (r.maintenance_days || 0),
-  }), { total_days: 0, operating_days: 0, max_production_ton: 0, shutdown_days: 0, maintenance_days: 0 })
+    total_operating_days: acc.total_operating_days + (r.total_operating_days || 0),
+  }), { total_days: 0, planned_shutdown_days: 0, operation_subtotal: 0, downtime_subtotal: 0, max_production_ton: 0, total_operating_days: 0 })
 
   return c.json({ 
     ym, 
@@ -3490,7 +3516,7 @@ app.get('/api/operating-time/summary', async (c) => {
     machines: rows, 
     totals: {
       ...totals,
-      utilization_rate: totals.total_days > 0 ? Math.round(totals.operating_days * 1000 / totals.total_days) / 10 : 0
+      utilization_rate: totals.total_days > 0 ? Math.round(totals.operation_subtotal * 1000 / totals.total_days) / 10 : 0
     }
   })
 })
@@ -3618,10 +3644,10 @@ app.post('/api/grade-production/simulate', async (c) => {
 
   // 해당 호기의 가동일수 조회
   const otRow = await db.prepare(
-    `SELECT operating_days, total_days FROM machine_operating_time WHERE division = ? AND machine_code = ? AND ym = ?`
+    `SELECT operation_subtotal, total_days FROM machine_operating_time WHERE division = ? AND machine_code = ? AND ym = ?`
   ).bind(div, machine_code, ym).first() as any
 
-  const operatingDays = otRow?.operating_days || 0
+  const operatingDays = otRow?.operation_subtotal || 0
   const totalDays = otRow?.total_days || 0
 
   // 지종 마스터 조회 (ID 기반)
