@@ -8430,11 +8430,11 @@ export function mainPage(): string {
           '<td class="px-1 py-1 text-center bg-emerald-50/20"><input type="number" step="0.5" data-field="operation_unplanned_days" value="' + opUnplanned + '" class="w-12 text-center text-xs border border-emerald-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
           '<td class="px-1 py-1 text-center bg-emerald-50/20"><input type="number" step="0.1" data-field="operation_startup_days" value="' + opStartup + '" class="w-12 text-center text-xs border border-emerald-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
           '<td class="px-1 py-1 text-center bg-emerald-50/20"><input type="number" step="0.1" data-field="operation_cutting_days" value="' + opCutting + '" class="w-12 text-center text-xs border border-emerald-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
-          '<td class="px-1 py-1 text-center font-semibold text-emerald-700 bg-emerald-100/50 ot-op-sub">' + opSub.toFixed(1) + '</td>' +
+          '<td class="px-1 py-1 text-center font-semibold text-emerald-700 bg-emerald-100/50 ot-op-sub">' + opSub.toFixed(1) + '<br><span class="text-[9px] text-emerald-500 font-normal">' + Math.round(opSub * 24 * 60).toLocaleString('ko-KR') + '분</span></td>' +
           '<td class="px-1 py-1 text-center bg-red-50/20"><input type="number" step="0.5" data-field="downtime_maintenance_days" value="' + dtMaint + '" class="w-12 text-center text-xs border border-red-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
           '<td class="px-1 py-1 text-center bg-red-50/20"><input type="number" step="0.1" data-field="downtime_cleaning_days" value="' + dtClean + '" class="w-12 text-center text-xs border border-red-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
           '<td class="px-1 py-1 text-center bg-red-50/20"><input type="number" step="0.1" data-field="downtime_accident_days" value="' + dtAccident + '" class="w-12 text-center text-xs border border-red-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
-          '<td class="px-1 py-1 text-center font-semibold text-red-600 bg-red-100/50 ot-dt-sub">' + dtSub.toFixed(1) + '</td>' +
+          '<td class="px-1 py-1 text-center font-semibold text-red-600 bg-red-100/50 ot-dt-sub">' + dtSub.toFixed(1) + '<br><span class="text-[9px] text-red-400 font-normal">' + Math.round(dtSub * 24 * 60).toLocaleString('ko-KR') + '분</span></td>' +
           '<td class="px-2 py-1 text-center font-mono text-blue-700 ot-maxprod">' + Math.round(maxProd).toLocaleString('ko-KR') + '</td>' +
           '<td class="px-1 py-1"><input type="text" data-field="note" value="' + (d.note || '') + '" class="w-16 text-[10px] border border-gray-200 rounded px-1 py-0.5 ot-input" placeholder="메모"></td>' +
           '</tr>';
@@ -8442,8 +8442,10 @@ export function mainPage(): string {
       tbody.innerHTML = html;
 
       var utilRate = totals.total > 0 ? (totals.opSub / totals.total * 100).toFixed(1) : '0.0';
-      tfoot.innerHTML = '<tr>' +
-        '<td class="px-2 py-2 font-bold">합계</td>' +
+      // 분 변환 (일수 × 24 × 60)
+      var toMin = function(d) { return Math.round(d * 24 * 60); };
+      tfoot.innerHTML = '<tr class="border-b border-slate-200">' +
+        '<td class="px-2 py-2 font-bold">합계(일)</td>' +
         '<td class="px-1 py-2 text-center">' + totals.total.toFixed(0) + '</td>' +
         '<td class="px-1 py-2 text-center text-orange-600">' + totals.shutdown.toFixed(1) + '</td>' +
         '<td class="px-1 py-2 text-center text-emerald-600">' + totals.opNormal.toFixed(1) + '</td>' +
@@ -8458,6 +8460,23 @@ export function mainPage(): string {
         '<td class="px-1 py-2 text-center font-bold text-red-600 bg-red-100/50">' + totals.dtSub.toFixed(1) + '</td>' +
         '<td class="px-2 py-2 text-center font-bold text-blue-700">' + Math.round(totals.maxProd).toLocaleString('ko-KR') + '</td>' +
         '<td class="px-1 py-2 text-xs text-gray-500">가동률 ' + utilRate + '%</td>' +
+        '</tr>' +
+        '<tr class="bg-slate-50/80 text-[10px] text-slate-500">' +
+        '<td class="px-2 py-1.5 font-semibold text-slate-600">환산(분)</td>' +
+        '<td class="px-1 py-1.5 text-center">' + toMin(totals.total).toLocaleString('ko-KR') + '</td>' +
+        '<td class="px-1 py-1.5 text-center text-orange-500">' + toMin(totals.shutdown).toLocaleString('ko-KR') + '</td>' +
+        '<td class="px-1 py-1.5 text-center text-emerald-500">' + toMin(totals.opNormal).toLocaleString('ko-KR') + '</td>' +
+        '<td class="px-1 py-1.5 text-center text-emerald-500">' + toMin(totals.opWaste).toLocaleString('ko-KR') + '</td>' +
+        '<td class="px-1 py-1.5 text-center text-emerald-500">' + toMin(totals.opUnplanned).toLocaleString('ko-KR') + '</td>' +
+        '<td class="px-1 py-1.5 text-center text-emerald-500">' + toMin(totals.opStartup).toLocaleString('ko-KR') + '</td>' +
+        '<td class="px-1 py-1.5 text-center text-emerald-500">' + toMin(totals.opCutting).toLocaleString('ko-KR') + '</td>' +
+        '<td class="px-1 py-1.5 text-center font-bold text-emerald-600 bg-emerald-100/30">' + toMin(totals.opSub).toLocaleString('ko-KR') + '</td>' +
+        '<td class="px-1 py-1.5 text-center text-red-400">' + toMin(totals.dtMaint).toLocaleString('ko-KR') + '</td>' +
+        '<td class="px-1 py-1.5 text-center text-red-400">' + toMin(totals.dtClean).toLocaleString('ko-KR') + '</td>' +
+        '<td class="px-1 py-1.5 text-center text-red-400">' + toMin(totals.dtAccident).toLocaleString('ko-KR') + '</td>' +
+        '<td class="px-1 py-1.5 text-center font-bold text-red-500 bg-red-100/30">' + toMin(totals.dtSub).toLocaleString('ko-KR') + '</td>' +
+        '<td class="px-1 py-1.5 text-center text-slate-400">-</td>' +
+        '<td class="px-1 py-1.5 text-center text-slate-400">1일=1,440분</td>' +
         '</tr>';
 
       var elOp = document.getElementById('ot-total-operating');
@@ -8492,8 +8511,8 @@ export function mainPage(): string {
       otCapacity.forEach(function(c) { capMap[c.machine_code] = c.hourly_capacity || 0; });
       var cap = capMap[mc] || 0;
       var maxProd = opSub * 24 * cap;
-      tr.querySelector('.ot-op-sub').textContent = opSub.toFixed(1);
-      tr.querySelector('.ot-dt-sub').textContent = dtSub.toFixed(1);
+      tr.querySelector('.ot-op-sub').innerHTML = opSub.toFixed(1) + '<br><span class="text-[9px] text-emerald-500 font-normal">' + Math.round(opSub * 24 * 60).toLocaleString('ko-KR') + '분</span>';
+      tr.querySelector('.ot-dt-sub').innerHTML = dtSub.toFixed(1) + '<br><span class="text-[9px] text-red-400 font-normal">' + Math.round(dtSub * 24 * 60).toLocaleString('ko-KR') + '분</span>';
       tr.querySelector('.ot-maxprod').textContent = Math.round(maxProd).toLocaleString('ko-KR');
     }
 
