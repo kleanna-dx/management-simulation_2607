@@ -8421,8 +8421,9 @@ export function mainPage(): string {
         totals.maxProd += maxProd;
 
         var chipClass = getCC(mc);
+        var toM = function(v) { return Math.round(v * 24 * 60).toLocaleString('ko-KR'); };
         html += '<tr class="border-b border-slate-100 hover:bg-amber-50/30" data-mc="' + mc + '">' +
-          '<td class="px-2 py-1.5"><span class="unit-chip ' + chipClass + '">' + mc + '</span></td>' +
+          '<td class="px-2 py-1.5" rowspan="2"><span class="unit-chip ' + chipClass + '">' + mc + '</span></td>' +
           '<td class="px-1 py-1 text-center"><input type="number" step="1" data-field="total_days" value="' + total + '" class="w-12 text-center text-xs border border-gray-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
           '<td class="px-1 py-1 text-center bg-orange-50/30"><input type="number" step="0.5" data-field="planned_shutdown_days" value="' + shutdown + '" class="w-12 text-center text-xs border border-orange-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
           '<td class="px-1 py-1 text-center bg-emerald-50/20"><input type="number" step="0.5" data-field="operation_normal_days" value="' + opNormal + '" class="w-12 text-center text-xs border border-emerald-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
@@ -8430,13 +8431,28 @@ export function mainPage(): string {
           '<td class="px-1 py-1 text-center bg-emerald-50/20"><input type="number" step="0.5" data-field="operation_unplanned_days" value="' + opUnplanned + '" class="w-12 text-center text-xs border border-emerald-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
           '<td class="px-1 py-1 text-center bg-emerald-50/20"><input type="number" step="0.1" data-field="operation_startup_days" value="' + opStartup + '" class="w-12 text-center text-xs border border-emerald-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
           '<td class="px-1 py-1 text-center bg-emerald-50/20"><input type="number" step="0.1" data-field="operation_cutting_days" value="' + opCutting + '" class="w-12 text-center text-xs border border-emerald-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
-          '<td class="px-1 py-1 text-center font-semibold text-emerald-700 bg-emerald-100/50 ot-op-sub">' + opSub.toFixed(1) + '<br><span class="text-[9px] text-emerald-500 font-normal">' + Math.round(opSub * 24 * 60).toLocaleString('ko-KR') + '분</span></td>' +
+          '<td class="px-1 py-1 text-center font-semibold text-emerald-700 bg-emerald-100/50 ot-op-sub">' + opSub.toFixed(1) + '</td>' +
           '<td class="px-1 py-1 text-center bg-red-50/20"><input type="number" step="0.5" data-field="downtime_maintenance_days" value="' + dtMaint + '" class="w-12 text-center text-xs border border-red-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
           '<td class="px-1 py-1 text-center bg-red-50/20"><input type="number" step="0.1" data-field="downtime_cleaning_days" value="' + dtClean + '" class="w-12 text-center text-xs border border-red-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
           '<td class="px-1 py-1 text-center bg-red-50/20"><input type="number" step="0.1" data-field="downtime_accident_days" value="' + dtAccident + '" class="w-12 text-center text-xs border border-red-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
-          '<td class="px-1 py-1 text-center font-semibold text-red-600 bg-red-100/50 ot-dt-sub">' + dtSub.toFixed(1) + '<br><span class="text-[9px] text-red-400 font-normal">' + Math.round(dtSub * 24 * 60).toLocaleString('ko-KR') + '분</span></td>' +
+          '<td class="px-1 py-1 text-center font-semibold text-red-600 bg-red-100/50 ot-dt-sub">' + dtSub.toFixed(1) + '</td>' +
           '<td class="px-2 py-1 text-center font-mono text-blue-700 ot-maxprod">' + Math.round(maxProd).toLocaleString('ko-KR') + '</td>' +
-          '<td class="px-1 py-1"><input type="text" data-field="note" value="' + (d.note || '') + '" class="w-16 text-[10px] border border-gray-200 rounded px-1 py-0.5 ot-input" placeholder="메모"></td>' +
+          '<td class="px-1 py-1" rowspan="2"><input type="text" data-field="note" value="' + (d.note || '') + '" class="w-16 text-[10px] border border-gray-200 rounded px-1 py-0.5 ot-input" placeholder="메모"></td>' +
+          '</tr>' +
+          '<tr class="border-b border-slate-200 bg-slate-50/60 ot-min-row" data-mc-min="' + mc + '">' +
+          '<td class="px-1 py-0.5 text-center text-[9px] text-gray-400 ot-min-total">' + toM(total) + '</td>' +
+          '<td class="px-1 py-0.5 text-center text-[9px] text-orange-400 ot-min-shutdown">' + toM(shutdown) + '</td>' +
+          '<td class="px-1 py-0.5 text-center text-[9px] text-emerald-400 ot-min-opNormal">' + toM(opNormal) + '</td>' +
+          '<td class="px-1 py-0.5 text-center text-[9px] text-emerald-400 ot-min-opWaste">' + toM(opWaste) + '</td>' +
+          '<td class="px-1 py-0.5 text-center text-[9px] text-emerald-400 ot-min-opUnplanned">' + toM(opUnplanned) + '</td>' +
+          '<td class="px-1 py-0.5 text-center text-[9px] text-emerald-400 ot-min-opStartup">' + toM(opStartup) + '</td>' +
+          '<td class="px-1 py-0.5 text-center text-[9px] text-emerald-400 ot-min-opCutting">' + toM(opCutting) + '</td>' +
+          '<td class="px-1 py-0.5 text-center text-[9px] font-semibold text-emerald-600 bg-emerald-100/30 ot-min-opSub">' + toM(opSub) + '</td>' +
+          '<td class="px-1 py-0.5 text-center text-[9px] text-red-400 ot-min-dtMaint">' + toM(dtMaint) + '</td>' +
+          '<td class="px-1 py-0.5 text-center text-[9px] text-red-400 ot-min-dtClean">' + toM(dtClean) + '</td>' +
+          '<td class="px-1 py-0.5 text-center text-[9px] text-red-400 ot-min-dtAccident">' + toM(dtAccident) + '</td>' +
+          '<td class="px-1 py-0.5 text-center text-[9px] font-semibold text-red-500 bg-red-100/30 ot-min-dtSub">' + toM(dtSub) + '</td>' +
+          '<td class="px-1 py-0.5 text-center text-[9px] text-gray-400">분</td>' +
           '</tr>';
       });
       tbody.innerHTML = html;
@@ -8506,14 +8522,33 @@ export function mainPage(): string {
       var dtClean = parseFloat(tr.querySelector('[data-field="downtime_cleaning_days"]').value) || 0;
       var dtAccident = parseFloat(tr.querySelector('[data-field="downtime_accident_days"]').value) || 0;
       var dtSub = dtMaint + dtClean + dtAccident;
+      var totalDays = parseFloat(tr.querySelector('[data-field="total_days"]').value) || 0;
+      var shutdown = parseFloat(tr.querySelector('[data-field="planned_shutdown_days"]').value) || 0;
       var mc = tr.dataset.mc;
       var capMap = {};
       otCapacity.forEach(function(c) { capMap[c.machine_code] = c.hourly_capacity || 0; });
       var cap = capMap[mc] || 0;
       var maxProd = opSub * 24 * cap;
-      tr.querySelector('.ot-op-sub').innerHTML = opSub.toFixed(1) + '<br><span class="text-[9px] text-emerald-500 font-normal">' + Math.round(opSub * 24 * 60).toLocaleString('ko-KR') + '분</span>';
-      tr.querySelector('.ot-dt-sub').innerHTML = dtSub.toFixed(1) + '<br><span class="text-[9px] text-red-400 font-normal">' + Math.round(dtSub * 24 * 60).toLocaleString('ko-KR') + '분</span>';
+      tr.querySelector('.ot-op-sub').textContent = opSub.toFixed(1);
+      tr.querySelector('.ot-dt-sub').textContent = dtSub.toFixed(1);
       tr.querySelector('.ot-maxprod').textContent = Math.round(maxProd).toLocaleString('ko-KR');
+      // 분 환산 행 업데이트
+      var minRow = tr.nextElementSibling;
+      if (minRow && minRow.classList.contains('ot-min-row')) {
+        var toM = function(v) { return Math.round(v * 24 * 60).toLocaleString('ko-KR'); };
+        minRow.querySelector('.ot-min-total').textContent = toM(totalDays);
+        minRow.querySelector('.ot-min-shutdown').textContent = toM(shutdown);
+        minRow.querySelector('.ot-min-opNormal').textContent = toM(opNormal);
+        minRow.querySelector('.ot-min-opWaste').textContent = toM(opWaste);
+        minRow.querySelector('.ot-min-opUnplanned').textContent = toM(opUnplanned);
+        minRow.querySelector('.ot-min-opStartup').textContent = toM(opStartup);
+        minRow.querySelector('.ot-min-opCutting').textContent = toM(opCutting);
+        minRow.querySelector('.ot-min-opSub').textContent = toM(opSub);
+        minRow.querySelector('.ot-min-dtMaint').textContent = toM(dtMaint);
+        minRow.querySelector('.ot-min-dtClean').textContent = toM(dtClean);
+        minRow.querySelector('.ot-min-dtAccident').textContent = toM(dtAccident);
+        minRow.querySelector('.ot-min-dtSub').textContent = toM(dtSub);
+      }
     }
 
     async function saveOperatingTime() {
