@@ -123,16 +123,8 @@ export function mainPage(): string {
         <div class="flex items-center gap-3">
           <div class="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-1.5">
             <select id="analysisYear" class="bg-transparent border-none text-sm font-semibold text-gray-700 focus:ring-0 pr-6 cursor-pointer" onchange="updatePeriodHint()">
-              <option value="2026">2026년</option>
-              <option value="2025">2025년</option>
             </select>
             <select id="analysisMonth" class="bg-transparent border-none text-sm font-semibold text-gray-700 focus:ring-0 pr-6 cursor-pointer" onchange="updatePeriodHint()">
-              <option value="6">6월</option>
-              <option value="5" selected>5월</option>
-              <option value="4">4월</option>
-              <option value="3">3월</option>
-              <option value="2">2월</option>
-              <option value="1">1월</option>
             </select>
             <button onclick="loadAnalysis()" class="ml-1 px-3 py-1 bg-indigo-600 text-white text-xs font-semibold rounded-md hover:bg-indigo-700 transition shadow-sm"><i class="fas fa-search mr-1"></i>조회</button>
             <span id="period-hint" class="text-xs text-blue-600 font-medium ml-1 whitespace-nowrap"></span>
@@ -680,22 +672,8 @@ export function mainPage(): string {
           </div>
           <div class="flex items-center gap-3 flex-wrap">
             <select id="dv-year" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs" onchange="loadDataView()">
-              <option value="2026">2026년</option>
-              <option value="2025">2025년</option>
             </select>
             <select id="dv-month" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs" onchange="loadDataView()">
-              <option value="05">5월</option>
-              <option value="06">6월</option>
-              <option value="04">4월</option>
-              <option value="03">3월</option>
-              <option value="02">2월</option>
-              <option value="01">1월</option>
-              <option value="07">7월</option>
-              <option value="08">8월</option>
-              <option value="09">9월</option>
-              <option value="10">10월</option>
-              <option value="11">11월</option>
-              <option value="12">12월</option>
             </select>
             <select id="dv-unit" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs" onchange="loadDataView()">
               <option value="">전체 호기</option>
@@ -2160,6 +2138,40 @@ export function mainPage(): string {
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+      // 메인 분석 연도/월 셀렉터 초기화 (현재 날짜 기준)
+      (function initAnalysisDateSelectors() {
+        var now = new Date();
+        var curYear = now.getFullYear();
+        var curMonth = now.getMonth() + 1;
+        // 공통 함수: 연도 옵션 HTML 생성
+        function yearOpts(fmt) {
+          var h = '';
+          for (var y = curYear; y >= curYear - 2; y--) {
+            h += '<option value="' + y + '"' + (y === curYear ? ' selected' : '') + '>' + y + (fmt || '') + '</option>';
+          }
+          return h;
+        }
+        // 공통 함수: 월 옵션 HTML 생성 (zeroPad: 01~12 vs 1~12)
+        function monthOpts(zeroPad) {
+          var h = '';
+          for (var m = 1; m <= 12; m++) {
+            var v = zeroPad ? (m < 10 ? '0' + m : '' + m) : String(m);
+            h += '<option value="' + v + '"' + (m === curMonth ? ' selected' : '') + '>' + m + '월</option>';
+          }
+          return h;
+        }
+        // 메인 분석 셀렉터 (analysisYear/Month)
+        var aYear = document.getElementById('analysisYear');
+        var aMonth = document.getElementById('analysisMonth');
+        if (aYear) aYear.innerHTML = yearOpts('년');
+        if (aMonth) aMonth.innerHTML = monthOpts(false);
+        // 데이터 조회 셀렉터 (dv-year/month)
+        var dvYear = document.getElementById('dv-year');
+        var dvMonth = document.getElementById('dv-month');
+        if (dvYear) dvYear.innerHTML = yearOpts('년');
+        if (dvMonth) dvMonth.innerHTML = monthOpts(true);
+      })();
+
       // 공통코드 초기 로드 (모든 매핑 정보 한 번에 가져오기)
       await loadCommonCodes(currentDivision);
 
