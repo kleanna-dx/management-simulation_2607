@@ -1844,13 +1844,8 @@ export function mainPage(): string {
           </div>
           <div class="flex items-center gap-2">
             <select id="ot-year" class="text-xs border border-gray-200 rounded-lg px-2 py-1" onchange="loadOperatingTime()">
-              <option value="2026">2026</option><option value="2025">2025</option>
             </select>
             <select id="ot-month" class="text-xs border border-gray-200 rounded-lg px-2 py-1" onchange="loadOperatingTime()">
-              <option value="01">1월</option><option value="02">2월</option><option value="03">3월</option>
-              <option value="04">4월</option><option value="05">5월</option><option value="06" selected>6월</option>
-              <option value="07">7월</option><option value="08">8월</option><option value="09">9월</option>
-              <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
             </select>
             <button onclick="saveOperatingTime()" class="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 transition shadow-sm">
               <i class="fas fa-save mr-1"></i>저장
@@ -2239,6 +2234,7 @@ export function mainPage(): string {
         loadUnifiedSim();
       } else if (tab === 'optime') {
         document.getElementById('content-optime')?.classList.remove('hidden');
+        initOtDateSelectors();
         loadOperatingTime();
         initGpMachineSelect();
       } else {
@@ -8355,9 +8351,35 @@ export function mainPage(): string {
     var otData = [];  // 현재 월의 가동시간 데이터
     var otCapacity = [];  // 호기별 시간당 생산능력
 
+    function initOtDateSelectors() {
+      var now = new Date();
+      var curYear = now.getFullYear();
+      var curMonth = now.getMonth() + 1; // 1-12
+      // 연도 셀렉터: 현재년 ~ 현재년-2
+      var yearSel = document.getElementById('ot-year');
+      if (yearSel) {
+        var yHtml = '';
+        for (var y = curYear; y >= curYear - 2; y--) {
+          yHtml += '<option value="' + y + '"' + (y === curYear ? ' selected' : '') + '>' + y + '</option>';
+        }
+        yearSel.innerHTML = yHtml;
+      }
+      // 월 셀렉터: 1~12월, 현재 월 선택
+      var monthSel = document.getElementById('ot-month');
+      if (monthSel) {
+        var mHtml = '';
+        for (var m = 1; m <= 12; m++) {
+          var mv = m < 10 ? '0' + m : '' + m;
+          mHtml += '<option value="' + mv + '"' + (m === curMonth ? ' selected' : '') + '>' + m + '월</option>';
+        }
+        monthSel.innerHTML = mHtml;
+      }
+    }
+
     function getOtYm() {
-      var y = document.getElementById('ot-year')?.value || '2026';
-      var m = document.getElementById('ot-month')?.value || '06';
+      var now = new Date();
+      var y = document.getElementById('ot-year')?.value || String(now.getFullYear());
+      var m = document.getElementById('ot-month')?.value || (now.getMonth() + 1 < 10 ? '0' + (now.getMonth() + 1) : String(now.getMonth() + 1));
       return y + m;
     }
 
