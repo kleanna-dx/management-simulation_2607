@@ -1840,7 +1840,7 @@ export function mainPage(): string {
         <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <div class="flex items-center gap-3">
             <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-clock text-amber-500 mr-1.5"></i>월별 가동시간 관리</h3>
-            <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">월 총시간 - 비가동시간 = 가동가능시간</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">월 총일수 - 비가동일수 = 가동일수</span>
           </div>
           <div class="flex items-center gap-2">
             <select id="ot-year" class="text-xs border border-gray-200 rounded-lg px-2 py-1" onchange="loadOperatingTime()">
@@ -1862,7 +1862,7 @@ export function mainPage(): string {
         <div id="ot-summary-cards" class="px-6 py-3 bg-gradient-to-r from-amber-50/50 to-white border-b border-slate-100">
           <div class="flex items-center gap-4">
             <div class="text-center">
-              <p class="text-[10px] text-gray-400">총 가동시간</p>
+              <p class="text-[10px] text-gray-400">총 가동일수</p>
               <p id="ot-total-operating" class="text-base font-bold text-gray-800">-</p>
             </div>
             <div class="w-px h-8 bg-slate-200"></div>
@@ -1877,7 +1877,7 @@ export function mainPage(): string {
             </div>
             <div class="w-px h-8 bg-slate-200"></div>
             <div class="text-center">
-              <p class="text-[10px] text-gray-400">비가동 합계</p>
+              <p class="text-[10px] text-gray-400">비가동 합계(일)</p>
               <p id="ot-total-stop" class="text-base font-bold text-red-500">-</p>
             </div>
           </div>
@@ -1889,13 +1889,13 @@ export function mainPage(): string {
             <thead>
               <tr class="bg-slate-50 text-gray-500">
                 <th class="px-3 py-2 text-left font-medium">호기</th>
-                <th class="px-3 py-2 text-center font-medium">월 총시간<br><span class="text-[9px] text-gray-400">(일수×24)</span></th>
-                <th class="px-3 py-2 text-center font-medium text-red-400">운휴<br><span class="text-[9px]">계획정지</span></th>
-                <th class="px-3 py-2 text-center font-medium text-orange-400">정기점검<br><span class="text-[9px]">PM</span></th>
-                <th class="px-3 py-2 text-center font-medium text-rose-400">고장정지<br><span class="text-[9px]">BM</span></th>
-                <th class="px-3 py-2 text-center font-medium text-purple-400">품종교체<br><span class="text-[9px]">GC</span></th>
-                <th class="px-3 py-2 text-center font-medium text-gray-400">기타정지</th>
-                <th class="px-3 py-2 text-center font-medium text-emerald-600">가동시간<br><span class="text-[9px]">(자동계산)</span></th>
+                <th class="px-3 py-2 text-center font-medium">월 총일수<br><span class="text-[9px] text-gray-400">(달력일수)</span></th>
+                <th class="px-3 py-2 text-center font-medium text-red-400">운휴<br><span class="text-[9px]">(일)</span></th>
+                <th class="px-3 py-2 text-center font-medium text-orange-400">정기점검<br><span class="text-[9px]">(일)</span></th>
+                <th class="px-3 py-2 text-center font-medium text-rose-400">고장정지<br><span class="text-[9px]">(일)</span></th>
+                <th class="px-3 py-2 text-center font-medium text-purple-400">품종교체<br><span class="text-[9px]">(일)</span></th>
+                <th class="px-3 py-2 text-center font-medium text-gray-400">기타정지<br><span class="text-[9px]">(일)</span></th>
+                <th class="px-3 py-2 text-center font-medium text-emerald-600">가동일수<br><span class="text-[9px]">(자동계산)</span></th>
                 <th class="px-3 py-2 text-center font-medium text-blue-600">가동률<br><span class="text-[9px]">(%)</span></th>
                 <th class="px-3 py-2 text-center font-medium text-indigo-600">최대생산<br><span class="text-[9px]">(톤)</span></th>
                 <th class="px-3 py-2 text-center font-medium">비고</th>
@@ -8281,7 +8281,7 @@ export function mainPage(): string {
       XLSX.writeFile(wb, fileName);
     }
 
-    // ============ 가동시간 (Operating Time) 모듈 ============
+    // ============ 가동시간 (Operating Time) 모듈 — 일(day) 단위 ============
     var otData = [];  // 현재 월의 가동시간 데이터
     var otCapacity = [];  // 호기별 시간당 생산능력
 
@@ -8317,8 +8317,7 @@ export function mainPage(): string {
       if (!tbody) return;
 
       var machines = (divisionMachines || CC.machines || []).map(function(m) { return m.code || m; });
-      var days = getDaysInMonth(ym);
-      var totalHoursMonth = days * 24;
+      var daysInMonth = getDaysInMonth(ym);
 
       // 기존 데이터를 machine_code로 인덱싱
       var dataMap = {};
@@ -8333,15 +8332,15 @@ export function mainPage(): string {
 
       machines.forEach(function(mc) {
         var d = dataMap[mc] || {};
-        var total = d.total_hours || totalHoursMonth;
-        var shutdown = d.shutdown_hours || 0;
-        var maint = d.maintenance_hours || 0;
-        var breakdown = d.breakdown_hours || 0;
-        var gc = d.grade_change_hours || 0;
-        var other = d.other_stop_hours || 0;
+        var total = d.total_days || daysInMonth;
+        var shutdown = d.shutdown_days || 0;
+        var maint = d.maintenance_days || 0;
+        var breakdown = d.breakdown_days || 0;
+        var gc = d.grade_change_days || 0;
+        var other = d.other_stop_days || 0;
         var operating = total - shutdown - maint - breakdown - gc - other;
         var cap = capMap[mc] || 0;
-        var maxProd = operating * cap;
+        var maxProd = operating * 24 * cap;  // 가동일수 × 24h × 시간당생산량
         var util = total > 0 ? (operating / total * 100).toFixed(1) : '0.0';
 
         totals.total += total;
@@ -8356,12 +8355,12 @@ export function mainPage(): string {
         var chipClass = getCC(mc);
         html += '<tr class="border-b border-slate-100 hover:bg-amber-50/30" data-mc="' + mc + '">' +
           '<td class="px-3 py-2"><span class="unit-chip ' + chipClass + '">' + mc + '</span></td>' +
-          '<td class="px-2 py-1 text-center"><input type="number" data-field="total_hours" value="' + total + '" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
-          '<td class="px-2 py-1 text-center"><input type="number" data-field="shutdown_hours" value="' + shutdown + '" class="w-14 text-center text-xs border border-red-200 rounded px-1 py-0.5 bg-red-50/50 ot-input" onchange="recalcOtRow(this)"></td>' +
-          '<td class="px-2 py-1 text-center"><input type="number" data-field="maintenance_hours" value="' + maint + '" class="w-14 text-center text-xs border border-orange-200 rounded px-1 py-0.5 bg-orange-50/50 ot-input" onchange="recalcOtRow(this)"></td>' +
-          '<td class="px-2 py-1 text-center"><input type="number" data-field="breakdown_hours" value="' + breakdown + '" class="w-14 text-center text-xs border border-rose-200 rounded px-1 py-0.5 bg-rose-50/50 ot-input" onchange="recalcOtRow(this)"></td>' +
-          '<td class="px-2 py-1 text-center"><input type="number" data-field="grade_change_hours" value="' + gc + '" class="w-14 text-center text-xs border border-purple-200 rounded px-1 py-0.5 bg-purple-50/50 ot-input" onchange="recalcOtRow(this)"></td>' +
-          '<td class="px-2 py-1 text-center"><input type="number" data-field="other_stop_hours" value="' + other + '" class="w-14 text-center text-xs border border-gray-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-2 py-1 text-center"><input type="number" step="0.5" data-field="total_days" value="' + total + '" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-2 py-1 text-center"><input type="number" step="0.5" data-field="shutdown_days" value="' + shutdown + '" class="w-14 text-center text-xs border border-red-200 rounded px-1 py-0.5 bg-red-50/50 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-2 py-1 text-center"><input type="number" step="0.5" data-field="maintenance_days" value="' + maint + '" class="w-14 text-center text-xs border border-orange-200 rounded px-1 py-0.5 bg-orange-50/50 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-2 py-1 text-center"><input type="number" step="0.5" data-field="breakdown_days" value="' + breakdown + '" class="w-14 text-center text-xs border border-rose-200 rounded px-1 py-0.5 bg-rose-50/50 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-2 py-1 text-center"><input type="number" step="0.5" data-field="grade_change_days" value="' + gc + '" class="w-14 text-center text-xs border border-purple-200 rounded px-1 py-0.5 bg-purple-50/50 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-2 py-1 text-center"><input type="number" step="0.5" data-field="other_stop_days" value="' + other + '" class="w-14 text-center text-xs border border-gray-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
           '<td class="px-3 py-2 text-center font-semibold text-emerald-700 ot-operating">' + operating.toFixed(1) + '</td>' +
           '<td class="px-3 py-2 text-center font-semibold ot-util ' + (parseFloat(util) >= 80 ? 'text-emerald-600' : parseFloat(util) >= 60 ? 'text-amber-600' : 'text-red-600') + '">' + util + '%</td>' +
           '<td class="px-3 py-2 text-center font-mono text-blue-700 ot-maxprod">' + Math.round(maxProd).toLocaleString('ko-KR') + '</td>' +
@@ -8374,12 +8373,12 @@ export function mainPage(): string {
       var totalUtil = totals.total > 0 ? (totals.operating / totals.total * 100).toFixed(1) : '0.0';
       tfoot.innerHTML = '<tr>' +
         '<td class="px-3 py-2 font-bold">합계</td>' +
-        '<td class="px-3 py-2 text-center">' + totals.total.toFixed(0) + '</td>' +
-        '<td class="px-3 py-2 text-center text-red-600">' + totals.shutdown.toFixed(0) + '</td>' +
-        '<td class="px-3 py-2 text-center text-orange-600">' + totals.maint.toFixed(0) + '</td>' +
-        '<td class="px-3 py-2 text-center text-rose-600">' + totals.breakdown.toFixed(0) + '</td>' +
-        '<td class="px-3 py-2 text-center text-purple-600">' + totals.gc.toFixed(0) + '</td>' +
-        '<td class="px-3 py-2 text-center">' + totals.other.toFixed(0) + '</td>' +
+        '<td class="px-3 py-2 text-center">' + totals.total.toFixed(1) + '</td>' +
+        '<td class="px-3 py-2 text-center text-red-600">' + totals.shutdown.toFixed(1) + '</td>' +
+        '<td class="px-3 py-2 text-center text-orange-600">' + totals.maint.toFixed(1) + '</td>' +
+        '<td class="px-3 py-2 text-center text-rose-600">' + totals.breakdown.toFixed(1) + '</td>' +
+        '<td class="px-3 py-2 text-center text-purple-600">' + totals.gc.toFixed(1) + '</td>' +
+        '<td class="px-3 py-2 text-center">' + totals.other.toFixed(1) + '</td>' +
         '<td class="px-3 py-2 text-center font-bold text-emerald-700">' + totals.operating.toFixed(1) + '</td>' +
         '<td class="px-3 py-2 text-center font-bold">' + totalUtil + '%</td>' +
         '<td class="px-3 py-2 text-center font-bold text-blue-700">' + Math.round(totals.maxProd).toLocaleString('ko-KR') + '</td>' +
@@ -8391,10 +8390,10 @@ export function mainPage(): string {
       var elUtil = document.getElementById('ot-utilization');
       var elMax = document.getElementById('ot-max-production');
       var elStop = document.getElementById('ot-total-stop');
-      if (elOp) elOp.textContent = Math.round(totals.operating).toLocaleString('ko-KR') + ' h';
+      if (elOp) elOp.textContent = totals.operating.toFixed(1) + '일';
       if (elUtil) elUtil.textContent = totalUtil + '%';
       if (elMax) elMax.textContent = Math.round(totals.maxProd).toLocaleString('ko-KR') + ' 톤';
-      if (elStop) elStop.textContent = Math.round(totals.shutdown + totals.maint + totals.breakdown + totals.gc + totals.other) + ' h';
+      if (elStop) elStop.textContent = (totals.shutdown + totals.maint + totals.breakdown + totals.gc + totals.other).toFixed(1) + '일';
 
       // 시간당 생산능력 설정 렌더
       renderCapacityInputs(machines, capMap);
@@ -8403,12 +8402,12 @@ export function mainPage(): string {
     function recalcOtRow(el) {
       var tr = el.closest('tr');
       if (!tr) return;
-      var total = parseFloat(tr.querySelector('[data-field="total_hours"]').value) || 0;
-      var shutdown = parseFloat(tr.querySelector('[data-field="shutdown_hours"]').value) || 0;
-      var maint = parseFloat(tr.querySelector('[data-field="maintenance_hours"]').value) || 0;
-      var breakdown = parseFloat(tr.querySelector('[data-field="breakdown_hours"]').value) || 0;
-      var gc = parseFloat(tr.querySelector('[data-field="grade_change_hours"]').value) || 0;
-      var other = parseFloat(tr.querySelector('[data-field="other_stop_hours"]').value) || 0;
+      var total = parseFloat(tr.querySelector('[data-field="total_days"]').value) || 0;
+      var shutdown = parseFloat(tr.querySelector('[data-field="shutdown_days"]').value) || 0;
+      var maint = parseFloat(tr.querySelector('[data-field="maintenance_days"]').value) || 0;
+      var breakdown = parseFloat(tr.querySelector('[data-field="breakdown_days"]').value) || 0;
+      var gc = parseFloat(tr.querySelector('[data-field="grade_change_days"]').value) || 0;
+      var other = parseFloat(tr.querySelector('[data-field="other_stop_days"]').value) || 0;
       var operating = total - shutdown - maint - breakdown - gc - other;
       var util = total > 0 ? (operating / total * 100).toFixed(1) : '0.0';
 
@@ -8416,7 +8415,7 @@ export function mainPage(): string {
       var capMap = {};
       otCapacity.forEach(function(c) { capMap[c.machine_code] = c.hourly_capacity || 0; });
       var cap = capMap[mc] || 0;
-      var maxProd = operating * cap;
+      var maxProd = operating * 24 * cap;  // 가동일수 × 24h × 시간당생산량
 
       tr.querySelector('.ot-operating').textContent = operating.toFixed(1);
       var utilEl = tr.querySelector('.ot-util');
@@ -8449,12 +8448,12 @@ export function mainPage(): string {
       rows.forEach(function(tr) {
         entries.push({
           machine_code: tr.dataset.mc,
-          total_hours: parseFloat(tr.querySelector('[data-field="total_hours"]').value) || 0,
-          shutdown_hours: parseFloat(tr.querySelector('[data-field="shutdown_hours"]').value) || 0,
-          maintenance_hours: parseFloat(tr.querySelector('[data-field="maintenance_hours"]').value) || 0,
-          breakdown_hours: parseFloat(tr.querySelector('[data-field="breakdown_hours"]').value) || 0,
-          grade_change_hours: parseFloat(tr.querySelector('[data-field="grade_change_hours"]').value) || 0,
-          other_stop_hours: parseFloat(tr.querySelector('[data-field="other_stop_hours"]').value) || 0,
+          total_days: parseFloat(tr.querySelector('[data-field="total_days"]').value) || 0,
+          shutdown_days: parseFloat(tr.querySelector('[data-field="shutdown_days"]').value) || 0,
+          maintenance_days: parseFloat(tr.querySelector('[data-field="maintenance_days"]').value) || 0,
+          breakdown_days: parseFloat(tr.querySelector('[data-field="breakdown_days"]').value) || 0,
+          grade_change_days: parseFloat(tr.querySelector('[data-field="grade_change_days"]').value) || 0,
+          other_stop_days: parseFloat(tr.querySelector('[data-field="other_stop_days"]').value) || 0,
           note: tr.querySelector('[data-field="note"]')?.value || ''
         });
       });
