@@ -115,6 +115,9 @@ export function mainPage(): string {
           <button onclick="switchTab('simflow')" id="tab-simflow" class="pill-tab pill-tab-inactive">
             <i class="fas fa-flask mr-1.5"></i>통합 시뮬레이션
           </button>
+          <button onclick="switchTab('optime')" id="tab-optime" class="pill-tab pill-tab-inactive">
+            <i class="fas fa-clock mr-1.5"></i>가동시간
+          </button>
         </div>
         <!-- Filters -->
         <div class="flex items-center gap-3">
@@ -1830,6 +1833,97 @@ export function mainPage(): string {
       </div>
     </div><!-- /content-simflow -->
 
+    <!-- ============ 가동시간 (Operating Time) ============ -->
+    <div id="content-optime" class="hidden fade-in">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        <!-- 헤더 -->
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-clock text-amber-500 mr-1.5"></i>월별 가동시간 관리</h3>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">월 총시간 - 비가동시간 = 가동가능시간</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <select id="ot-year" class="text-xs border border-gray-200 rounded-lg px-2 py-1" onchange="loadOperatingTime()">
+              <option value="2026">2026</option><option value="2025">2025</option>
+            </select>
+            <select id="ot-month" class="text-xs border border-gray-200 rounded-lg px-2 py-1" onchange="loadOperatingTime()">
+              <option value="01">1월</option><option value="02">2월</option><option value="03">3월</option>
+              <option value="04">4월</option><option value="05">5월</option><option value="06" selected>6월</option>
+              <option value="07">7월</option><option value="08">8월</option><option value="09">9월</option>
+              <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+            </select>
+            <button onclick="saveOperatingTime()" class="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 transition shadow-sm">
+              <i class="fas fa-save mr-1"></i>저장
+            </button>
+          </div>
+        </div>
+
+        <!-- 요약 카드 -->
+        <div id="ot-summary-cards" class="px-6 py-3 bg-gradient-to-r from-amber-50/50 to-white border-b border-slate-100">
+          <div class="flex items-center gap-4">
+            <div class="text-center">
+              <p class="text-[10px] text-gray-400">총 가동시간</p>
+              <p id="ot-total-operating" class="text-base font-bold text-gray-800">-</p>
+            </div>
+            <div class="w-px h-8 bg-slate-200"></div>
+            <div class="text-center">
+              <p class="text-[10px] text-gray-400">가동률</p>
+              <p id="ot-utilization" class="text-base font-bold text-emerald-600">-</p>
+            </div>
+            <div class="w-px h-8 bg-slate-200"></div>
+            <div class="text-center">
+              <p class="text-[10px] text-gray-400">최대 생산능력</p>
+              <p id="ot-max-production" class="text-base font-bold text-blue-600">-</p>
+            </div>
+            <div class="w-px h-8 bg-slate-200"></div>
+            <div class="text-center">
+              <p class="text-[10px] text-gray-400">비가동 합계</p>
+              <p id="ot-total-stop" class="text-base font-bold text-red-500">-</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 입력 테이블 -->
+        <div class="px-6 py-4 overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="bg-slate-50 text-gray-500">
+                <th class="px-3 py-2 text-left font-medium">호기</th>
+                <th class="px-3 py-2 text-center font-medium">월 총시간<br><span class="text-[9px] text-gray-400">(일수×24)</span></th>
+                <th class="px-3 py-2 text-center font-medium text-red-400">운휴<br><span class="text-[9px]">계획정지</span></th>
+                <th class="px-3 py-2 text-center font-medium text-orange-400">정기점검<br><span class="text-[9px]">PM</span></th>
+                <th class="px-3 py-2 text-center font-medium text-rose-400">고장정지<br><span class="text-[9px]">BM</span></th>
+                <th class="px-3 py-2 text-center font-medium text-purple-400">품종교체<br><span class="text-[9px]">GC</span></th>
+                <th class="px-3 py-2 text-center font-medium text-gray-400">기타정지</th>
+                <th class="px-3 py-2 text-center font-medium text-emerald-600">가동시간<br><span class="text-[9px]">(자동계산)</span></th>
+                <th class="px-3 py-2 text-center font-medium text-blue-600">가동률<br><span class="text-[9px]">(%)</span></th>
+                <th class="px-3 py-2 text-center font-medium text-indigo-600">최대생산<br><span class="text-[9px]">(톤)</span></th>
+                <th class="px-3 py-2 text-center font-medium">비고</th>
+              </tr>
+            </thead>
+            <tbody id="ot-table-body">
+              <tr><td colspan="11" class="text-center py-8 text-gray-400">로딩 중...</td></tr>
+            </tbody>
+            <tfoot id="ot-table-foot" class="bg-slate-50 font-semibold border-t-2 border-slate-200">
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- 시간당 생산능력 설정 -->
+        <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-xs font-semibold text-gray-600"><i class="fas fa-tachometer-alt text-blue-400 mr-1"></i>호기별 시간당 생산능력 (톤/시간)</h4>
+            <button onclick="saveCapacity()" class="px-2 py-1 bg-blue-500 text-white text-[10px] font-semibold rounded hover:bg-blue-600 transition">
+              <i class="fas fa-save mr-0.5"></i>능력치 저장
+            </button>
+          </div>
+          <div id="ot-capacity-container" class="flex flex-wrap gap-3">
+            <!-- 동적 생성 -->
+          </div>
+        </div>
+      </div>
+    </div><!-- /content-optime -->
+
   </main>
 
   <script>
@@ -2056,7 +2150,7 @@ export function mainPage(): string {
     });
 
     function switchTab(tab) {
-      ['dashboard','detail','upload','dataview','master','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow'].forEach(t => {
+      ['dashboard','detail','upload','dataview','master','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.add('pill-tab-inactive'); }
@@ -2074,6 +2168,9 @@ export function mainPage(): string {
       } else if (tab === 'simflow') {
         document.getElementById('content-simflow')?.classList.remove('hidden');
         loadUnifiedSim();
+      } else if (tab === 'optime') {
+        document.getElementById('content-optime')?.classList.remove('hidden');
+        loadOperatingTime();
       } else {
         document.getElementById('content-' + tab)?.classList.remove('hidden');
       }
@@ -8184,6 +8281,217 @@ export function mainPage(): string {
       XLSX.writeFile(wb, fileName);
     }
 
+    // ============ 가동시간 (Operating Time) 모듈 ============
+    var otData = [];  // 현재 월의 가동시간 데이터
+    var otCapacity = [];  // 호기별 시간당 생산능력
+
+    function getOtYm() {
+      var y = document.getElementById('ot-year')?.value || '2026';
+      var m = document.getElementById('ot-month')?.value || '06';
+      return y + m;
+    }
+
+    function getDaysInMonth(ym) {
+      var year = parseInt(ym.substring(0, 4));
+      var month = parseInt(ym.substring(4, 6));
+      return new Date(year, month, 0).getDate();
+    }
+
+    async function loadOperatingTime() {
+      var ym = getOtYm();
+      var div = currentDivision || 'PS';
+      try {
+        var [timeRes, capRes] = await Promise.all([
+          fetch('/api/operating-time?division=' + div + '&ym=' + ym).then(r => r.json()),
+          fetch('/api/machine-capacity?division=' + div).then(r => r.json())
+        ]);
+        otData = timeRes || [];
+        otCapacity = capRes || [];
+        renderOperatingTimeTable(ym);
+      } catch(e) { console.error('가동시간 로드 오류:', e); }
+    }
+
+    function renderOperatingTimeTable(ym) {
+      var tbody = document.getElementById('ot-table-body');
+      var tfoot = document.getElementById('ot-table-foot');
+      if (!tbody) return;
+
+      var machines = (divisionMachines || CC.machines || []).map(function(m) { return m.code || m; });
+      var days = getDaysInMonth(ym);
+      var totalHoursMonth = days * 24;
+
+      // 기존 데이터를 machine_code로 인덱싱
+      var dataMap = {};
+      otData.forEach(function(d) { dataMap[d.machine_code] = d; });
+
+      // 시간당생산능력 인덱싱
+      var capMap = {};
+      otCapacity.forEach(function(c) { capMap[c.machine_code] = c.hourly_capacity || 0; });
+
+      var html = '';
+      var totals = { total: 0, shutdown: 0, maint: 0, breakdown: 0, gc: 0, other: 0, operating: 0, maxProd: 0 };
+
+      machines.forEach(function(mc) {
+        var d = dataMap[mc] || {};
+        var total = d.total_hours || totalHoursMonth;
+        var shutdown = d.shutdown_hours || 0;
+        var maint = d.maintenance_hours || 0;
+        var breakdown = d.breakdown_hours || 0;
+        var gc = d.grade_change_hours || 0;
+        var other = d.other_stop_hours || 0;
+        var operating = total - shutdown - maint - breakdown - gc - other;
+        var cap = capMap[mc] || 0;
+        var maxProd = operating * cap;
+        var util = total > 0 ? (operating / total * 100).toFixed(1) : '0.0';
+
+        totals.total += total;
+        totals.shutdown += shutdown;
+        totals.maint += maint;
+        totals.breakdown += breakdown;
+        totals.gc += gc;
+        totals.other += other;
+        totals.operating += operating;
+        totals.maxProd += maxProd;
+
+        var chipClass = getCC(mc);
+        html += '<tr class="border-b border-slate-100 hover:bg-amber-50/30" data-mc="' + mc + '">' +
+          '<td class="px-3 py-2"><span class="unit-chip ' + chipClass + '">' + mc + '</span></td>' +
+          '<td class="px-2 py-1 text-center"><input type="number" data-field="total_hours" value="' + total + '" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-2 py-1 text-center"><input type="number" data-field="shutdown_hours" value="' + shutdown + '" class="w-14 text-center text-xs border border-red-200 rounded px-1 py-0.5 bg-red-50/50 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-2 py-1 text-center"><input type="number" data-field="maintenance_hours" value="' + maint + '" class="w-14 text-center text-xs border border-orange-200 rounded px-1 py-0.5 bg-orange-50/50 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-2 py-1 text-center"><input type="number" data-field="breakdown_hours" value="' + breakdown + '" class="w-14 text-center text-xs border border-rose-200 rounded px-1 py-0.5 bg-rose-50/50 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-2 py-1 text-center"><input type="number" data-field="grade_change_hours" value="' + gc + '" class="w-14 text-center text-xs border border-purple-200 rounded px-1 py-0.5 bg-purple-50/50 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-2 py-1 text-center"><input type="number" data-field="other_stop_hours" value="' + other + '" class="w-14 text-center text-xs border border-gray-200 rounded px-1 py-0.5 ot-input" onchange="recalcOtRow(this)"></td>' +
+          '<td class="px-3 py-2 text-center font-semibold text-emerald-700 ot-operating">' + operating.toFixed(1) + '</td>' +
+          '<td class="px-3 py-2 text-center font-semibold ot-util ' + (parseFloat(util) >= 80 ? 'text-emerald-600' : parseFloat(util) >= 60 ? 'text-amber-600' : 'text-red-600') + '">' + util + '%</td>' +
+          '<td class="px-3 py-2 text-center font-mono text-blue-700 ot-maxprod">' + Math.round(maxProd).toLocaleString('ko-KR') + '</td>' +
+          '<td class="px-2 py-1"><input type="text" data-field="note" value="' + (d.note || '') + '" class="w-20 text-[10px] border border-gray-200 rounded px-1 py-0.5 ot-input" placeholder="메모"></td>' +
+          '</tr>';
+      });
+      tbody.innerHTML = html;
+
+      // 합계행
+      var totalUtil = totals.total > 0 ? (totals.operating / totals.total * 100).toFixed(1) : '0.0';
+      tfoot.innerHTML = '<tr>' +
+        '<td class="px-3 py-2 font-bold">합계</td>' +
+        '<td class="px-3 py-2 text-center">' + totals.total.toFixed(0) + '</td>' +
+        '<td class="px-3 py-2 text-center text-red-600">' + totals.shutdown.toFixed(0) + '</td>' +
+        '<td class="px-3 py-2 text-center text-orange-600">' + totals.maint.toFixed(0) + '</td>' +
+        '<td class="px-3 py-2 text-center text-rose-600">' + totals.breakdown.toFixed(0) + '</td>' +
+        '<td class="px-3 py-2 text-center text-purple-600">' + totals.gc.toFixed(0) + '</td>' +
+        '<td class="px-3 py-2 text-center">' + totals.other.toFixed(0) + '</td>' +
+        '<td class="px-3 py-2 text-center font-bold text-emerald-700">' + totals.operating.toFixed(1) + '</td>' +
+        '<td class="px-3 py-2 text-center font-bold">' + totalUtil + '%</td>' +
+        '<td class="px-3 py-2 text-center font-bold text-blue-700">' + Math.round(totals.maxProd).toLocaleString('ko-KR') + '</td>' +
+        '<td class="px-3 py-2"></td>' +
+        '</tr>';
+
+      // 요약 카드 업데이트
+      var elOp = document.getElementById('ot-total-operating');
+      var elUtil = document.getElementById('ot-utilization');
+      var elMax = document.getElementById('ot-max-production');
+      var elStop = document.getElementById('ot-total-stop');
+      if (elOp) elOp.textContent = Math.round(totals.operating).toLocaleString('ko-KR') + ' h';
+      if (elUtil) elUtil.textContent = totalUtil + '%';
+      if (elMax) elMax.textContent = Math.round(totals.maxProd).toLocaleString('ko-KR') + ' 톤';
+      if (elStop) elStop.textContent = Math.round(totals.shutdown + totals.maint + totals.breakdown + totals.gc + totals.other) + ' h';
+
+      // 시간당 생산능력 설정 렌더
+      renderCapacityInputs(machines, capMap);
+    }
+
+    function recalcOtRow(el) {
+      var tr = el.closest('tr');
+      if (!tr) return;
+      var total = parseFloat(tr.querySelector('[data-field="total_hours"]').value) || 0;
+      var shutdown = parseFloat(tr.querySelector('[data-field="shutdown_hours"]').value) || 0;
+      var maint = parseFloat(tr.querySelector('[data-field="maintenance_hours"]').value) || 0;
+      var breakdown = parseFloat(tr.querySelector('[data-field="breakdown_hours"]').value) || 0;
+      var gc = parseFloat(tr.querySelector('[data-field="grade_change_hours"]').value) || 0;
+      var other = parseFloat(tr.querySelector('[data-field="other_stop_hours"]').value) || 0;
+      var operating = total - shutdown - maint - breakdown - gc - other;
+      var util = total > 0 ? (operating / total * 100).toFixed(1) : '0.0';
+
+      var mc = tr.dataset.mc;
+      var capMap = {};
+      otCapacity.forEach(function(c) { capMap[c.machine_code] = c.hourly_capacity || 0; });
+      var cap = capMap[mc] || 0;
+      var maxProd = operating * cap;
+
+      tr.querySelector('.ot-operating').textContent = operating.toFixed(1);
+      var utilEl = tr.querySelector('.ot-util');
+      utilEl.textContent = util + '%';
+      utilEl.className = 'px-3 py-2 text-center font-semibold ot-util ' + (parseFloat(util) >= 80 ? 'text-emerald-600' : parseFloat(util) >= 60 ? 'text-amber-600' : 'text-red-600');
+      tr.querySelector('.ot-maxprod').textContent = Math.round(maxProd).toLocaleString('ko-KR');
+    }
+
+    function renderCapacityInputs(machines, capMap) {
+      var container = document.getElementById('ot-capacity-container');
+      if (!container) return;
+      var html = '';
+      machines.forEach(function(mc) {
+        var cap = capMap[mc] || 0;
+        var chipClass = getCC(mc);
+        html += '<div class="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-slate-200">' +
+          '<span class="unit-chip ' + chipClass + ' text-[9px]">' + mc + '</span>' +
+          '<input type="number" step="0.1" id="cap-' + mc + '" value="' + cap + '" class="w-14 text-center text-xs border border-blue-200 rounded px-1 py-0.5">' +
+          '<span class="text-[9px] text-gray-400">톤/h</span>' +
+          '</div>';
+      });
+      container.innerHTML = html;
+    }
+
+    async function saveOperatingTime() {
+      var ym = getOtYm();
+      var div = currentDivision || 'PS';
+      var rows = document.querySelectorAll('#ot-table-body tr[data-mc]');
+      var entries = [];
+      rows.forEach(function(tr) {
+        entries.push({
+          machine_code: tr.dataset.mc,
+          total_hours: parseFloat(tr.querySelector('[data-field="total_hours"]').value) || 0,
+          shutdown_hours: parseFloat(tr.querySelector('[data-field="shutdown_hours"]').value) || 0,
+          maintenance_hours: parseFloat(tr.querySelector('[data-field="maintenance_hours"]').value) || 0,
+          breakdown_hours: parseFloat(tr.querySelector('[data-field="breakdown_hours"]').value) || 0,
+          grade_change_hours: parseFloat(tr.querySelector('[data-field="grade_change_hours"]').value) || 0,
+          other_stop_hours: parseFloat(tr.querySelector('[data-field="other_stop_hours"]').value) || 0,
+          note: tr.querySelector('[data-field="note"]')?.value || ''
+        });
+      });
+
+      try {
+        var res = await fetch('/api/operating-time/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ division: div, ym: ym, entries: entries, saved_by: document.getElementById('mn-user-name')?.value || '' })
+        });
+        var result = await res.json();
+        if (result.success) {
+          alert('가동시간 저장 완료! (' + result.count + '건)');
+          loadOperatingTime();
+        } else {
+          alert('저장 실패: ' + (result.error || ''));
+        }
+      } catch(e) { alert('저장 오류: ' + e.message); }
+    }
+
+    async function saveCapacity() {
+      var div = currentDivision || 'PS';
+      var machines = (divisionMachines || CC.machines || []).map(function(m) { return m.code || m; });
+      try {
+        for (var i = 0; i < machines.length; i++) {
+          var mc = machines[i];
+          var val = parseFloat(document.getElementById('cap-' + mc)?.value) || 0;
+          await fetch('/api/machine-capacity', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ division: div, machine_code: mc, hourly_capacity: val })
+          });
+        }
+        alert('시간당 생산능력 저장 완료!');
+        loadOperatingTime(); // 재계산
+      } catch(e) { alert('저장 오류: ' + e.message); }
+    }
   </script>
 </body>
 </html>`;
