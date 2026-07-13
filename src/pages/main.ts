@@ -1830,16 +1830,6 @@ export function mainPage(): string {
             <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">계획운휴 + 가동일수 + 비가동일수 = 총 조업일수</span>
           </div>
           <div class="flex items-center gap-2">
-            <div class="flex items-center gap-0.5 bg-slate-50 rounded-lg px-2 py-1">
-              <button onclick="stepOtYear(-1)" class="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-[10px]"><i class="fas fa-chevron-left"></i></button>
-              <span id="ot-year" class="text-xs font-bold text-gray-700 min-w-[38px] text-center select-none"></span>
-              <button onclick="stepOtYear(1)" class="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-[10px]"><i class="fas fa-chevron-right"></i></button>
-            </div>
-            <div class="flex items-center gap-0.5 bg-slate-50 rounded-lg px-2 py-1">
-              <button onclick="stepOtMonth(-1)" class="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-[10px]"><i class="fas fa-chevron-left"></i></button>
-              <span id="ot-month" class="text-xs font-bold text-gray-700 min-w-[28px] text-center select-none"></span>
-              <button onclick="stepOtMonth(1)" class="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-[10px]"><i class="fas fa-chevron-right"></i></button>
-            </div>
             <button onclick="saveOperatingTime()" class="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 transition shadow-sm">
               <i class="fas fa-save mr-1"></i>저장
             </button>
@@ -2189,8 +2179,8 @@ export function mainPage(): string {
         setupSpanValueZeroPad(document.getElementById('dv-month'), curMonth);
 
         // 클릭 시 직접 입력 활성화
-        makeEditable(document.getElementById('analysisYear'), { min: 2020, max: 2099, width: 52, onChange: updatePeriodHint });
-        makeEditable(document.getElementById('analysisMonth'), { min: 1, max: 12, width: 36, onChange: updatePeriodHint });
+        makeEditable(document.getElementById('analysisYear'), { min: 2020, max: 2099, width: 52, onChange: function(){ updatePeriodHint(); onMainDateChange(); } });
+        makeEditable(document.getElementById('analysisMonth'), { min: 1, max: 12, width: 36, onChange: function(){ updatePeriodHint(); onMainDateChange(); } });
         makeEditable(document.getElementById('dv-year'), { min: 2020, max: 2099, width: 44, onChange: function(){ if(typeof loadDataView==='function') loadDataView(); } });
         makeEditable(document.getElementById('dv-month'), { min: 1, max: 12, width: 32, onChange: function(){ if(typeof loadDataView==='function') loadDataView(); } });
       })();
@@ -2972,6 +2962,7 @@ export function mainPage(): string {
       if (!el) return;
       el.value = String(parseInt(el.value) + dir);
       updatePeriodHint();
+      onMainDateChange();
     }
     function stepMonth(dir) {
       var el = document.getElementById('analysisMonth');
@@ -2982,6 +2973,14 @@ export function mainPage(): string {
       if (m < 1) { m = 12; yEl.value = String(parseInt(yEl.value) - 1); }
       el.value = String(m);
       updatePeriodHint();
+      onMainDateChange();
+    }
+    // 메인 날짜 변경 시 현재 보이는 탭에 따라 데이터 갱신
+    function onMainDateChange() {
+      var otPanel = document.getElementById('content-optime');
+      if (otPanel && !otPanel.classList.contains('hidden')) {
+        loadOperatingTime();
+      }
     }
     // 데이터 조회 (dv-year / dv-month)
     function stepDvYear(dir) {
@@ -2999,23 +2998,6 @@ export function mainPage(): string {
       if (m < 1) { m = 12; yEl.value = String(parseInt(yEl.value) - 1); }
       el.value = String(m);
       if (typeof loadDataView === 'function') loadDataView();
-    }
-    // 가동시간 (ot-year / ot-month)
-    function stepOtYear(dir) {
-      var el = document.getElementById('ot-year');
-      if (!el) return;
-      el.value = String(parseInt(el.value) + dir);
-      loadOperatingTime();
-    }
-    function stepOtMonth(dir) {
-      var el = document.getElementById('ot-month');
-      var yEl = document.getElementById('ot-year');
-      if (!el || !yEl) return;
-      var m = parseInt(el.value) + dir;
-      if (m > 12) { m = 1; yEl.value = String(parseInt(yEl.value) + 1); }
-      if (m < 1) { m = 12; yEl.value = String(parseInt(yEl.value) - 1); }
-      el.value = String(m);
-      loadOperatingTime();
     }
 
     function updatePeriodHint() {
@@ -8473,33 +8455,13 @@ export function mainPage(): string {
     var otCapacity = [];  // 호기별 시간당 생산능력
 
     function initOtDateSelectors() {
-      var now = new Date();
-      var curYear = now.getFullYear();
-      var curMonth = now.getMonth() + 1;
-      // span에 .value 속성 정의 (기존 select 호환)
-      function setupSpanValue(el, val, suffix) {
-        if (!el) return;
-        if (el._valSetup) { el.value = String(val); return; }
-        el._val = String(val);
-        el._valSetup = true;
-        Object.defineProperty(el, 'value', {
-          get: function() { return this._val; },
-          set: function(v) { this._val = String(v); this.textContent = v + (suffix || ''); },
-          configurable: true
-        });
-        el.value = String(val);
-      }
-      setupSpanValue(document.getElementById('ot-year'), curYear, '');
-      setupSpanValue(document.getElementById('ot-month'), curMonth, '월');
-      // 클릭 시 직접 입력 활성화
-      makeEditable(document.getElementById('ot-year'), { min: 2020, max: 2099, width: 44, onChange: loadOperatingTime });
-      makeEditable(document.getElementById('ot-month'), { min: 1, max: 12, width: 32, onChange: loadOperatingTime });
+      // 가동시간은 메인 네비의 analysisYear/Month를 사용하므로 별도 초기화 불필요
     }
 
     function getOtYm() {
       var now = new Date();
-      var y = document.getElementById('ot-year')?.value || String(now.getFullYear());
-      var mRaw = document.getElementById('ot-month')?.value || String(now.getMonth() + 1);
+      var y = document.getElementById('analysisYear')?.value || String(now.getFullYear());
+      var mRaw = document.getElementById('analysisMonth')?.value || String(now.getMonth() + 1);
       var m = parseInt(mRaw);
       return y + (m < 10 ? '0' + m : String(m));
     }
