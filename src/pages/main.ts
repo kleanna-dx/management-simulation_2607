@@ -2187,6 +2187,12 @@ export function mainPage(): string {
         }
         setupSpanValue(document.getElementById('dv-year'), curYear, '년');
         setupSpanValueZeroPad(document.getElementById('dv-month'), curMonth);
+
+        // 클릭 시 직접 입력 활성화
+        makeEditable(document.getElementById('analysisYear'), { min: 2020, max: 2099, width: 52, onChange: updatePeriodHint });
+        makeEditable(document.getElementById('analysisMonth'), { min: 1, max: 12, width: 36, onChange: updatePeriodHint });
+        makeEditable(document.getElementById('dv-year'), { min: 2020, max: 2099, width: 44, onChange: function(){ if(typeof loadDataView==='function') loadDataView(); } });
+        makeEditable(document.getElementById('dv-month'), { min: 1, max: 12, width: 32, onChange: function(){ if(typeof loadDataView==='function') loadDataView(); } });
       })();
 
       // 공통코드 초기 로드 (모든 매핑 정보 한 번에 가져오기)
@@ -2927,6 +2933,39 @@ export function mainPage(): string {
     }
 
     // ====== 화살표 네비게이션 step 함수들 ======
+    // 클릭하면 직접 입력 가능한 인라인 에디트
+    function makeEditable(spanEl, opts) {
+      if (!spanEl) return;
+      spanEl.style.cursor = 'pointer';
+      spanEl.title = '클릭하여 직접 입력';
+      spanEl.addEventListener('click', function() {
+        var currentVal = parseInt(spanEl.value);
+        var input = document.createElement('input');
+        input.type = 'number';
+        input.value = currentVal;
+        input.className = 'w-12 text-center text-xs font-bold border border-indigo-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-400';
+        input.min = opts.min || '';
+        input.max = opts.max || '';
+        input.style.width = (opts.width || '48') + 'px';
+        spanEl.style.display = 'none';
+        spanEl.parentNode.insertBefore(input, spanEl.nextSibling);
+        input.focus();
+        input.select();
+        function confirm() {
+          var v = parseInt(input.value);
+          if (isNaN(v)) v = currentVal;
+          if (opts.min && v < opts.min) v = opts.min;
+          if (opts.max && v > opts.max) v = opts.max;
+          spanEl.value = String(v);
+          spanEl.style.display = '';
+          input.remove();
+          if (opts.onChange) opts.onChange();
+        }
+        input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); confirm(); } if (e.key === 'Escape') { spanEl.style.display = ''; input.remove(); } });
+        input.addEventListener('blur', confirm);
+      });
+    }
+
     // 메인 분석 (analysisYear / analysisMonth)
     function stepYear(dir) {
       var el = document.getElementById('analysisYear');
@@ -8452,6 +8491,9 @@ export function mainPage(): string {
       }
       setupSpanValue(document.getElementById('ot-year'), curYear, '');
       setupSpanValue(document.getElementById('ot-month'), curMonth, '월');
+      // 클릭 시 직접 입력 활성화
+      makeEditable(document.getElementById('ot-year'), { min: 2020, max: 2099, width: 44, onChange: loadOperatingTime });
+      makeEditable(document.getElementById('ot-month'), { min: 1, max: 12, width: 32, onChange: loadOperatingTime });
     }
 
     function getOtYm() {
