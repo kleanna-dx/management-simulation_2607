@@ -30,6 +30,57 @@ app.get('/api/divisions', (c) => {
   return c.json(registry.list())
 })
 
+/** 공통코드 API — 사업부 설정에서 파생된 모든 메타데이터를 한 번에 반환 */
+app.get('/api/common-codes', (c) => {
+  const div = c.req.query('division') || 'PS'
+  const division = registry.get(div)
+  if (!division) return c.json({ error: 'Division not found' }, 404)
+
+  const cfg = division.config
+
+  // 호기 → 플랜트 매핑
+  const machinePlantMap: Record<string, string> = {}
+  cfg.factories.forEach(f => {
+    f.machines.forEach(mc => { machinePlantMap[mc] = f.code === 'CJ' ? 'P100' : f.code === 'ES' ? 'P200' : f.code })
+  })
+
+  // 호기 → 칩 컬러 CSS 클래스 (순환 할당)
+  const chipColors = ['unit-chip-pm2', 'unit-chip-pm3', 'unit-chip-chem', 'unit-chip-tissue']
+  const machineChipMap: Record<string, string> = {}
+  cfg.machines.forEach((m, idx) => {
+    machineChipMap[m.code] = chipColors[idx % chipColors.length]
+  })
+
+  // 호기 → 기본 지종 매핑
+  const machineDefaultGrades: Record<string, string[]> = {}
+  cfg.machines.forEach(m => {
+    machineDefaultGrades[m.code] = m.mainProducts || ['기본']
+  })
+
+  // 플랜트 목록
+  const plants = cfg.factories.map(f => ({
+    code: f.code === 'CJ' ? 'P100' : f.code === 'ES' ? 'P200' : f.code,
+    name: f.name,
+    location: f.location
+  }))
+
+  return c.json({
+    division: cfg.code,
+    name: cfg.name,
+    description: cfg.description,
+    unitCostLabel: cfg.unitCostLabel,
+    productionUnit: cfg.productionUnit,
+    usageUnit: cfg.usageUnit,
+    machines: cfg.machines,
+    machinePlantMap,
+    machineChipMap,
+    machineDefaultGrades,
+    plants,
+    materialGroups: cfg.materialGroups,
+    productClassification: cfg.productClassification
+  })
+})
+
 /** 특정 사업부 설정 조회 */
 app.get('/api/divisions/:code', (c) => {
   const code = c.req.param('code')

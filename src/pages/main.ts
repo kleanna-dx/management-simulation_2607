@@ -650,7 +650,7 @@ export function mainPage(): string {
                 </tr></thead>
                 <tbody>
                   <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">달력연도/월</td><td class="text-gray-500">실적 기간 (YYYYMM)</td><td class="text-gray-400">202605</td><td><span class="text-red-500">*</span></td></tr>
-                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">생산호기</td><td class="text-gray-500">호기 코드</td><td class="text-gray-400">PM2, PM3</td><td><span class="text-red-500">*</span></td></tr>
+                  <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">생산호기</td><td class="text-gray-500">호기 코드</td><td class="text-gray-400" id="upload-machine-example">PM2, PM3</td><td><span class="text-red-500">*</span></td></tr>
                   <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">자재</td><td class="text-gray-500">자재 코드 (7자리)</td><td class="text-gray-400">1200000</td><td><span class="text-red-500">*</span></td></tr>
                   <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">자재명</td><td class="text-gray-500">자재 이름</td><td class="text-gray-400">화이트레저(B)</td><td><span class="text-red-500">*</span></td></tr>
                   <tr class="border-b border-gray-100"><td class="py-2 font-mono text-primary-600">자재 그룹명</td><td class="text-gray-500">자재 그룹 분류</td><td class="text-gray-400">고지 : 화이트레저</td><td><span class="text-red-500">*</span></td></tr>
@@ -1842,10 +1842,45 @@ export function mainPage(): string {
     var divisionConfig = null;   // 현재 사업부 설정 (API로부터)
     var divisionMachines = [];   // 현재 사업부 호기 목록
 
+    // ============ 공통코드 (Common Codes) ============
+    // CC 객체: 페이지 로드 시 /api/common-codes에서 fetch 후 캐싱
+    // 모든 하드코딩 매핑(호기→플랜트, 호기→칩컬러, 호기→기본지종)을 대체
+    var CC = {
+      machines: [{code:'PM2',name:'제지 2호기'},{code:'PM3',name:'제지 3호기'}],  // fallback
+      machinePlantMap: { 'PM2': 'P100', 'PM3': 'P100' },
+      machineChipMap: { 'PM2': 'unit-chip-pm2', 'PM3': 'unit-chip-pm3' },
+      machineDefaultGrades: { 'PM2': ['SC','IV','KB'], 'PM3': ['SC고평량','SC저평량','IV','ACB','CB'] },
+      plants: [{ code: 'P100', name: '청주공장', location: '충북 청주' }],
+      materialGroups: [],
+      unitCostLabel: '천원/톤',
+      productionUnit: '톤',
+      usageUnit: 'kg'
+    };
+
+    /** 공통코드 로드 (division 변경 시 호출) */
+    async function loadCommonCodes(div) {
+      try {
+        var res = await fetch('/api/common-codes?division=' + (div || currentDivision));
+        if (!res.ok) return;
+        var data = await res.json();
+        CC.machines = data.machines || CC.machines;
+        CC.machinePlantMap = data.machinePlantMap || CC.machinePlantMap;
+        CC.machineChipMap = data.machineChipMap || CC.machineChipMap;
+        CC.machineDefaultGrades = data.machineDefaultGrades || CC.machineDefaultGrades;
+        CC.plants = data.plants || CC.plants;
+        CC.materialGroups = data.materialGroups || CC.materialGroups;
+        CC.unitCostLabel = data.unitCostLabel || CC.unitCostLabel;
+        CC.productionUnit = data.productionUnit || CC.productionUnit;
+        CC.usageUnit = data.usageUnit || CC.usageUnit;
+      } catch(e) { console.warn('Common codes load error:', e); }
+    }
+
     async function onDivisionChange() {
       var sel = document.getElementById('divisionSelect');
       currentDivision = sel.value;
       try {
+        // 공통코드 + 사업부 설정 동시 로드
+        await loadCommonCodes(currentDivision);
         var res = await fetch('/api/divisions/' + currentDivision);
         divisionConfig = await res.json();
         divisionMachines = divisionConfig.machines || [];
@@ -1914,6 +1949,22 @@ export function mainPage(): string {
         // 기본 호기 업데이트
         if (typeof fcMachineFilter !== 'undefined') fcMachineFilter = divisionMachines[0].code;
       }
+
+      // 3) 플랜트 select 동적 업데이트 (공통코드 기반)
+      var plantSelect = document.getElementById('inv-plant-filter');
+      if (plantSelect && CC.plants && CC.plants.length) {
+        var plantHtml = '<option value="">전체</option>';
+        CC.plants.forEach(function(p) {
+          plantHtml += '<option value="' + p.code + '">' + p.code + ' (' + p.name + ')</option>';
+        });
+        plantSelect.innerHTML = plantHtml;
+      }
+
+      // 4) 업로드 안내 호기 예시 동적 업데이트
+      var uploadMcExample = document.getElementById('upload-machine-example');
+      if (uploadMcExample && divisionMachines.length) {
+        uploadMcExample.textContent = divisionMachines.map(function(m){ return m.code || m; }).join(', ');
+      }
     }
 
     function updateDivisionUI() {
@@ -1951,6 +2002,9 @@ export function mainPage(): string {
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+      // 공통코드 초기 로드 (모든 매핑 정보 한 번에 가져오기)
+      await loadCommonCodes(currentDivision);
+
       // 사업부 설정 초기 로드
       try {
         var divRes = await fetch('/api/divisions/' + currentDivision);
@@ -4206,11 +4260,8 @@ export function mainPage(): string {
 
     // Utilities
     function getCC(c) { 
-      var colors = {'PM2':'unit-chip-pm2','PM3':'unit-chip-pm3','CHEM':'unit-chip-chem','TISSUE':'unit-chip-tissue',
-        'TM5':'unit-chip-pm2','TM6':'unit-chip-pm3','CV1':'unit-chip-chem','CV2':'unit-chip-tissue',
-        'CV3':'unit-chip-pm2','CV4':'unit-chip-pm3','CV5':'unit-chip-chem','CV6':'unit-chip-tissue',
-        'WT1':'unit-chip-pm2','PD1':'unit-chip-pm3'};
-      return colors[c] || 'bg-gray-100 text-gray-600'; 
+      // 공통코드(CC) 객체에서 칩 컬러 조회 — 하드코딩 제거
+      return (CC.machineChipMap && CC.machineChipMap[c]) || 'bg-gray-100 text-gray-600'; 
     }
     function fmt(n) { return n==null?'-':Math.round(n).toLocaleString('ko-KR'); }
     function fmtS(n) { if(n==null) return '-'; const v=Math.round(n); if(v>0) return '+'+v.toLocaleString('ko-KR'); if(v<0) return '\u25B3'+Math.abs(v).toLocaleString('ko-KR'); return '-'; }
@@ -4248,7 +4299,8 @@ export function mainPage(): string {
     function setFcMachineFilter(mc) {
       fcMachineFilter = mc;
       var fcMachineList = (divisionMachines || []).map(function(m){ return m.code || m; });
-      if (!fcMachineList.length) fcMachineList = ['PM2','PM3'];
+      if (!fcMachineList.length) fcMachineList = (CC.machines || []).map(function(m){ return m.code || m; });
+      if (!fcMachineList.length) fcMachineList = Object.keys(CC.machineChipMap);
       fcMachineList.forEach(function(k) {
         var btn = document.getElementById('fc-mc-' + k.toLowerCase());
         if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(k === mc ? 'pill-tab-active' : 'pill-tab-inactive'); }
@@ -4960,7 +5012,7 @@ export function mainPage(): string {
       try {
         // 기준 데이터(전월 실적) + 수기입력 데이터(기준월) 동시 로드
         var simMachineList = (divisionMachines || []).map(function(m){ return m.code || m; });
-        if (!simMachineList.length) simMachineList = ['PM2','PM3'];
+        if (!simMachineList.length) simMachineList = Object.keys(CC.machineChipMap);
         var fetchList = [
           fetch('/api/simulation/profit-base?ym=' + prevYm + catParam + getDivisionParam()).then(function(r){return r.json();})
         ];
@@ -5037,7 +5089,7 @@ export function mainPage(): string {
         simRows = [];
         var rowId = 0;
         var simMcList = (divisionMachines || []).map(function(m){ return m.code || m; });
-        if (!simMcList.length) simMcList = ['PM2','PM3'];
+        if (!simMcList.length) simMcList = Object.keys(CC.machineChipMap);
         simMcList.forEach(function(mc) {
           var prodMap = simManualData.production[mc];
           if (!prodMap) return;
@@ -5861,7 +5913,7 @@ export function mainPage(): string {
     function setManualMachine(mc) {
       mnMachine = mc;
       var mnMachineList = (divisionMachines || []).map(function(m){ return m.code || m; });
-      if (!mnMachineList.length) mnMachineList = ['PM2','PM3'];
+      if (!mnMachineList.length) mnMachineList = Object.keys(CC.machineChipMap);
       mnMachineList.forEach(function(k) {
         var btn = document.getElementById('mn-mc-' + k.toLowerCase());
         if (btn) { btn.classList.remove('pill-tab-active','pill-tab-inactive'); btn.classList.add(k === mc ? 'pill-tab-active' : 'pill-tab-inactive'); }
@@ -5871,11 +5923,8 @@ export function mainPage(): string {
 
     // 호기 → 플랜트 매핑
     function getMachinePlant(machine) {
-      if (machine === 'PM2' || machine === 'PM3') return 'P100';
-      if (machine === '화장지' || machine === 'TM' || machine === 'TM5' || machine === 'TM6') return 'P200';
-      if (machine === 'CV1' || machine === 'CV2' || machine === 'CV3' || machine === 'CV4' || machine === 'CV5' || machine === 'CV6') return 'P200';
-      if (machine === 'WT1' || machine === 'PD1') return 'P200';
-      return '';
+      // 공통코드(CC) 객체에서 호기→플랜트 매핑 조회 — 하드코딩 제거
+      return (CC.machinePlantMap && CC.machinePlantMap[machine]) || '';
     }
 
     function setManualDept(dept) {
@@ -5978,22 +6027,8 @@ export function mainPage(): string {
 
       var types = mnProdTypes.length > 0 ? mnProdTypes : Object.keys(mnPrevProd);
       if (types.length === 0) {
-        // 호기별 기본 지종 설정
-        if (mnMachine === '화장지' || mnMachine === 'TM' || mnMachine === 'TM5' || mnMachine === 'TM6') {
-          types = ['RT-고지','RT-펄프','FT','KT','PCMC','기타 펄프'];
-        } else if (mnMachine === 'PM2') {
-          types = ['SC','IV','KB'];
-        } else if (mnMachine === 'PM3') {
-          types = ['SC고평량','SC저평량','IV','ACB','CB'];
-        } else if (mnMachine === 'CV1' || mnMachine === 'CV2' || mnMachine === 'CV3' || mnMachine === 'CV4' || mnMachine === 'CV5' || mnMachine === 'CV6') {
-          types = ['물티슈'];
-        } else if (mnMachine === 'WT1') {
-          types = ['여성용품'];
-        } else if (mnMachine === 'PD1') {
-          types = ['기저귀'];
-        } else {
-          types = ['기본'];
-        }
+        // 공통코드(CC)에서 호기별 기본 지종 조회 — 하드코딩 제거
+        types = (CC.machineDefaultGrades && CC.machineDefaultGrades[mnMachine]) || ['기본'];
       }
 
       var html = '';
@@ -6732,7 +6767,7 @@ export function mainPage(): string {
       ws['!cols'] = [{wch:5},{wch:14},{wch:25},{wch:14},{wch:16},{wch:18},{wch:14},{wch:16},{wch:20},{wch:16},{wch:20}];
       var wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, '계산결과');
-      var filename = '계산결과_' + (mnMachine || 'PM2') + '_' + document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0') + '.xlsx';
+      var filename = '계산결과_' + (mnMachine || 'machine') + '_' + document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0') + '.xlsx';
       XLSX.writeFile(wb, filename);
     }
 
@@ -7479,7 +7514,7 @@ export function mainPage(): string {
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
       var today = new Date(); var td = today.getFullYear() + String(today.getMonth()+1).padStart(2,'0') + String(today.getDate()).padStart(2,'0');
       var deptLabel = mnDeptType === 'production' ? '생산' : '구매';
-      var filename = '수기입력_' + deptLabel + '_' + (mnMachine || 'PM2') + '_' + document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0') + '_' + td + '.xlsx';
+      var filename = '수기입력_' + deptLabel + '_' + (mnMachine || 'machine') + '_' + document.getElementById('analysisYear').value + document.getElementById('analysisMonth').value.padStart(2,'0') + '_' + td + '.xlsx';
       XLSX.writeFile(wb, filename);
     }
 
