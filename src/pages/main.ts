@@ -121,12 +121,15 @@ export function mainPage(): string {
         </div>
         <!-- Filters -->
         <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-1.5">
-            <select id="analysisYear" class="bg-transparent border-none text-sm font-semibold text-gray-700 focus:ring-0 pr-6 cursor-pointer" onchange="updatePeriodHint()">
-            </select>
-            <select id="analysisMonth" class="bg-transparent border-none text-sm font-semibold text-gray-700 focus:ring-0 pr-6 cursor-pointer" onchange="updatePeriodHint()">
-            </select>
-            <button onclick="loadAnalysis()" class="ml-1 px-3 py-1 bg-indigo-600 text-white text-xs font-semibold rounded-md hover:bg-indigo-700 transition shadow-sm"><i class="fas fa-search mr-1"></i>조회</button>
+          <div class="flex items-center gap-1 bg-slate-50 rounded-lg px-3 py-1.5">
+            <button onclick="stepYear(-1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-xs"><i class="fas fa-chevron-left"></i></button>
+            <span id="analysisYear" class="text-sm font-bold text-gray-700 min-w-[52px] text-center select-none"></span>
+            <button onclick="stepYear(1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-xs"><i class="fas fa-chevron-right"></i></button>
+            <div class="w-px h-5 bg-slate-300 mx-1"></div>
+            <button onclick="stepMonth(-1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-xs"><i class="fas fa-chevron-left"></i></button>
+            <span id="analysisMonth" class="text-sm font-bold text-gray-700 min-w-[36px] text-center select-none"></span>
+            <button onclick="stepMonth(1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-xs"><i class="fas fa-chevron-right"></i></button>
+            <button onclick="loadAnalysis()" class="ml-2 px-3 py-1 bg-indigo-600 text-white text-xs font-semibold rounded-md hover:bg-indigo-700 transition shadow-sm"><i class="fas fa-search mr-1"></i>조회</button>
             <span id="period-hint" class="text-xs text-blue-600 font-medium ml-1 whitespace-nowrap"></span>
           </div>
         </div>
@@ -671,10 +674,16 @@ export function mainPage(): string {
             <p class="text-xs text-gray-400 mt-1">SAP BW에서 업로드된 원본 데이터를 37개 컬럼 전체로 조회합니다.</p>
           </div>
           <div class="flex items-center gap-3 flex-wrap">
-            <select id="dv-year" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs" onchange="loadDataView()">
-            </select>
-            <select id="dv-month" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs" onchange="loadDataView()">
-            </select>
+            <div class="flex items-center gap-0.5 bg-slate-50 rounded-lg px-2 py-1">
+              <button onclick="stepDvYear(-1)" class="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-[10px]"><i class="fas fa-chevron-left"></i></button>
+              <span id="dv-year" class="text-xs font-bold text-gray-700 min-w-[42px] text-center select-none"></span>
+              <button onclick="stepDvYear(1)" class="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-[10px]"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="flex items-center gap-0.5 bg-slate-50 rounded-lg px-2 py-1">
+              <button onclick="stepDvMonth(-1)" class="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-[10px]"><i class="fas fa-chevron-left"></i></button>
+              <span id="dv-month" class="text-xs font-bold text-gray-700 min-w-[30px] text-center select-none"></span>
+              <button onclick="stepDvMonth(1)" class="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-[10px]"><i class="fas fa-chevron-right"></i></button>
+            </div>
             <select id="dv-unit" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs" onchange="loadDataView()">
               <option value="">전체 호기</option>
               <option value="PM2">PM2</option>
@@ -1821,10 +1830,16 @@ export function mainPage(): string {
             <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">계획운휴 + 가동일수 + 비가동일수 = 총 조업일수</span>
           </div>
           <div class="flex items-center gap-2">
-            <select id="ot-year" class="text-xs border border-gray-200 rounded-lg px-2 py-1" onchange="loadOperatingTime()">
-            </select>
-            <select id="ot-month" class="text-xs border border-gray-200 rounded-lg px-2 py-1" onchange="loadOperatingTime()">
-            </select>
+            <div class="flex items-center gap-0.5 bg-slate-50 rounded-lg px-2 py-1">
+              <button onclick="stepOtYear(-1)" class="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-[10px]"><i class="fas fa-chevron-left"></i></button>
+              <span id="ot-year" class="text-xs font-bold text-gray-700 min-w-[38px] text-center select-none"></span>
+              <button onclick="stepOtYear(1)" class="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-[10px]"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="flex items-center gap-0.5 bg-slate-50 rounded-lg px-2 py-1">
+              <button onclick="stepOtMonth(-1)" class="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-[10px]"><i class="fas fa-chevron-left"></i></button>
+              <span id="ot-month" class="text-xs font-bold text-gray-700 min-w-[28px] text-center select-none"></span>
+              <button onclick="stepOtMonth(1)" class="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-[10px]"><i class="fas fa-chevron-right"></i></button>
+            </div>
             <button onclick="saveOperatingTime()" class="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 transition shadow-sm">
               <i class="fas fa-save mr-1"></i>저장
             </button>
@@ -2138,38 +2153,40 @@ export function mainPage(): string {
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      // 메인 분석 연도/월 셀렉터 초기화 (현재 날짜 기준)
-      (function initAnalysisDateSelectors() {
+      // 메인 분석 연도/월 화살표 UI 초기화 (현재 날짜 기준)
+      (function initDateNavUI() {
         var now = new Date();
         var curYear = now.getFullYear();
         var curMonth = now.getMonth() + 1;
-        // 공통 함수: 연도 옵션 HTML 생성
-        function yearOpts(fmt) {
-          var h = '';
-          for (var y = curYear; y >= curYear - 2; y--) {
-            h += '<option value="' + y + '"' + (y === curYear ? ' selected' : '') + '>' + y + (fmt || '') + '</option>';
-          }
-          return h;
+
+        // span 요소에 .value 속성 정의 (기존 select 호환)
+        function setupSpanValue(el, val, suffix) {
+          if (!el) return;
+          el._val = String(val);
+          Object.defineProperty(el, 'value', {
+            get: function() { return this._val; },
+            set: function(v) { this._val = String(v); this.textContent = v + (suffix || ''); },
+            configurable: true
+          });
+          el.value = String(val);
         }
-        // 공통 함수: 월 옵션 HTML 생성 (zeroPad: 01~12 vs 1~12)
-        function monthOpts(zeroPad) {
-          var h = '';
-          for (var m = 1; m <= 12; m++) {
-            var v = zeroPad ? (m < 10 ? '0' + m : '' + m) : String(m);
-            h += '<option value="' + v + '"' + (m === curMonth ? ' selected' : '') + '>' + m + '월</option>';
-          }
-          return h;
+
+        // 메인 분석
+        setupSpanValue(document.getElementById('analysisYear'), curYear, '년');
+        setupSpanValue(document.getElementById('analysisMonth'), curMonth, '월');
+        // 데이터 조회 (월은 zero-padded로 저장, 표시는 N월)
+        function setupSpanValueZeroPad(el, val) {
+          if (!el) return;
+          el._val = val < 10 ? '0' + val : String(val);
+          Object.defineProperty(el, 'value', {
+            get: function() { return this._val; },
+            set: function(v) { var n = parseInt(v); this._val = n < 10 ? '0' + n : String(n); this.textContent = n + '월'; },
+            configurable: true
+          });
+          el.textContent = val + '월';
         }
-        // 메인 분석 셀렉터 (analysisYear/Month)
-        var aYear = document.getElementById('analysisYear');
-        var aMonth = document.getElementById('analysisMonth');
-        if (aYear) aYear.innerHTML = yearOpts('년');
-        if (aMonth) aMonth.innerHTML = monthOpts(false);
-        // 데이터 조회 셀렉터 (dv-year/month)
-        var dvYear = document.getElementById('dv-year');
-        var dvMonth = document.getElementById('dv-month');
-        if (dvYear) dvYear.innerHTML = yearOpts('년');
-        if (dvMonth) dvMonth.innerHTML = monthOpts(true);
+        setupSpanValue(document.getElementById('dv-year'), curYear, '년');
+        setupSpanValueZeroPad(document.getElementById('dv-month'), curMonth);
       })();
 
       // 공통코드 초기 로드 (모든 매핑 정보 한 번에 가져오기)
@@ -2907,6 +2924,59 @@ export function mainPage(): string {
       }
       fetch('/api/master/' + tab, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
         .then(() => loadMasterIdx(tab));
+    }
+
+    // ====== 화살표 네비게이션 step 함수들 ======
+    // 메인 분석 (analysisYear / analysisMonth)
+    function stepYear(dir) {
+      var el = document.getElementById('analysisYear');
+      if (!el) return;
+      el.value = String(parseInt(el.value) + dir);
+      updatePeriodHint();
+    }
+    function stepMonth(dir) {
+      var el = document.getElementById('analysisMonth');
+      var yEl = document.getElementById('analysisYear');
+      if (!el || !yEl) return;
+      var m = parseInt(el.value) + dir;
+      if (m > 12) { m = 1; yEl.value = String(parseInt(yEl.value) + 1); }
+      if (m < 1) { m = 12; yEl.value = String(parseInt(yEl.value) - 1); }
+      el.value = String(m);
+      updatePeriodHint();
+    }
+    // 데이터 조회 (dv-year / dv-month)
+    function stepDvYear(dir) {
+      var el = document.getElementById('dv-year');
+      if (!el) return;
+      el.value = String(parseInt(el.value) + dir);
+      if (typeof loadDataView === 'function') loadDataView();
+    }
+    function stepDvMonth(dir) {
+      var el = document.getElementById('dv-month');
+      var yEl = document.getElementById('dv-year');
+      if (!el || !yEl) return;
+      var m = parseInt(el.value) + dir;
+      if (m > 12) { m = 1; yEl.value = String(parseInt(yEl.value) + 1); }
+      if (m < 1) { m = 12; yEl.value = String(parseInt(yEl.value) - 1); }
+      el.value = String(m);
+      if (typeof loadDataView === 'function') loadDataView();
+    }
+    // 가동시간 (ot-year / ot-month)
+    function stepOtYear(dir) {
+      var el = document.getElementById('ot-year');
+      if (!el) return;
+      el.value = String(parseInt(el.value) + dir);
+      loadOperatingTime();
+    }
+    function stepOtMonth(dir) {
+      var el = document.getElementById('ot-month');
+      var yEl = document.getElementById('ot-year');
+      if (!el || !yEl) return;
+      var m = parseInt(el.value) + dir;
+      if (m > 12) { m = 1; yEl.value = String(parseInt(yEl.value) + 1); }
+      if (m < 1) { m = 12; yEl.value = String(parseInt(yEl.value) - 1); }
+      el.value = String(m);
+      loadOperatingTime();
     }
 
     function updatePeriodHint() {
@@ -8366,33 +8436,30 @@ export function mainPage(): string {
     function initOtDateSelectors() {
       var now = new Date();
       var curYear = now.getFullYear();
-      var curMonth = now.getMonth() + 1; // 1-12
-      // 연도 셀렉터: 현재년 ~ 현재년-2
-      var yearSel = document.getElementById('ot-year');
-      if (yearSel) {
-        var yHtml = '';
-        for (var y = curYear; y >= curYear - 2; y--) {
-          yHtml += '<option value="' + y + '"' + (y === curYear ? ' selected' : '') + '>' + y + '</option>';
-        }
-        yearSel.innerHTML = yHtml;
+      var curMonth = now.getMonth() + 1;
+      // span에 .value 속성 정의 (기존 select 호환)
+      function setupSpanValue(el, val, suffix) {
+        if (!el) return;
+        if (el._valSetup) { el.value = String(val); return; }
+        el._val = String(val);
+        el._valSetup = true;
+        Object.defineProperty(el, 'value', {
+          get: function() { return this._val; },
+          set: function(v) { this._val = String(v); this.textContent = v + (suffix || ''); },
+          configurable: true
+        });
+        el.value = String(val);
       }
-      // 월 셀렉터: 1~12월, 현재 월 선택
-      var monthSel = document.getElementById('ot-month');
-      if (monthSel) {
-        var mHtml = '';
-        for (var m = 1; m <= 12; m++) {
-          var mv = m < 10 ? '0' + m : '' + m;
-          mHtml += '<option value="' + mv + '"' + (m === curMonth ? ' selected' : '') + '>' + m + '월</option>';
-        }
-        monthSel.innerHTML = mHtml;
-      }
+      setupSpanValue(document.getElementById('ot-year'), curYear, '');
+      setupSpanValue(document.getElementById('ot-month'), curMonth, '월');
     }
 
     function getOtYm() {
       var now = new Date();
       var y = document.getElementById('ot-year')?.value || String(now.getFullYear());
-      var m = document.getElementById('ot-month')?.value || (now.getMonth() + 1 < 10 ? '0' + (now.getMonth() + 1) : String(now.getMonth() + 1));
-      return y + m;
+      var mRaw = document.getElementById('ot-month')?.value || String(now.getMonth() + 1);
+      var m = parseInt(mRaw);
+      return y + (m < 10 ? '0' + m : String(m));
     }
 
     function getDaysInMonth(ym) {
