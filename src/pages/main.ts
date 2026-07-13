@@ -1892,7 +1892,7 @@ export function mainPage(): string {
                 <th class="px-3 py-2 text-center font-medium">월 총일수<br><span class="text-[9px] text-gray-400">(달력일수)</span></th>
                 <th class="px-3 py-2 text-center font-medium text-red-400">운휴<br><span class="text-[9px]">(일)</span></th>
                 <th class="px-3 py-2 text-center font-medium text-orange-400">정기점검<br><span class="text-[9px]">(일)</span></th>
-                <th class="px-3 py-2 text-center font-medium text-rose-400">고장정지<br><span class="text-[9px]">(일)</span></th>
+                <th class="px-3 py-2 text-center font-medium text-rose-400">폐품<br><span class="text-[9px]">(일)</span></th>
                 <th class="px-3 py-2 text-center font-medium text-purple-400">품종교체<br><span class="text-[9px]">(일)</span></th>
                 <th class="px-3 py-2 text-center font-medium text-gray-400">기타정지<br><span class="text-[9px]">(일)</span></th>
                 <th class="px-3 py-2 text-center font-medium text-emerald-600">가동일수<br><span class="text-[9px]">(자동계산)</span></th>

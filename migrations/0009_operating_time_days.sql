@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS machine_operating_time (
   shutdown_days REAL NOT NULL DEFAULT 0,
   -- 정기점검/보수 (PM: Preventive Maintenance)
   maintenance_days REAL NOT NULL DEFAULT 0,
-  -- 고장정지 (BM: Breakdown Maintenance)
+  -- 폐품 (Waste/Broke): 폐품 발생에 따른 손실일수
   breakdown_days REAL NOT NULL DEFAULT 0,
   -- 품종교체 (Grade Change): 지종 전환 시 손실시간
   grade_change_days REAL NOT NULL DEFAULT 0,
