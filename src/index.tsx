@@ -3495,4 +3495,192 @@ app.get('/api/operating-time/summary', async (c) => {
   })
 })
 
+// ============ 지종별 생산성 마스터 (Grade Production) API ============
+
+/** 지종별 생산성 마스터 조회 */
+app.get('/api/grade-production', async (c) => {
+  const db = c.env.DB
+  const div = c.req.query('division') || 'PS'
+  const machine = c.req.query('machine_code')
+  const activeOnly = c.req.query('active') !== '0'  // 기본: 활성만
+
+  let query = `
+    SELECT gp.*, 
+           ROUND(gp.theoretical_daily_ton * (1 - gp.waste_rate), 2) as good_daily_ton,
+           ROUND(gp.theoretical_daily_ton * gp.waste_rate, 2) as waste_daily_ton
+    FROM grade_production_master gp
+    WHERE gp.division = ?
+  `
+  const binds: any[] = [div]
+
+  if (machine) {
+    query += ' AND gp.machine_code = ?'
+    binds.push(machine)
+  }
+  if (activeOnly) {
+    query += ' AND gp.is_active = 1'
+  }
+  query += ' ORDER BY gp.machine_code, gp.sort_order, gp.grade_name'
+
+  const results = await db.prepare(query).bind(...binds).all()
+  return c.json(results.results)
+})
+
+/** 지종별 생산성 마스터 등록/수정 */
+app.post('/api/grade-production', async (c) => {
+  const db = c.env.DB
+  const body = await c.req.json() as any
+  const { division, machine_code, grade_name, basis_weight, line_speed, 
+          paper_width, waste_rate, sort_order, is_active, note } = body
+  const div = division || 'PS'
+
+  // paper_width: 입력값 없으면 machine_capacity에서 가져옴
+  let pw = paper_width
+  if (!pw) {
+    const mc = await db.prepare(
+      `SELECT paper_width FROM machine_capacity WHERE division = ? AND machine_code = ? AND valid_to >= strftime('%Y%m','now')`
+    ).bind(div, machine_code).first() as any
+    pw = mc?.paper_width || 3510
+  }
+
+  await db.prepare(`
+    INSERT INTO grade_production_master 
+      (division, machine_code, grade_name, basis_weight, line_speed, paper_width, 
+       waste_rate, sort_order, is_active, note)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(division, machine_code, grade_name, basis_weight, line_speed) DO UPDATE SET
+      paper_width = excluded.paper_width,
+      waste_rate = excluded.waste_rate,
+      sort_order = excluded.sort_order,
+      is_active = excluded.is_active,
+      note = excluded.note,
+      updated_at = CURRENT_TIMESTAMP
+  `).bind(div, machine_code, grade_name, basis_weight, line_speed, pw,
+          waste_rate ?? 0.0122, sort_order ?? 0, is_active ?? 1, note || null).run()
+
+  return c.json({ success: true })
+})
+
+/** 지종별 생산성 마스터 일괄 등록 */
+app.post('/api/grade-production/batch', async (c) => {
+  const db = c.env.DB
+  const { division, machine_code, entries } = await c.req.json() as any
+  const div = division || 'PS'
+
+  if (!entries || !entries.length) return c.json({ error: 'No entries' }, 400)
+
+  // machine_capacity에서 기본 지폭 조회
+  const mc = await db.prepare(
+    `SELECT paper_width FROM machine_capacity WHERE division = ? AND machine_code = ? AND valid_to >= strftime('%Y%m','now')`
+  ).bind(div, machine_code).first() as any
+  const defaultPW = mc?.paper_width || 3510
+
+  const stmt = db.prepare(`
+    INSERT INTO grade_production_master 
+      (division, machine_code, grade_name, basis_weight, line_speed, paper_width, 
+       waste_rate, sort_order, is_active, note)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(division, machine_code, grade_name, basis_weight, line_speed) DO UPDATE SET
+      paper_width = excluded.paper_width,
+      waste_rate = excluded.waste_rate,
+      sort_order = excluded.sort_order,
+      is_active = excluded.is_active,
+      note = excluded.note,
+      updated_at = CURRENT_TIMESTAMP
+  `)
+
+  const batch = entries.map((e: any, i: number) => stmt.bind(
+    div, machine_code, e.grade_name, e.basis_weight, e.line_speed, 
+    e.paper_width || defaultPW, e.waste_rate ?? 0.0122, e.sort_order ?? i, 
+    e.is_active ?? 1, e.note || null
+  ))
+  await db.batch(batch)
+
+  return c.json({ success: true, count: entries.length })
+})
+
+/** 지종별 생산성 삭제 (soft delete) */
+app.delete('/api/grade-production/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  await db.prepare(`UPDATE grade_production_master SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(id).run()
+  return c.json({ success: true })
+})
+
+/** 생산량 시뮬레이션: 가동일수 × 지종배합 → 월 생산량 검증 */
+app.post('/api/grade-production/simulate', async (c) => {
+  const db = c.env.DB
+  const { division, machine_code, ym, plan } = await c.req.json() as any
+  // plan: [{ grade_production_id, planned_days }, ...]  — 각 지종에 몇 일 배정할지
+  const div = division || 'PS'
+
+  if (!plan || !plan.length) return c.json({ error: 'No plan entries' }, 400)
+
+  // 해당 호기의 가동일수 조회
+  const otRow = await db.prepare(
+    `SELECT operating_days, total_days FROM machine_operating_time WHERE division = ? AND machine_code = ? AND ym = ?`
+  ).bind(div, machine_code, ym).first() as any
+
+  const operatingDays = otRow?.operating_days || 0
+  const totalDays = otRow?.total_days || 0
+
+  // 지종 마스터 조회 (ID 기반)
+  const ids = plan.map((p: any) => p.grade_production_id)
+  const placeholders = ids.map(() => '?').join(',')
+  const grades = await db.prepare(
+    `SELECT id, grade_name, basis_weight, line_speed, theoretical_daily_ton, waste_rate 
+     FROM grade_production_master WHERE id IN (${placeholders})`
+  ).bind(...ids).all()
+  
+  const gradeMap: any = {}
+  ;(grades.results as any[]).forEach((g: any) => { gradeMap[g.id] = g })
+
+  // 시뮬레이션 계산
+  let totalPlannedDays = 0
+  let totalGoodTon = 0
+  let totalGrossTon = 0
+  const details = plan.map((p: any) => {
+    const g = gradeMap[p.grade_production_id]
+    if (!g) return { error: `Grade ID ${p.grade_production_id} not found` }
+    
+    const plannedDays = p.planned_days || 0
+    const grossTon = g.theoretical_daily_ton * plannedDays
+    const goodTon = grossTon * (1 - g.waste_rate)
+    const wasteTon = grossTon * g.waste_rate
+
+    totalPlannedDays += plannedDays
+    totalGoodTon += goodTon
+    totalGrossTon += grossTon
+
+    return {
+      grade_production_id: p.grade_production_id,
+      grade_name: g.grade_name,
+      basis_weight: g.basis_weight,
+      line_speed: g.line_speed,
+      planned_days: plannedDays,
+      theoretical_daily_ton: g.theoretical_daily_ton,
+      gross_ton: Math.round(grossTon * 10) / 10,
+      good_ton: Math.round(goodTon * 10) / 10,
+      waste_ton: Math.round(wasteTon * 10) / 10,
+    }
+  })
+
+  const remainingDays = operatingDays - totalPlannedDays
+
+  return c.json({
+    division: div,
+    machine_code,
+    ym,
+    operating_days: operatingDays,
+    total_days: totalDays,
+    planned_days_total: Math.round(totalPlannedDays * 10) / 10,
+    remaining_days: Math.round(remainingDays * 10) / 10,
+    total_good_ton: Math.round(totalGoodTon * 10) / 10,
+    total_gross_ton: Math.round(totalGrossTon * 10) / 10,
+    total_waste_ton: Math.round((totalGrossTon - totalGoodTon) * 10) / 10,
+    waste_rate_actual: totalGrossTon > 0 ? Math.round((1 - totalGoodTon / totalGrossTon) * 10000) / 100 : 0,
+    details
+  })
+})
+
 export default app

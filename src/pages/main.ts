@@ -1922,6 +1922,62 @@ export function mainPage(): string {
           </div>
         </div>
       </div>
+
+      <!-- ============ 지종별 생산성 마스터 ============ -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden mt-5">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-industry text-blue-500 mr-1.5"></i>지종별 생산성 마스터</h3>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">이론생산성 = 평량 × 지폭 × 선속 × 1440 × 10⁻⁹</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <select id="gp-machine-select" class="text-xs border border-gray-200 rounded-lg px-2 py-1" onchange="loadGradeProduction()">
+              <!-- 동적: divisionMachines에서 -->
+            </select>
+            <button onclick="addGradeRow()" class="px-2 py-1 bg-blue-500 text-white text-[10px] font-semibold rounded hover:bg-blue-600 transition">
+              <i class="fas fa-plus mr-0.5"></i>행 추가
+            </button>
+            <button onclick="saveGradeProduction()" class="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 transition shadow-sm">
+              <i class="fas fa-save mr-1"></i>저장
+            </button>
+          </div>
+        </div>
+
+        <!-- 요약 -->
+        <div id="gp-summary" class="px-6 py-3 bg-gradient-to-r from-blue-50/50 to-white border-b border-slate-100">
+          <div class="flex items-center gap-4 text-xs">
+            <span class="text-gray-500">등록 지종: <strong id="gp-count" class="text-gray-800">-</strong>개</span>
+            <span class="text-gray-500">가중평균 생산성: <strong id="gp-avg-prod" class="text-blue-700">-</strong> 톤/일</span>
+            <span class="text-gray-500">폐품율: <strong id="gp-waste-rate" class="text-red-500">-</strong></span>
+          </div>
+        </div>
+
+        <!-- 테이블 -->
+        <div class="px-6 py-4 overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="bg-slate-50 text-gray-500">
+                <th class="px-2 py-2 text-left font-medium w-8">#</th>
+                <th class="px-2 py-2 text-left font-medium">지종</th>
+                <th class="px-2 py-2 text-center font-medium">평량<br><span class="text-[9px]">(g/㎡)</span></th>
+                <th class="px-2 py-2 text-center font-medium">선속<br><span class="text-[9px]">(m/min)</span></th>
+                <th class="px-2 py-2 text-center font-medium">지폭<br><span class="text-[9px]">(mm)</span></th>
+                <th class="px-2 py-2 text-center font-medium text-blue-600">이론생산성<br><span class="text-[9px]">(톤/일)</span></th>
+                <th class="px-2 py-2 text-center font-medium text-emerald-600">양품생산성<br><span class="text-[9px]">(톤/일)</span></th>
+                <th class="px-2 py-2 text-center font-medium text-red-400">폐품율<br><span class="text-[9px]">(%)</span></th>
+                <th class="px-2 py-2 text-center font-medium">비고</th>
+                <th class="px-2 py-2 text-center font-medium w-8">삭제</th>
+              </tr>
+            </thead>
+            <tbody id="gp-table-body">
+              <tr><td colspan="10" class="text-center py-6 text-gray-400">호기를 선택하세요</td></tr>
+            </tbody>
+            <tfoot id="gp-table-foot" class="bg-slate-50 font-semibold border-t-2 border-slate-200">
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
     </div><!-- /content-optime -->
 
   </main>
@@ -2171,6 +2227,7 @@ export function mainPage(): string {
       } else if (tab === 'optime') {
         document.getElementById('content-optime')?.classList.remove('hidden');
         loadOperatingTime();
+        initGpMachineSelect();
       } else {
         document.getElementById('content-' + tab)?.classList.remove('hidden');
       }
@@ -8489,6 +8546,180 @@ export function mainPage(): string {
         }
         alert('시간당 생산능력 저장 완료!');
         loadOperatingTime(); // 재계산
+      } catch(e) { alert('저장 오류: ' + e.message); }
+    }
+
+    // ============ 지종별 생산성 마스터 (Grade Production) ============
+    var gpData = [];  // 현재 호기의 지종별 생산성 데이터
+
+    function initGpMachineSelect() {
+      var sel = document.getElementById('gp-machine-select');
+      if (!sel) return;
+      var machines = (divisionMachines || CC.machines || []).map(function(m) { return m.code || m; });
+      sel.innerHTML = machines.map(function(mc) {
+        return '<option value="' + mc + '">' + mc + '</option>';
+      }).join('');
+      if (machines.length > 0) loadGradeProduction();
+    }
+
+    async function loadGradeProduction() {
+      var sel = document.getElementById('gp-machine-select');
+      var mc = sel ? sel.value : '';
+      if (!mc) return;
+      var div = currentDivision || 'PS';
+      try {
+        var res = await fetch('/api/grade-production?division=' + div + '&machine_code=' + mc);
+        gpData = await res.json();
+        renderGradeProductionTable();
+      } catch(e) { console.error('지종 마스터 로드 오류:', e); }
+    }
+
+    function renderGradeProductionTable() {
+      var tbody = document.getElementById('gp-table-body');
+      var tfoot = document.getElementById('gp-table-foot');
+      if (!tbody) return;
+
+      if (!gpData || gpData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-6 text-gray-400">등록된 지종이 없습니다. [행 추가]로 등록하세요</td></tr>';
+        if (tfoot) tfoot.innerHTML = '';
+        updateGpSummary();
+        return;
+      }
+
+      var html = '';
+      var totalTheor = 0, totalGood = 0, count = 0;
+      gpData.forEach(function(g, idx) {
+        var theor = g.theoretical_daily_ton || 0;
+        var good = g.good_daily_ton || 0;
+        var wr = ((g.waste_rate || 0) * 100).toFixed(2);
+        totalTheor += theor;
+        totalGood += good;
+        count++;
+
+        html += '<tr class="border-b border-slate-100 hover:bg-blue-50/30 gp-row" data-id="' + (g.id || '') + '">' +
+          '<td class="px-2 py-1.5 text-gray-400 text-center">' + (idx + 1) + '</td>' +
+          '<td class="px-2 py-1.5"><input type="text" data-field="grade_name" value="' + (g.grade_name || '') + '" class="w-20 text-xs border border-gray-200 rounded px-1.5 py-0.5 gp-input font-medium"></td>' +
+          '<td class="px-2 py-1.5 text-center"><input type="number" data-field="basis_weight" value="' + (g.basis_weight || '') + '" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)"></td>' +
+          '<td class="px-2 py-1.5 text-center"><input type="number" data-field="line_speed" value="' + (g.line_speed || '') + '" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)"></td>' +
+          '<td class="px-2 py-1.5 text-center"><input type="number" data-field="paper_width" value="' + (g.paper_width || 3510) + '" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)"></td>' +
+          '<td class="px-2 py-1.5 text-center font-semibold text-blue-700 gp-theor">' + theor.toFixed(1) + '</td>' +
+          '<td class="px-2 py-1.5 text-center font-semibold text-emerald-700 gp-good">' + good.toFixed(1) + '</td>' +
+          '<td class="px-2 py-1.5 text-center"><input type="number" step="0.01" data-field="waste_rate" value="' + wr + '" class="w-14 text-center text-xs border border-red-200 rounded px-1 py-0.5 bg-red-50/30 gp-input" onchange="recalcGpRow(this)"></td>' +
+          '<td class="px-2 py-1.5"><input type="text" data-field="note" value="' + (g.note || '') + '" class="w-24 text-[10px] border border-gray-200 rounded px-1 py-0.5 gp-input" placeholder="메모"></td>' +
+          '<td class="px-2 py-1.5 text-center"><button onclick="removeGpRow(this)" class="text-red-400 hover:text-red-600"><i class="fas fa-trash-alt"></i></button></td>' +
+          '</tr>';
+      });
+      tbody.innerHTML = html;
+
+      // 합계
+      if (tfoot) {
+        tfoot.innerHTML = '<tr>' +
+          '<td class="px-2 py-2" colspan="5"><strong>합계 (' + count + '건)</strong></td>' +
+          '<td class="px-2 py-2 text-center text-blue-700">' + totalTheor.toFixed(1) + '</td>' +
+          '<td class="px-2 py-2 text-center text-emerald-700">' + totalGood.toFixed(1) + '</td>' +
+          '<td colspan="3"></td></tr>';
+      }
+
+      updateGpSummary();
+    }
+
+    function updateGpSummary() {
+      var count = gpData ? gpData.length : 0;
+      var avgProd = 0, avgWaste = 0;
+      if (count > 0) {
+        var sumTheor = 0, sumWaste = 0;
+        gpData.forEach(function(g) { sumTheor += (g.theoretical_daily_ton || 0); sumWaste += (g.waste_rate || 0); });
+        avgProd = sumTheor / count;
+        avgWaste = (sumWaste / count) * 100;
+      }
+      var el1 = document.getElementById('gp-count');
+      var el2 = document.getElementById('gp-avg-prod');
+      var el3 = document.getElementById('gp-waste-rate');
+      if (el1) el1.textContent = count;
+      if (el2) el2.textContent = avgProd.toFixed(1);
+      if (el3) el3.textContent = avgWaste.toFixed(2) + '%';
+    }
+
+    function recalcGpRow(el) {
+      var tr = el.closest('tr');
+      if (!tr) return;
+      var bw = parseFloat(tr.querySelector('[data-field="basis_weight"]').value) || 0;
+      var ls = parseFloat(tr.querySelector('[data-field="line_speed"]').value) || 0;
+      var pw = parseFloat(tr.querySelector('[data-field="paper_width"]').value) || 3510;
+      var wr = parseFloat(tr.querySelector('[data-field="waste_rate"]').value) / 100 || 0.0122;
+      // 이론생산성 = 평량 × 지폭 × 선속 × 1440 × 10⁻⁹
+      var theor = bw * pw * ls * 1440 * 0.000000001;
+      var good = theor * (1 - wr);
+      tr.querySelector('.gp-theor').textContent = theor.toFixed(1);
+      tr.querySelector('.gp-good').textContent = good.toFixed(1);
+    }
+
+    function addGradeRow() {
+      var tbody = document.getElementById('gp-table-body');
+      if (!tbody) return;
+      // 빈 행이면 클리어
+      if (tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
+      var idx = tbody.querySelectorAll('.gp-row').length + 1;
+      var tr = document.createElement('tr');
+      tr.className = 'border-b border-slate-100 hover:bg-blue-50/30 gp-row';
+      tr.dataset.id = '';
+      tr.innerHTML = 
+        '<td class="px-2 py-1.5 text-gray-400 text-center">' + idx + '</td>' +
+        '<td class="px-2 py-1.5"><input type="text" data-field="grade_name" value="" class="w-20 text-xs border border-gray-200 rounded px-1.5 py-0.5 gp-input font-medium" placeholder="지종명"></td>' +
+        '<td class="px-2 py-1.5 text-center"><input type="number" data-field="basis_weight" value="" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)" placeholder="300"></td>' +
+        '<td class="px-2 py-1.5 text-center"><input type="number" data-field="line_speed" value="" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)" placeholder="300"></td>' +
+        '<td class="px-2 py-1.5 text-center"><input type="number" data-field="paper_width" value="3510" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)"></td>' +
+        '<td class="px-2 py-1.5 text-center font-semibold text-blue-700 gp-theor">0.0</td>' +
+        '<td class="px-2 py-1.5 text-center font-semibold text-emerald-700 gp-good">0.0</td>' +
+        '<td class="px-2 py-1.5 text-center"><input type="number" step="0.01" data-field="waste_rate" value="1.22" class="w-14 text-center text-xs border border-red-200 rounded px-1 py-0.5 bg-red-50/30 gp-input" onchange="recalcGpRow(this)"></td>' +
+        '<td class="px-2 py-1.5"><input type="text" data-field="note" value="" class="w-24 text-[10px] border border-gray-200 rounded px-1 py-0.5 gp-input" placeholder="메모"></td>' +
+        '<td class="px-2 py-1.5 text-center"><button onclick="removeGpRow(this)" class="text-red-400 hover:text-red-600"><i class="fas fa-trash-alt"></i></button></td>';
+      tbody.appendChild(tr);
+    }
+
+    function removeGpRow(btn) {
+      var tr = btn.closest('tr');
+      if (tr) tr.remove();
+    }
+
+    async function saveGradeProduction() {
+      var sel = document.getElementById('gp-machine-select');
+      var mc = sel ? sel.value : '';
+      if (!mc) { alert('호기를 선택하세요'); return; }
+      var div = currentDivision || 'PS';
+      var rows = document.querySelectorAll('#gp-table-body .gp-row');
+      var entries = [];
+      rows.forEach(function(tr, idx) {
+        var gn = tr.querySelector('[data-field="grade_name"]').value.trim();
+        var bw = parseFloat(tr.querySelector('[data-field="basis_weight"]').value) || 0;
+        var ls = parseFloat(tr.querySelector('[data-field="line_speed"]').value) || 0;
+        if (!gn || !bw || !ls) return;  // 필수값 없으면 스킵
+        entries.push({
+          grade_name: gn,
+          basis_weight: bw,
+          line_speed: ls,
+          paper_width: parseFloat(tr.querySelector('[data-field="paper_width"]').value) || 3510,
+          waste_rate: (parseFloat(tr.querySelector('[data-field="waste_rate"]').value) || 1.22) / 100,
+          sort_order: idx,
+          note: tr.querySelector('[data-field="note"]')?.value || ''
+        });
+      });
+
+      if (entries.length === 0) { alert('저장할 데이터가 없습니다'); return; }
+
+      try {
+        var res = await fetch('/api/grade-production/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ division: div, machine_code: mc, entries: entries })
+        });
+        var result = await res.json();
+        if (result.success) {
+          alert('지종별 생산성 저장 완료! (' + result.count + '건)');
+          loadGradeProduction();
+        } else {
+          alert('저장 실패: ' + (result.error || ''));
+        }
       } catch(e) { alert('저장 오류: ' + e.message); }
     }
   </script>
