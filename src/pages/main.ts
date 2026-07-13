@@ -8550,40 +8550,6 @@ export function mainPage(): string {
       container.innerHTML = html;
     }
 
-    async function saveOperatingTime() {
-      var ym = getOtYm();
-      var div = currentDivision || 'PS';
-      var rows = document.querySelectorAll('#ot-table-body tr[data-mc]');
-      var entries = [];
-      rows.forEach(function(tr) {
-        entries.push({
-          machine_code: tr.dataset.mc,
-          total_days: parseFloat(tr.querySelector('[data-field="total_days"]').value) || 0,
-          shutdown_days: parseFloat(tr.querySelector('[data-field="shutdown_days"]').value) || 0,
-          maintenance_days: parseFloat(tr.querySelector('[data-field="maintenance_days"]').value) || 0,
-          breakdown_days: parseFloat(tr.querySelector('[data-field="breakdown_days"]').value) || 0,
-          grade_change_days: parseFloat(tr.querySelector('[data-field="grade_change_days"]').value) || 0,
-          other_stop_days: parseFloat(tr.querySelector('[data-field="other_stop_days"]').value) || 0,
-          note: tr.querySelector('[data-field="note"]')?.value || ''
-        });
-      });
-
-      try {
-        var res = await fetch('/api/operating-time/batch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ division: div, ym: ym, entries: entries, saved_by: document.getElementById('mn-user-name')?.value || '' })
-        });
-        var result = await res.json();
-        if (result.success) {
-          alert('가동시간 저장 완료! (' + result.count + '건)');
-          loadOperatingTime();
-        } else {
-          alert('저장 실패: ' + (result.error || ''));
-        }
-      } catch(e) { alert('저장 오류: ' + e.message); }
-    }
-
     async function saveCapacity() {
       var div = currentDivision || 'PS';
       var machines = (divisionMachines || CC.machines || []).map(function(m) { return m.code || m; });
