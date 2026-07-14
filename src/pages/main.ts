@@ -1951,11 +1951,11 @@ export function mainPage(): string {
                 <th class="px-2 py-2 text-left font-medium w-8">#</th>
                 <th class="px-2 py-2 text-left font-medium">지종</th>
                 <th class="px-2 py-2 text-center font-medium">평량<br><span class="text-[9px]">(g/㎡)</span></th>
-                <th class="px-2 py-2 text-center font-medium">선속<br><span class="text-[9px]">(m/min)</span></th>
                 <th class="px-2 py-2 text-center font-medium">지폭<br><span class="text-[9px]">(mm)</span></th>
+                <th class="px-2 py-2 text-center font-medium">선속<br><span class="text-[9px]">(m/min)</span></th>
                 <th class="px-2 py-2 text-center font-medium text-blue-600">이론생산성<br><span class="text-[9px]">(톤/일)</span></th>
-                <th class="px-2 py-2 text-center font-medium text-emerald-600">양품생산성<br><span class="text-[9px]">(톤/일)</span></th>
                 <th class="px-2 py-2 text-center font-medium text-red-400">폐품율<br><span class="text-[9px]">(%)</span></th>
+                <th class="px-2 py-2 text-center font-medium text-emerald-600">양품생산성<br><span class="text-[9px]">(톤/일)</span></th>
                 <th class="px-2 py-2 text-center font-medium">비고</th>
                 <th class="px-2 py-2 text-center font-medium w-8">삭제</th>
               </tr>
@@ -8778,11 +8778,11 @@ export function mainPage(): string {
           '<td class="px-2 py-1.5 text-gray-400 text-center">' + (idx + 1) + '</td>' +
           '<td class="px-2 py-1.5"><input type="text" data-field="grade_name" value="' + (g.grade_name || '') + '" class="w-20 text-xs border border-gray-200 rounded px-1.5 py-0.5 gp-input font-medium"></td>' +
           '<td class="px-2 py-1.5 text-center"><input type="number" data-field="basis_weight" value="' + (g.basis_weight || '') + '" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)"></td>' +
-          '<td class="px-2 py-1.5 text-center"><input type="number" data-field="line_speed" value="' + (g.line_speed || '') + '" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)"></td>' +
           '<td class="px-2 py-1.5 text-center"><input type="number" data-field="paper_width" value="' + (g.paper_width || 3510) + '" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)"></td>' +
+          '<td class="px-2 py-1.5 text-center"><input type="number" data-field="line_speed" value="' + (g.line_speed || '') + '" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)"></td>' +
           '<td class="px-2 py-1.5 text-center font-semibold text-blue-700 gp-theor">' + theor.toFixed(1) + '</td>' +
-          '<td class="px-2 py-1.5 text-center font-semibold text-emerald-700 gp-good">' + good.toFixed(1) + '</td>' +
           '<td class="px-2 py-1.5 text-center"><input type="number" step="0.01" data-field="waste_rate" value="' + wr + '" class="w-14 text-center text-xs border border-red-200 rounded px-1 py-0.5 bg-red-50/30 gp-input" onchange="recalcGpRow(this)"></td>' +
+          '<td class="px-2 py-1.5 text-center font-semibold text-emerald-700 gp-good">' + good.toFixed(1) + '</td>' +
           '<td class="px-2 py-1.5"><input type="text" data-field="note" value="' + (g.note || '') + '" class="w-24 text-[10px] border border-gray-200 rounded px-1 py-0.5 gp-input" placeholder="메모"></td>' +
           '<td class="px-2 py-1.5 text-center"><button onclick="removeGpRow(this)" class="text-red-400 hover:text-red-600"><i class="fas fa-trash-alt"></i></button></td>' +
           '</tr>';
@@ -8794,8 +8794,9 @@ export function mainPage(): string {
         tfoot.innerHTML = '<tr>' +
           '<td class="px-2 py-2" colspan="5"><strong>합계 (' + count + '건)</strong></td>' +
           '<td class="px-2 py-2 text-center text-blue-700">' + totalTheor.toFixed(1) + '</td>' +
+          '<td class="px-2 py-2"></td>' +
           '<td class="px-2 py-2 text-center text-emerald-700">' + totalGood.toFixed(1) + '</td>' +
-          '<td colspan="3"></td></tr>';
+          '<td colspan="2"></td></tr>';
       }
 
       updateGpSummary();
@@ -8845,11 +8846,11 @@ export function mainPage(): string {
         '<td class="px-2 py-1.5 text-gray-400 text-center">' + idx + '</td>' +
         '<td class="px-2 py-1.5"><input type="text" data-field="grade_name" value="" class="w-20 text-xs border border-gray-200 rounded px-1.5 py-0.5 gp-input font-medium" placeholder="지종명"></td>' +
         '<td class="px-2 py-1.5 text-center"><input type="number" data-field="basis_weight" value="" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)" placeholder="300"></td>' +
-        '<td class="px-2 py-1.5 text-center"><input type="number" data-field="line_speed" value="" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)" placeholder="300"></td>' +
         '<td class="px-2 py-1.5 text-center"><input type="number" data-field="paper_width" value="3510" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)"></td>' +
+        '<td class="px-2 py-1.5 text-center"><input type="number" data-field="line_speed" value="" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)" placeholder="300"></td>' +
         '<td class="px-2 py-1.5 text-center font-semibold text-blue-700 gp-theor">0.0</td>' +
-        '<td class="px-2 py-1.5 text-center font-semibold text-emerald-700 gp-good">0.0</td>' +
         '<td class="px-2 py-1.5 text-center"><input type="number" step="0.01" data-field="waste_rate" value="1.22" class="w-14 text-center text-xs border border-red-200 rounded px-1 py-0.5 bg-red-50/30 gp-input" onchange="recalcGpRow(this)"></td>' +
+        '<td class="px-2 py-1.5 text-center font-semibold text-emerald-700 gp-good">0.0</td>' +
         '<td class="px-2 py-1.5"><input type="text" data-field="note" value="" class="w-24 text-[10px] border border-gray-200 rounded px-1 py-0.5 gp-input" placeholder="메모"></td>' +
         '<td class="px-2 py-1.5 text-center"><button onclick="removeGpRow(this)" class="text-red-400 hover:text-red-600"><i class="fas fa-trash-alt"></i></button></td>';
       tbody.appendChild(tr);
