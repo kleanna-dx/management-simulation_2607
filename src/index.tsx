@@ -3546,7 +3546,7 @@ app.get('/api/grade-production', async (c) => {
   if (activeOnly) {
     query += ' AND gp.is_active = 1'
   }
-  query += ' ORDER BY gp.machine_code, gp.sort_order, gp.grade_name'
+  query += ' ORDER BY gp.machine_code, gp.grade_name, gp.basis_weight ASC'
 
   const results = await db.prepare(query).bind(...binds).all()
   return c.json(results.results)
