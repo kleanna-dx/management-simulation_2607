@@ -2185,8 +2185,17 @@ app.get('/api/simulation/materials-for-mix', async (c) => {
   const machine = c.req.query('machine') || ''
   const div = c.req.query('division') || 'PS'
 
-  // 해당 호기의 현재 사용 자재
-  const current = await db.prepare(`
+  // 전월 계산 (당월 데이터 없을 시 fallback)
+  let prevYm = ''
+  if (ym && ym.length === 6) {
+    let y = parseInt(ym.substring(0, 4))
+    let m = parseInt(ym.substring(4, 6))
+    m -= 1
+    if (m < 1) { m = 12; y -= 1 }
+    prevYm = `${y}${String(m).padStart(2, '0')}`
+  }
+
+  const matSql = `
     SELECT 
       material_code,
       material_name,
@@ -2202,7 +2211,15 @@ app.get('/api/simulation/materials-for-mix', async (c) => {
       AND CAST(actual_alloc_qty AS REAL) != 0
     GROUP BY material_code, material_name, material_group_name, material_group_major_name
     ORDER BY total_cost DESC
-  `).bind(ym, machine, div).all()
+  `
+
+  // 해당 호기의 현재 사용 자재 (당월 먼저, 없으면 전월 fallback)
+  let current = await db.prepare(matSql).bind(ym, machine, div).all()
+  let usedYm = ym
+  if ((!current.results || current.results.length === 0) && prevYm) {
+    current = await db.prepare(matSql).bind(prevYm, machine, div).all()
+    usedYm = prevYm
+  }
 
   // 동일 기간 다른 호기에서 사용되는 자재 (대체 후보)
   const others = await db.prepare(`
@@ -2219,7 +2236,7 @@ app.get('/api/simulation/materials-for-mix', async (c) => {
       AND CAST(actual_alloc_qty AS REAL) != 0
     GROUP BY material_code, material_name, material_group_name, material_group_major_name
     ORDER BY material_group_name, material_name
-  `).bind(ym, machine, div).all()
+  `).bind(usedYm, machine, div).all()
 
   // 마스터에 있지만 실적에 없는 자재 (신규 후보)
   const masterPaperRaw = await db.prepare(`SELECT material_code, material_name, material_group FROM master_paper_raw_materials`).all()

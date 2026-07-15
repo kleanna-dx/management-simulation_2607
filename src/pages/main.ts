@@ -153,28 +153,29 @@ export function mainPage(): string {
 
     <!-- ============ 메인 콘텐츠 영역 ============ -->
     <div class="flex-1 flex flex-col min-w-0 h-screen">
-      <!-- 상단 헤더 -->
-      <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between flex-shrink-0 z-40">
+      <!-- 상단 헤더 (gradient) -->
+      <header class="gradient-header text-white px-6 py-3 flex items-center justify-between flex-shrink-0 z-40">
         <div class="flex items-center gap-3">
           <!-- 사이드바 토글 -->
-          <button onclick="toggleSidebar()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-gray-500 transition lg:hidden">
+          <button onclick="toggleSidebar()" class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 transition lg:hidden">
             <i class="fas fa-bars text-sm"></i>
           </button>
           <!-- 현재 페이지 제목 -->
-          <h2 id="page-title" class="text-sm font-semibold text-gray-800">손익 대시보드</h2>
+          <h2 id="page-title" class="text-sm font-semibold text-white">손익 대시보드</h2>
+          <span class="text-[10px] text-white/60 hidden sm:inline">경영의사결정 분석 플랫폼</span>
         </div>
         <!-- 필터 영역 -->
         <div class="flex items-center gap-3">
-          <div class="flex items-center gap-1 bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-200">
-            <button onclick="stepYear(-1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-xs"><i class="fas fa-chevron-left"></i></button>
-            <span id="analysisYear" class="text-sm font-bold text-gray-700 min-w-[52px] text-center select-none"></span>
-            <button onclick="stepYear(1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-xs"><i class="fas fa-chevron-right"></i></button>
-            <div class="w-px h-5 bg-slate-300 mx-1"></div>
-            <button onclick="stepMonth(-1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-xs"><i class="fas fa-chevron-left"></i></button>
-            <span id="analysisMonth" class="text-sm font-bold text-gray-700 min-w-[36px] text-center select-none"></span>
-            <button onclick="stepMonth(1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-xs"><i class="fas fa-chevron-right"></i></button>
-            <button onclick="loadAnalysis()" class="ml-2 px-3 py-1 bg-emerald-600 text-white text-xs font-semibold rounded-md hover:bg-emerald-700 transition shadow-sm"><i class="fas fa-search mr-1"></i>조회</button>
-            <span id="period-hint" class="text-xs text-emerald-600 font-medium ml-1 whitespace-nowrap"></span>
+          <div class="flex items-center gap-1 bg-white/10 backdrop-blur rounded-lg px-3 py-1.5 border border-white/20">
+            <button onclick="stepYear(-1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-white/20 text-white/80 hover:text-white transition text-xs"><i class="fas fa-chevron-left"></i></button>
+            <span id="analysisYear" class="text-sm font-bold text-white min-w-[52px] text-center select-none"></span>
+            <button onclick="stepYear(1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-white/20 text-white/80 hover:text-white transition text-xs"><i class="fas fa-chevron-right"></i></button>
+            <div class="w-px h-5 bg-white/30 mx-1"></div>
+            <button onclick="stepMonth(-1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-white/20 text-white/80 hover:text-white transition text-xs"><i class="fas fa-chevron-left"></i></button>
+            <span id="analysisMonth" class="text-sm font-bold text-white min-w-[36px] text-center select-none"></span>
+            <button onclick="stepMonth(1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-white/20 text-white/80 hover:text-white transition text-xs"><i class="fas fa-chevron-right"></i></button>
+            <button onclick="loadAnalysis()" class="ml-2 px-3 py-1 bg-white/20 text-white text-xs font-semibold rounded-md hover:bg-white/30 transition border border-white/30"><i class="fas fa-search mr-1"></i>조회</button>
+            <span id="period-hint" class="text-xs text-white/80 font-medium ml-1 whitespace-nowrap"></span>
           </div>
         </div>
       </header>
@@ -2055,18 +2056,18 @@ export function mainPage(): string {
     </div><!-- /content-profitanalysis -->
 
     <!-- ========== 시뮬레이션 플로우 탭 ========== -->
-    <div id="content-simflow" class="hidden fade-in">
+    <div id="content-simflow" class="hidden fade-in w-full space-y-4">
       <!-- 통합 시뮬레이션 헤더 -->
-      <div class="card px-5 py-4 mb-4">
+      <div class="card px-5 py-4 w-full">
         <div class="flex items-center justify-between flex-wrap gap-3">
-          <div>
+          <div class="flex-1 min-w-0">
             <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-flask text-indigo-500 mr-1.5"></i>통합 시뮬레이션</h3>
             <p class="text-[11px] text-gray-400 mt-1">생산량 조절 · 지종 믹스 · 호기 배분 · 자재 구성 변경을 한 화면에서 시뮬레이션합니다.</p>
           </div>
-          <div class="flex items-center gap-3">
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-gray-500">호기:</label>
-              <select id="usim-machine" class="text-xs border border-slate-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-indigo-200" onchange="loadUnifiedSim()">
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <div class="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-200">
+              <label class="text-xs text-gray-500 font-medium">호기:</label>
+              <select id="usim-machine" class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:ring-1 focus:ring-indigo-200 font-semibold" onchange="loadUnifiedSim()">
                 <option value="PM2">PM2</option>
                 <option value="PM3" selected>PM3</option>
               </select>
@@ -2078,9 +2079,9 @@ export function mainPage(): string {
       </div>
 
       <!-- Step 1~3 조건 설정 영역 -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
         <!-- Step 1: 호기/생산량 -->
-        <div class="card px-4 py-3">
+        <div class="card px-4 py-4 flex flex-col">
           <h4 class="text-xs font-semibold text-gray-600 mb-3 flex items-center"><span class="w-5 h-5 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-[10px] font-bold mr-2">1</span>생산량 조절</h4>
           <div class="space-y-2" id="usim-production-inputs">
             <div class="flex items-center justify-between">
@@ -2100,7 +2101,7 @@ export function mainPage(): string {
         </div>
 
         <!-- Step 2: 지종 믹스 -->
-        <div class="card px-4 py-3">
+        <div class="card px-4 py-4 flex flex-col">
           <h4 class="text-xs font-semibold text-gray-600 mb-3 flex items-center"><span class="w-5 h-5 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-[10px] font-bold mr-2">2</span>지종 믹스 (생산 비중)</h4>
           <div class="space-y-1.5" id="usim-grade-mix">
             <div class="text-[10px] text-gray-400 italic">데이터 로드 후 표시됩니다</div>
@@ -2112,7 +2113,7 @@ export function mainPage(): string {
         </div>
 
         <!-- Step 3: 자재 구성 변경 -->
-        <div class="card px-4 py-3">
+        <div class="card px-4 py-4 flex flex-col">
           <h4 class="text-xs font-semibold text-gray-600 mb-3 flex items-center"><span class="w-5 h-5 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-[10px] font-bold mr-2">3</span>자재 구성 변경</h4>
           <div class="space-y-2" id="usim-mat-changes">
             <div class="text-[10px] text-gray-400 italic">아래 자재 목록에서 변경사항을 추가하세요</div>
@@ -2126,7 +2127,7 @@ export function mainPage(): string {
       </div>
 
       <!-- 실행 버튼 -->
-      <div class="flex items-center justify-center mb-4">
+      <div class="flex items-center justify-center">
         <button onclick="runUnifiedSim()" class="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold text-sm shadow-lg hover:shadow-xl hover:from-indigo-700 hover:to-purple-700 transition-all transform hover:scale-[1.02]">
           <i class="fas fa-play mr-2"></i>시뮬레이션 실행
         </button>
@@ -7479,7 +7480,11 @@ export function mainPage(): string {
         usimPrevProd = 0;
         if (prodData.rows) {
           prodData.rows.forEach(function(r) {
-            if (r.machine_code === machine) usimPrevProd += (r.cur_production_ton || 0);
+            if (r.machine_code === machine) {
+              // cur_production_ton이 있으면 사용, 없으면 prev_production_ton을 fallback
+              var ton = r.cur_production_ton || r.prev_production_ton || 0;
+              usimPrevProd += ton;
+            }
           });
         }
 
@@ -7491,7 +7496,9 @@ export function mainPage(): string {
         usimGradeMix = {};
         if (prodData.rows) {
           prodData.rows.filter(function(r) { return r.machine_code === machine; }).forEach(function(r) {
-            usimGradeMix[r.product_level2_name] = r.cur_production_ton || 0;
+            // cur_production_ton이 있으면 사용, 없으면 prev_production_ton을 fallback
+            var ton = r.cur_production_ton || r.prev_production_ton || 0;
+            usimGradeMix[r.product_level2_name] = ton;
           });
         }
         renderUsimGradeMix();
