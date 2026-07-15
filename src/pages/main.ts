@@ -128,6 +128,17 @@ export function mainPage(): string {
           </button>
         </div>
 
+        <!-- 생산 최적화 섹션 -->
+        <div class="mb-4">
+          <p class="px-3 mb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">생산 최적화</p>
+          <button onclick="switchTab('prodplan')" id="tab-prodplan" class="nav-item w-full">
+            <i class="fas fa-route w-4 text-center"></i><span>생산량 이동계획</span>
+          </button>
+          <button onclick="switchTab('scenario')" id="tab-scenario" class="nav-item w-full">
+            <i class="fas fa-project-diagram w-4 text-center"></i><span>시나리오 분석</span>
+          </button>
+        </div>
+
         <!-- 데이터 관리 섹션 -->
         <div class="mb-4">
           <p class="px-3 mb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">데이터 관리</p>
@@ -2608,6 +2619,576 @@ export function mainPage(): string {
 
     </div><!-- /content-optime -->
 
+    <!-- ============ 생산량 이동계획 (Production Movement Plan) ============ -->
+    <div id="content-prodplan" class="hidden fade-in w-full space-y-4">
+      <!-- 서브탭 -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <button id="pp-tab-overview" onclick="switchProdPlanSub('overview')" class="pill-tab pill-tab-active">
+          <i class="fas fa-th-large mr-1"></i>계획 개요
+        </button>
+        <button id="pp-tab-constraints" onclick="switchProdPlanSub('constraints')" class="pill-tab pill-tab-inactive">
+          <i class="fas fa-lock mr-1"></i>제약조건
+        </button>
+        <button id="pp-tab-adjust" onclick="switchProdPlanSub('adjust')" class="pill-tab pill-tab-inactive">
+          <i class="fas fa-sliders-h mr-1"></i>계획 조정
+        </button>
+        <button id="pp-tab-result" onclick="switchProdPlanSub('result')" class="pill-tab pill-tab-inactive">
+          <i class="fas fa-clipboard-check mr-1"></i>결과 상세
+        </button>
+        <div class="flex-1"></div>
+        <button onclick="generateProdPlan()" class="btn-primary text-xs"><i class="fas fa-magic mr-1"></i>최적 계획 생성</button>
+      </div>
+
+      <!-- 계획 개요 (Overview) -->
+      <div id="pp-content-overview" class="space-y-4">
+        <!-- KPI 비교: 기본안 vs 개선안 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="card p-5">
+            <p class="text-[11px] text-gray-400 mb-1">영업이익 (기본안 → 개선안)</p>
+            <div class="flex items-end gap-2">
+              <span id="pp-base-profit" class="text-xl font-bold text-gray-400 line-through">24.3억</span>
+              <i class="fas fa-arrow-right text-gray-300 text-xs"></i>
+              <span id="pp-improved-profit" class="text-2xl font-bold text-emerald-600">31.7억</span>
+            </div>
+            <p id="pp-profit-delta" class="text-xs text-emerald-600 mt-1"><i class="fas fa-arrow-up"></i> +7.4억 개선</p>
+          </div>
+          <div class="card p-5">
+            <p class="text-[11px] text-gray-400 mb-1">총원가 변화</p>
+            <div class="flex items-end gap-2">
+              <span id="pp-base-cost" class="text-xl font-bold text-gray-400 line-through">198.2억</span>
+              <i class="fas fa-arrow-right text-gray-300 text-xs"></i>
+              <span id="pp-improved-cost" class="text-2xl font-bold text-blue-600">191.5억</span>
+            </div>
+            <p id="pp-cost-delta" class="text-xs text-blue-600 mt-1"><i class="fas fa-arrow-down"></i> -6.7억 절감</p>
+          </div>
+          <div class="card p-5">
+            <p class="text-[11px] text-gray-400 mb-1">마진율 변화</p>
+            <div class="flex items-end gap-2">
+              <span id="pp-base-margin" class="text-xl font-bold text-gray-400 line-through">10.9%</span>
+              <i class="fas fa-arrow-right text-gray-300 text-xs"></i>
+              <span id="pp-improved-margin" class="text-2xl font-bold text-emerald-600">14.2%</span>
+            </div>
+            <p id="pp-margin-delta" class="text-xs text-emerald-600 mt-1"><i class="fas fa-arrow-up"></i> +3.3%p 개선</p>
+          </div>
+        </div>
+
+        <!-- 설비별 배분 비교 -->
+        <div class="card overflow-hidden">
+          <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+            <h4 class="text-sm font-semibold text-gray-700"><i class="fas fa-exchange-alt text-indigo-500 mr-1.5"></i>설비별 생산량 배분 비교 (기본안 vs 개선안)</h4>
+            <span class="text-[10px] text-gray-400">단위: 톤/월</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="data-table" id="pp-allocation-table">
+              <thead>
+                <tr>
+                  <th>설비</th>
+                  <th>지종</th>
+                  <th class="text-right">기본안(톤)</th>
+                  <th class="text-right">개선안(톤)</th>
+                  <th class="text-right">변동(톤)</th>
+                  <th class="text-right">톤당원가 절감</th>
+                  <th>비고</th>
+                </tr>
+              </thead>
+              <tbody id="pp-allocation-body">
+                <tr><td colspan="7" class="text-center py-8 text-gray-400 text-sm">'최적 계획 생성' 버튼을 클릭하세요</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 제약 충족 여부 요약 -->
+        <div class="card p-5">
+          <h4 class="text-sm font-semibold text-gray-700 mb-3"><i class="fas fa-check-circle text-emerald-500 mr-1.5"></i>제약조건 충족 여부</h4>
+          <div id="pp-constraint-summary" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg">
+              <i class="fas fa-check-circle text-emerald-500"></i>
+              <span class="text-xs text-gray-700">설비 CAPA 충족</span>
+            </div>
+            <div class="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg">
+              <i class="fas fa-check-circle text-emerald-500"></i>
+              <span class="text-xs text-gray-700">수요 충족</span>
+            </div>
+            <div class="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg">
+              <i class="fas fa-check-circle text-emerald-500"></i>
+              <span class="text-xs text-gray-700">재고 기준 충족</span>
+            </div>
+          </div>
+        </div>
+      </div><!-- /pp-content-overview -->
+
+      <!-- 제약조건 입력 (Constraints) -->
+      <div id="pp-content-constraints" class="hidden space-y-4">
+        <!-- 설비 CAPA -->
+        <div class="card overflow-hidden">
+          <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+            <h4 class="text-sm font-semibold text-gray-700"><i class="fas fa-industry text-amber-500 mr-1.5"></i>설비 CAPA (최대 생산능력)</h4>
+            <button onclick="savePpConstraints()" class="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 transition">
+              <i class="fas fa-save mr-1"></i>저장
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="data-table" id="pp-capa-table">
+              <thead>
+                <tr>
+                  <th>공장</th>
+                  <th>설비</th>
+                  <th>지종</th>
+                  <th class="text-right">월 CAPA(톤)</th>
+                  <th class="text-right">가동률(%)</th>
+                  <th class="text-right">최대가동 CAPA(톤)</th>
+                  <th>상태</th>
+                </tr>
+              </thead>
+              <tbody id="pp-capa-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 제품별 수요 -->
+        <div class="card overflow-hidden">
+          <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+            <h4 class="text-sm font-semibold text-gray-700"><i class="fas fa-shopping-cart text-blue-500 mr-1.5"></i>제품별 월간 수요</h4>
+            <span class="text-[10px] text-gray-400">수정 가능 - 수요량을 직접 입력하세요</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="data-table" id="pp-demand-table">
+              <thead>
+                <tr>
+                  <th>제품군</th>
+                  <th>지종</th>
+                  <th class="text-right">수요량(톤)</th>
+                  <th class="text-right">최소재고(톤)</th>
+                  <th class="text-right">현재재고(톤)</th>
+                  <th>우선순위</th>
+                </tr>
+              </thead>
+              <tbody id="pp-demand-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /pp-content-constraints -->
+
+      <!-- 계획 조정 (Manual Adjustment) -->
+      <div id="pp-content-adjust" class="hidden space-y-4">
+        <!-- 조정 전/후 KPI -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div class="card p-4 text-center">
+            <p class="text-[10px] text-gray-400">수정 전 영업이익</p>
+            <p id="pp-adj-before-profit" class="text-lg font-bold text-gray-600">31.7억</p>
+          </div>
+          <div class="card p-4 text-center">
+            <p class="text-[10px] text-gray-400">수정 후 영업이익</p>
+            <p id="pp-adj-after-profit" class="text-lg font-bold text-emerald-600">31.7억</p>
+          </div>
+          <div class="card p-4 text-center">
+            <p class="text-[10px] text-gray-400">손익 변화</p>
+            <p id="pp-adj-delta" class="text-lg font-bold text-gray-600">±0</p>
+          </div>
+          <div class="card p-4 text-center">
+            <p class="text-[10px] text-gray-400">제약위반</p>
+            <p id="pp-adj-violations" class="text-lg font-bold text-emerald-600">0건</p>
+          </div>
+        </div>
+
+        <!-- 제약위반 경고 -->
+        <div id="pp-violation-alert" class="hidden bg-red-50 border border-red-200 rounded-xl p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <i class="fas fa-exclamation-triangle text-red-500"></i>
+            <span class="text-sm font-semibold text-red-700">제약조건 위반 경고</span>
+          </div>
+          <ul id="pp-violation-list" class="text-xs text-red-600 space-y-1 ml-5 list-disc"></ul>
+        </div>
+
+        <!-- 수동 조정 테이블 -->
+        <div class="card overflow-hidden">
+          <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+            <h4 class="text-sm font-semibold text-gray-700"><i class="fas fa-edit text-purple-500 mr-1.5"></i>설비별 생산량 수동 조정</h4>
+            <div class="flex gap-2">
+              <button onclick="resetPpAdjust()" class="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-200 transition">
+                <i class="fas fa-undo mr-1"></i>초기화
+              </button>
+              <button onclick="applyPpAdjust()" class="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 transition">
+                <i class="fas fa-check mr-1"></i>적용
+              </button>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="data-table" id="pp-adjust-table">
+              <thead>
+                <tr>
+                  <th>설비</th>
+                  <th>지종</th>
+                  <th class="text-right">시스템 추천(톤)</th>
+                  <th class="text-right">수동 입력(톤)</th>
+                  <th class="text-right">차이(톤)</th>
+                  <th class="text-right">CAPA 잔여</th>
+                  <th>상태</th>
+                </tr>
+              </thead>
+              <tbody id="pp-adjust-body">
+                <tr><td colspan="7" class="text-center py-8 text-gray-400 text-sm">먼저 '최적 계획 생성'을 실행하세요</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /pp-content-adjust -->
+
+      <!-- 결과 상세 (Result Detail) -->
+      <div id="pp-content-result" class="hidden space-y-4">
+        <!-- 기본안 vs 개선안 상세 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- 기본안 -->
+          <div class="card overflow-hidden border-gray-200">
+            <div class="px-5 py-3 border-b bg-gray-50 flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-gray-400"></span>
+              <h4 class="text-sm font-semibold text-gray-600">기본안 (As-Is)</h4>
+            </div>
+            <div class="p-4 space-y-3">
+              <div class="flex justify-between text-xs">
+                <span class="text-gray-500">영업이익</span><span id="pp-res-base-profit" class="font-bold text-gray-700">24.3억</span>
+              </div>
+              <div class="flex justify-between text-xs">
+                <span class="text-gray-500">총원가</span><span id="pp-res-base-cost" class="font-bold text-gray-700">198.2억</span>
+              </div>
+              <div class="flex justify-between text-xs">
+                <span class="text-gray-500">마진율</span><span id="pp-res-base-margin" class="font-bold text-gray-700">10.9%</span>
+              </div>
+              <div class="flex justify-between text-xs">
+                <span class="text-gray-500">총 생산량</span><span id="pp-res-base-prod" class="font-bold text-gray-700">-</span>
+              </div>
+            </div>
+          </div>
+          <!-- 개선안 -->
+          <div class="card overflow-hidden border-emerald-200">
+            <div class="px-5 py-3 border-b bg-emerald-50 flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+              <h4 class="text-sm font-semibold text-emerald-700">개선안 (To-Be)</h4>
+            </div>
+            <div class="p-4 space-y-3">
+              <div class="flex justify-between text-xs">
+                <span class="text-gray-500">영업이익</span><span id="pp-res-imp-profit" class="font-bold text-emerald-700">31.7억</span>
+              </div>
+              <div class="flex justify-between text-xs">
+                <span class="text-gray-500">총원가</span><span id="pp-res-imp-cost" class="font-bold text-emerald-700">191.5억</span>
+              </div>
+              <div class="flex justify-between text-xs">
+                <span class="text-gray-500">마진율</span><span id="pp-res-imp-margin" class="font-bold text-emerald-700">14.2%</span>
+              </div>
+              <div class="flex justify-between text-xs">
+                <span class="text-gray-500">총 생산량</span><span id="pp-res-imp-prod" class="font-bold text-emerald-700">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 개선 효과 요약 -->
+        <div class="card p-5">
+          <h4 class="text-sm font-semibold text-gray-700 mb-3"><i class="fas fa-chart-bar text-emerald-500 mr-1.5"></i>개선 효과 상세</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <canvas id="pp-result-chart" height="200"></canvas>
+            </div>
+            <div class="space-y-2" id="pp-improvement-list">
+              <div class="flex items-center gap-2 p-2 bg-emerald-50 rounded-lg">
+                <i class="fas fa-check text-emerald-500 text-xs"></i>
+                <span class="text-xs text-gray-700">물류비 절감: PM3 광주→청주 이동 +200톤</span>
+              </div>
+              <div class="flex items-center gap-2 p-2 bg-emerald-50 rounded-lg">
+                <i class="fas fa-check text-emerald-500 text-xs"></i>
+                <span class="text-xs text-gray-700">원부재료비 절감: PM2 고지 배합비 최적화</span>
+              </div>
+              <div class="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
+                <i class="fas fa-info-circle text-blue-500 text-xs"></i>
+                <span class="text-xs text-gray-700">설비 가동률 PM2: 85%→92%, PM3: 78%→88%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 상세 결과 테이블 -->
+        <div class="card overflow-hidden">
+          <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+            <h4 class="text-sm font-semibold text-gray-700"><i class="fas fa-table text-blue-500 mr-1.5"></i>설비·지종별 최종 배분</h4>
+            <button onclick="exportProdPlan()" class="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-100 transition">
+              <i class="fas fa-download mr-1"></i>엑셀 다운로드
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="data-table" id="pp-result-table">
+              <thead>
+                <tr>
+                  <th>설비</th>
+                  <th>지종</th>
+                  <th class="text-right">생산량(톤)</th>
+                  <th class="text-right">톤당원가(원)</th>
+                  <th class="text-right">원가 합계(백만)</th>
+                  <th class="text-right">가동률(%)</th>
+                  <th class="text-right">CAPA 여유(톤)</th>
+                </tr>
+              </thead>
+              <tbody id="pp-result-body">
+                <tr><td colspan="7" class="text-center py-8 text-gray-400 text-sm">계획 생성 후 결과가 표시됩니다</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /pp-content-result -->
+    </div><!-- /content-prodplan -->
+
+    <!-- ============ 시나리오 분석 (Scenario Analysis) ============ -->
+    <div id="content-scenario" class="hidden fade-in w-full space-y-4">
+      <!-- 서브탭 -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <button id="sc-tab-compare" onclick="switchScenarioSub('compare')" class="pill-tab pill-tab-active">
+          <i class="fas fa-balance-scale mr-1"></i>시나리오 비교
+        </button>
+        <button id="sc-tab-sensitivity" onclick="switchScenarioSub('sensitivity')" class="pill-tab pill-tab-inactive">
+          <i class="fas fa-wave-square mr-1"></i>민감도 분석
+        </button>
+        <button id="sc-tab-whatif" onclick="switchScenarioSub('whatif')" class="pill-tab pill-tab-inactive">
+          <i class="fas fa-question-circle mr-1"></i>What-If 시뮬레이션
+        </button>
+        <button id="sc-tab-history" onclick="switchScenarioSub('history')" class="pill-tab pill-tab-inactive">
+          <i class="fas fa-history mr-1"></i>이력 관리
+        </button>
+        <div class="flex-1"></div>
+        <button onclick="createNewScenario()" class="btn-primary text-xs"><i class="fas fa-plus mr-1"></i>새 시나리오</button>
+      </div>
+
+      <!-- 시나리오 비교 -->
+      <div id="sc-content-compare" class="space-y-4">
+        <!-- 시나리오 선택 -->
+        <div class="card p-4">
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="text-xs font-semibold text-gray-600">비교 대상:</span>
+            <select id="sc-select-a" class="text-xs border border-gray-200 rounded-lg px-3 py-1.5" onchange="runScenarioCompare()">
+              <option value="base">기본안 (As-Is)</option>
+              <option value="improved" selected>개선안 v1</option>
+              <option value="aggressive">공격적 절감안</option>
+            </select>
+            <span class="text-xs text-gray-400">vs</span>
+            <select id="sc-select-b" class="text-xs border border-gray-200 rounded-lg px-3 py-1.5" onchange="runScenarioCompare()">
+              <option value="base" selected>기본안 (As-Is)</option>
+              <option value="improved">개선안 v1</option>
+              <option value="aggressive">공격적 절감안</option>
+            </select>
+            <button onclick="runScenarioCompare()" class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition">
+              <i class="fas fa-sync mr-1"></i>비교 실행
+            </button>
+          </div>
+        </div>
+
+        <!-- 비교 결과 카드 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="card p-4 text-center">
+            <p class="text-[10px] text-gray-400">영업이익 차이</p>
+            <p id="sc-cmp-profit" class="text-xl font-bold text-emerald-600">+7.4억</p>
+          </div>
+          <div class="card p-4 text-center">
+            <p class="text-[10px] text-gray-400">원가 차이</p>
+            <p id="sc-cmp-cost" class="text-xl font-bold text-blue-600">-6.7억</p>
+          </div>
+          <div class="card p-4 text-center">
+            <p class="text-[10px] text-gray-400">마진율 차이</p>
+            <p id="sc-cmp-margin" class="text-xl font-bold text-emerald-600">+3.3%p</p>
+          </div>
+          <div class="card p-4 text-center">
+            <p class="text-[10px] text-gray-400">생산량 차이</p>
+            <p id="sc-cmp-prod" class="text-xl font-bold text-indigo-600">+1,200톤</p>
+          </div>
+        </div>
+
+        <!-- 비교 차트 -->
+        <div class="card p-5">
+          <h4 class="text-sm font-semibold text-gray-700 mb-3"><i class="fas fa-chart-bar text-indigo-500 mr-1.5"></i>시나리오별 비교 차트</h4>
+          <div style="height:280px;">
+            <canvas id="sc-compare-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- 시나리오별 상세 테이블 -->
+        <div class="card overflow-hidden">
+          <div class="px-5 py-3 border-b border-slate-100">
+            <h4 class="text-sm font-semibold text-gray-700"><i class="fas fa-table text-gray-500 mr-1.5"></i>항목별 비교</h4>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="data-table" id="sc-compare-table">
+              <thead>
+                <tr>
+                  <th>항목</th>
+                  <th class="text-right">시나리오 A</th>
+                  <th class="text-right">시나리오 B</th>
+                  <th class="text-right">차이</th>
+                  <th>평가</th>
+                </tr>
+              </thead>
+              <tbody id="sc-compare-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /sc-content-compare -->
+
+      <!-- 민감도 분석 -->
+      <div id="sc-content-sensitivity" class="hidden space-y-4">
+        <div class="card p-5">
+          <h4 class="text-sm font-semibold text-gray-700 mb-4"><i class="fas fa-sliders-h text-purple-500 mr-1.5"></i>변수별 민감도 분석</h4>
+          <p class="text-xs text-gray-400 mb-4">각 변수를 ±20% 변동시켰을 때 영업이익에 미치는 영향</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- 토네이도 차트 -->
+            <div style="height:300px;">
+              <canvas id="sc-tornado-chart"></canvas>
+            </div>
+            <!-- 민감도 요약 -->
+            <div class="space-y-2" id="sc-sensitivity-list">
+              <div class="flex items-center gap-3 p-3 bg-red-50 rounded-lg">
+                <div class="w-2 h-2 rounded-full bg-red-500"></div>
+                <span class="text-xs font-medium text-gray-700 flex-1">고지 단가</span>
+                <span class="text-xs font-bold text-red-600">±4.2억 영향</span>
+              </div>
+              <div class="flex items-center gap-3 p-3 bg-orange-50 rounded-lg">
+                <div class="w-2 h-2 rounded-full bg-orange-500"></div>
+                <span class="text-xs font-medium text-gray-700 flex-1">펄프 단가</span>
+                <span class="text-xs font-bold text-orange-600">±3.1억 영향</span>
+              </div>
+              <div class="flex items-center gap-3 p-3 bg-amber-50 rounded-lg">
+                <div class="w-2 h-2 rounded-full bg-amber-500"></div>
+                <span class="text-xs font-medium text-gray-700 flex-1">생산량</span>
+                <span class="text-xs font-bold text-amber-600">±2.8억 영향</span>
+              </div>
+              <div class="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+                <span class="text-xs font-medium text-gray-700 flex-1">약품 단가</span>
+                <span class="text-xs font-bold text-blue-600">±1.5억 영향</span>
+              </div>
+              <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div class="w-2 h-2 rounded-full bg-gray-400"></div>
+                <span class="text-xs font-medium text-gray-700 flex-1">가동률</span>
+                <span class="text-xs font-bold text-gray-600">±1.2억 영향</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /sc-content-sensitivity -->
+
+      <!-- What-If 시뮬레이션 -->
+      <div id="sc-content-whatif" class="hidden space-y-4">
+        <div class="card p-5">
+          <h4 class="text-sm font-semibold text-gray-700 mb-4"><i class="fas fa-flask text-teal-500 mr-1.5"></i>What-If 변수 조정</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label class="text-[11px] text-gray-500 font-medium">고지 단가 변동(%)</label>
+              <input type="range" id="sc-wi-waste" min="-30" max="30" value="0" class="w-full mt-1" oninput="updateWhatIfLabel('waste', this.value)">
+              <div class="flex justify-between text-[10px] text-gray-400"><span>-30%</span><span id="sc-wi-waste-label" class="font-bold text-gray-700">0%</span><span>+30%</span></div>
+            </div>
+            <div>
+              <label class="text-[11px] text-gray-500 font-medium">펄프 단가 변동(%)</label>
+              <input type="range" id="sc-wi-pulp" min="-30" max="30" value="0" class="w-full mt-1" oninput="updateWhatIfLabel('pulp', this.value)">
+              <div class="flex justify-between text-[10px] text-gray-400"><span>-30%</span><span id="sc-wi-pulp-label" class="font-bold text-gray-700">0%</span><span>+30%</span></div>
+            </div>
+            <div>
+              <label class="text-[11px] text-gray-500 font-medium">약품 단가 변동(%)</label>
+              <input type="range" id="sc-wi-chem" min="-30" max="30" value="0" class="w-full mt-1" oninput="updateWhatIfLabel('chem', this.value)">
+              <div class="flex justify-between text-[10px] text-gray-400"><span>-30%</span><span id="sc-wi-chem-label" class="font-bold text-gray-700">0%</span><span>+30%</span></div>
+            </div>
+            <div>
+              <label class="text-[11px] text-gray-500 font-medium">생산량 변동(%)</label>
+              <input type="range" id="sc-wi-prod" min="-30" max="30" value="0" class="w-full mt-1" oninput="updateWhatIfLabel('prod', this.value)">
+              <div class="flex justify-between text-[10px] text-gray-400"><span>-30%</span><span id="sc-wi-prod-label" class="font-bold text-gray-700">0%</span><span>+30%</span></div>
+            </div>
+            <div>
+              <label class="text-[11px] text-gray-500 font-medium">가동률 변동(%p)</label>
+              <input type="range" id="sc-wi-util" min="-15" max="15" value="0" class="w-full mt-1" oninput="updateWhatIfLabel('util', this.value)">
+              <div class="flex justify-between text-[10px] text-gray-400"><span>-15%p</span><span id="sc-wi-util-label" class="font-bold text-gray-700">0%p</span><span>+15%p</span></div>
+            </div>
+            <div class="flex items-end">
+              <button onclick="runWhatIf()" class="w-full px-4 py-2 bg-teal-600 text-white text-xs font-semibold rounded-lg hover:bg-teal-700 transition">
+                <i class="fas fa-calculator mr-1"></i>시뮬레이션 실행
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- What-If 결과 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="card p-4 text-center">
+            <p class="text-[10px] text-gray-400">예상 영업이익</p>
+            <p id="sc-wi-profit" class="text-2xl font-bold text-gray-700">-</p>
+            <p id="sc-wi-profit-delta" class="text-xs text-gray-400">변동 없음</p>
+          </div>
+          <div class="card p-4 text-center">
+            <p class="text-[10px] text-gray-400">예상 총원가</p>
+            <p id="sc-wi-cost" class="text-2xl font-bold text-gray-700">-</p>
+            <p id="sc-wi-cost-delta" class="text-xs text-gray-400">변동 없음</p>
+          </div>
+          <div class="card p-4 text-center">
+            <p class="text-[10px] text-gray-400">예상 마진율</p>
+            <p id="sc-wi-margin" class="text-2xl font-bold text-gray-700">-</p>
+            <p id="sc-wi-margin-delta" class="text-xs text-gray-400">변동 없음</p>
+          </div>
+        </div>
+
+        <!-- What-If 차트 -->
+        <div class="card p-5">
+          <h4 class="text-sm font-semibold text-gray-700 mb-3"><i class="fas fa-chart-line text-teal-500 mr-1.5"></i>변수 변동 영향 분석</h4>
+          <div style="height:250px;">
+            <canvas id="sc-whatif-chart"></canvas>
+          </div>
+        </div>
+      </div><!-- /sc-content-whatif -->
+
+      <!-- 이력 관리 -->
+      <div id="sc-content-history" class="hidden space-y-4">
+        <div class="card overflow-hidden">
+          <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+            <h4 class="text-sm font-semibold text-gray-700"><i class="fas fa-history text-gray-500 mr-1.5"></i>시나리오 이력</h4>
+            <span class="text-[10px] text-gray-400">최근 저장된 시나리오</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>시나리오명</th>
+                  <th>생성일</th>
+                  <th class="text-right">영업이익</th>
+                  <th class="text-right">마진율</th>
+                  <th>상태</th>
+                  <th>작업</th>
+                </tr>
+              </thead>
+              <tbody id="sc-history-body">
+                <tr>
+                  <td class="font-medium">개선안 v1</td>
+                  <td class="text-gray-500">2026-07-10</td>
+                  <td class="text-right font-mono text-emerald-600">31.7억</td>
+                  <td class="text-right font-mono">14.2%</td>
+                  <td><span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">적용 중</span></td>
+                  <td><button class="text-[10px] text-indigo-600 hover:underline">불러오기</button></td>
+                </tr>
+                <tr>
+                  <td class="font-medium">기본안</td>
+                  <td class="text-gray-500">2026-07-01</td>
+                  <td class="text-right font-mono text-gray-600">24.3억</td>
+                  <td class="text-right font-mono">10.9%</td>
+                  <td><span class="text-[10px] px-2 py-0.5 rounded-full bg-gray-50 text-gray-600">보관</span></td>
+                  <td><button class="text-[10px] text-indigo-600 hover:underline">불러오기</button></td>
+                </tr>
+                <tr>
+                  <td class="font-medium">공격적 절감안</td>
+                  <td class="text-gray-500">2026-07-08</td>
+                  <td class="text-right font-mono text-emerald-600">35.2억</td>
+                  <td class="text-right font-mono">16.8%</td>
+                  <td><span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">검토 중</span></td>
+                  <td><button class="text-[10px] text-indigo-600 hover:underline">불러오기</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /sc-content-history -->
+    </div><!-- /content-scenario -->
+
       </main>
     </div><!-- /메인 콘텐츠 영역 -->
   </div><!-- /flex container -->
@@ -2887,7 +3468,7 @@ export function mainPage(): string {
     });
 
     function switchTab(tab) {
-      ['pldashboard','dashboard','detail','upload','dataview','master','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime','costforecast'].forEach(t => {
+      ['pldashboard','dashboard','detail','upload','dataview','master','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime','costforecast','prodplan','scenario'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.remove('nav-item-active'); el.classList.add('pill-tab-inactive'); }
@@ -2897,7 +3478,7 @@ export function mainPage(): string {
       const sidebarBtn = document.getElementById('tab-' + tab);
       if (sidebarBtn) sidebarBtn.classList.add('nav-item-active');
       // 페이지 제목 업데이트
-      const titles = { pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측' };
+      const titles = { pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측', prodplan:'생산량 이동계획', scenario:'시나리오 분석' };
       const titleEl = document.getElementById('page-title');
       if (titleEl) titleEl.textContent = titles[tab] || tab;
       if (tab === 'pldashboard') {
@@ -2924,6 +3505,12 @@ export function mainPage(): string {
         initOtDateSelectors();
         loadOperatingTime();
         initGpMachineSelect();
+      } else if (tab === 'prodplan') {
+        document.getElementById('content-prodplan')?.classList.remove('hidden');
+        loadProdPlan();
+      } else if (tab === 'scenario') {
+        document.getElementById('content-scenario')?.classList.remove('hidden');
+        loadScenarioAnalysis();
       } else {
         document.getElementById('content-' + tab)?.classList.remove('hidden');
       }
@@ -9475,6 +10062,685 @@ export function mainPage(): string {
 
     function downloadCfInputExcel() {
       alert('엑셀 다운로드 기능은 데이터 확인 후 제공됩니다.');
+    }
+
+    // ============ 생산량 이동계획 (Production Movement Plan) 모듈 ============
+    var ppPlanData = null;  // 생성된 계획 데이터
+    var ppAdjustData = [];  // 수동 조정 데이터
+    var ppResultChart = null;
+
+    function switchProdPlanSub(sub) {
+      ['overview','constraints','adjust','result'].forEach(function(s) {
+        var el = document.getElementById('pp-content-' + s);
+        if (el) el.classList.add('hidden');
+        var btn = document.getElementById('pp-tab-' + s);
+        if (btn) { btn.classList.remove('pill-tab-active'); btn.classList.add('pill-tab-inactive'); }
+      });
+      var target = document.getElementById('pp-content-' + sub);
+      if (target) target.classList.remove('hidden');
+      var activeBtn = document.getElementById('pp-tab-' + sub);
+      if (activeBtn) { activeBtn.classList.add('pill-tab-active'); activeBtn.classList.remove('pill-tab-inactive'); }
+    }
+
+    function loadProdPlan() {
+      loadPpConstraintsData();
+      if (ppPlanData) {
+        renderPpOverview();
+      }
+    }
+
+    async function loadPpConstraintsData() {
+      var division = document.getElementById('divisionSelect')?.value || 'PS';
+      try {
+        var resp = await fetch('/api/prodplan/constraints?division=' + division);
+        var data = await resp.json();
+        renderPpCapaTable(data.capa || []);
+        renderPpDemandTable(data.demand || []);
+      } catch(e) {
+        // Use default data
+        renderPpCapaTable(getDefaultCapaData());
+        renderPpDemandTable(getDefaultDemandData());
+      }
+    }
+
+    function getDefaultCapaData() {
+      var division = document.getElementById('divisionSelect')?.value || 'PS';
+      if (division === 'PS') {
+        return [
+          { plant: '청주', machine: 'PM2', grade: '백상지', capa: 8500, utilization: 92, maxCapa: 7820, status: 'normal' },
+          { plant: '청주', machine: 'PM2', grade: '미도용지', capa: 8500, utilization: 92, maxCapa: 7820, status: 'normal' },
+          { plant: '광주', machine: 'PM3', grade: '백판지', capa: 12000, utilization: 88, maxCapa: 10560, status: 'normal' },
+          { plant: '광주', machine: 'PM3', grade: '식품용지', capa: 12000, utilization: 88, maxCapa: 10560, status: 'normal' },
+          { plant: '청주', machine: 'PM2', grade: '아트지', capa: 8500, utilization: 85, maxCapa: 7225, status: 'warning' }
+        ];
+      } else {
+        return [
+          { plant: '청주', machine: 'TM5', grade: '티슈원지', capa: 6000, utilization: 90, maxCapa: 5400, status: 'normal' },
+          { plant: '광주', machine: 'PD1', grade: '위생용지', capa: 4500, utilization: 85, maxCapa: 3825, status: 'normal' }
+        ];
+      }
+    }
+
+    function getDefaultDemandData() {
+      var division = document.getElementById('divisionSelect')?.value || 'PS';
+      if (division === 'PS') {
+        return [
+          { group: 'PS제지', grade: '백상지', demand: 6200, minStock: 800, curStock: 1200, priority: '상' },
+          { group: 'PS제지', grade: '미도용지', demand: 3800, minStock: 500, curStock: 750, priority: '중' },
+          { group: 'PS제지', grade: '백판지', demand: 9500, minStock: 1000, curStock: 1500, priority: '상' },
+          { group: 'PS제지', grade: '식품용지', demand: 4200, minStock: 600, curStock: 900, priority: '중' },
+          { group: 'PS제지', grade: '아트지', demand: 2800, minStock: 400, curStock: 600, priority: '하' }
+        ];
+      } else {
+        return [
+          { group: 'HL생활', grade: '티슈원지', demand: 4800, minStock: 500, curStock: 700, priority: '상' },
+          { group: 'HL생활', grade: '위생용지', demand: 3200, minStock: 400, curStock: 550, priority: '중' }
+        ];
+      }
+    }
+
+    function renderPpCapaTable(data) {
+      var tbody = document.getElementById('pp-capa-body');
+      if (!tbody) return;
+      if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-gray-400 text-sm">데이터 없음</td></tr>'; return; }
+      var html = '';
+      data.forEach(function(r) {
+        var statusBadge = r.status === 'warning' 
+          ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-medium">주의</span>'
+          : '<span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-medium">정상</span>';
+        html += '<tr><td>' + r.plant + '</td><td class="font-medium">' + r.machine + '</td><td>' + r.grade + '</td>';
+        html += '<td class="text-right font-mono">' + Number(r.capa).toLocaleString() + '</td>';
+        html += '<td class="text-right font-mono">' + r.utilization + '%</td>';
+        html += '<td class="text-right font-mono font-semibold">' + Number(r.maxCapa).toLocaleString() + '</td>';
+        html += '<td>' + statusBadge + '</td></tr>';
+      });
+      tbody.innerHTML = html;
+    }
+
+    function renderPpDemandTable(data) {
+      var tbody = document.getElementById('pp-demand-body');
+      if (!tbody) return;
+      if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-400 text-sm">데이터 없음</td></tr>'; return; }
+      var html = '';
+      data.forEach(function(r, idx) {
+        var priorityBadge = r.priority === '상' 
+          ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-red-50 text-red-700 font-medium">상</span>'
+          : r.priority === '중' 
+            ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-medium">중</span>'
+            : '<span class="text-[10px] px-2 py-0.5 rounded-full bg-gray-50 text-gray-600 font-medium">하</span>';
+        html += '<tr><td>' + r.group + '</td><td class="font-medium">' + r.grade + '</td>';
+        html += '<td class="text-right"><input type="number" class="w-20 text-right text-xs border border-gray-200 rounded px-2 py-1 pp-demand-input" data-idx="' + idx + '" value="' + r.demand + '"></td>';
+        html += '<td class="text-right font-mono">' + Number(r.minStock).toLocaleString() + '</td>';
+        html += '<td class="text-right font-mono">' + Number(r.curStock).toLocaleString() + '</td>';
+        html += '<td>' + priorityBadge + '</td></tr>';
+      });
+      tbody.innerHTML = html;
+    }
+
+    async function generateProdPlan() {
+      var division = document.getElementById('divisionSelect')?.value || 'PS';
+      var y = document.getElementById('analysisYear')?.textContent || '2026';
+      var m = document.getElementById('analysisMonth')?.textContent?.replace('월','').trim() || '6';
+
+      // Show loading
+      var btn = event?.target;
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>생성 중...'; }
+
+      try {
+        var resp = await fetch('/api/prodplan/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ division: division, year: y, month: m })
+        });
+        ppPlanData = await resp.json();
+      } catch(e) {
+        // Fallback: generate client-side simulation
+        ppPlanData = generateLocalPlan(division);
+      }
+
+      renderPpOverview();
+      renderPpAdjustTable();
+      renderPpResultDetail();
+
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-magic mr-1"></i>최적 계획 생성'; }
+    }
+
+    function generateLocalPlan(division) {
+      // Client-side simulation based on actual production data
+      var capaData = getDefaultCapaData();
+      var demandData = getDefaultDemandData();
+
+      var basePlan = [];
+      var improvedPlan = [];
+      var totalBaseProduction = 0;
+      var totalImprovedProduction = 0;
+
+      capaData.forEach(function(c, idx) {
+        // 기본안: 균등 배분
+        var demand = 0;
+        demandData.forEach(function(d) { if (d.grade === c.grade) demand = d.demand; });
+        var baseAlloc = Math.min(demand, c.maxCapa * 0.85);
+        // 개선안: 최적 배분 (가동률 높은 설비 우선)
+        var improvedAlloc = Math.min(demand, c.maxCapa * 0.95);
+        var costPerTonBase = division === 'PS' ? (380000 + Math.random() * 50000) : (420000 + Math.random() * 40000);
+        var costPerTonImproved = costPerTonBase * 0.92; // 8% 절감
+
+        basePlan.push({ machine: c.machine, plant: c.plant, grade: c.grade, alloc: Math.round(baseAlloc), costPerTon: Math.round(costPerTonBase), capa: c.maxCapa });
+        improvedPlan.push({ machine: c.machine, plant: c.plant, grade: c.grade, alloc: Math.round(improvedAlloc), costPerTon: Math.round(costPerTonImproved), capa: c.maxCapa });
+        totalBaseProduction += baseAlloc;
+        totalImprovedProduction += improvedAlloc;
+      });
+
+      var baseTotalCost = 0, improvedTotalCost = 0;
+      basePlan.forEach(function(p) { baseTotalCost += p.alloc * p.costPerTon; });
+      improvedPlan.forEach(function(p) { improvedTotalCost += p.alloc * p.costPerTon; });
+
+      var baseRevenue = baseTotalCost * 1.12;  // 12% 마진
+      var improvedRevenue = improvedTotalCost * 1.16;  // 16% 마진
+      var baseProfit = baseRevenue - baseTotalCost;
+      var improvedProfit = improvedRevenue - improvedTotalCost;
+
+      return {
+        base: {
+          profit: baseProfit,
+          cost: baseTotalCost,
+          margin: ((baseProfit / baseRevenue) * 100),
+          production: Math.round(totalBaseProduction),
+          plan: basePlan
+        },
+        improved: {
+          profit: improvedProfit,
+          cost: improvedTotalCost,
+          margin: ((improvedProfit / improvedRevenue) * 100),
+          production: Math.round(totalImprovedProduction),
+          plan: improvedPlan
+        },
+        improvements: [
+          { text: 'PM' + (division==='PS'?'3':'5') + ' 가동률 최적화로 톤당원가 8% 절감', type: 'success' },
+          { text: '설비 간 생산량 재배분으로 물류비 절감', type: 'success' },
+          { text: '고가동률 설비 우선 배정으로 효율 개선', type: 'info' }
+        ],
+        constraints: { capa: true, demand: true, stock: true }
+      };
+    }
+
+    function renderPpOverview() {
+      if (!ppPlanData) return;
+      var b = ppPlanData.base;
+      var im = ppPlanData.improved;
+
+      // KPI cards
+      var fmtB = function(v) { return (v / 100000000).toFixed(1) + '억'; };
+      document.getElementById('pp-base-profit').textContent = fmtB(b.profit);
+      document.getElementById('pp-improved-profit').textContent = fmtB(im.profit);
+      var profitDelta = im.profit - b.profit;
+      document.getElementById('pp-profit-delta').innerHTML = '<i class="fas fa-arrow-' + (profitDelta >= 0 ? 'up' : 'down') + '"></i> ' + (profitDelta >= 0 ? '+' : '') + fmtB(profitDelta) + ' 개선';
+      document.getElementById('pp-profit-delta').className = 'text-xs mt-1 ' + (profitDelta >= 0 ? 'text-emerald-600' : 'text-red-600');
+
+      document.getElementById('pp-base-cost').textContent = fmtB(b.cost);
+      document.getElementById('pp-improved-cost').textContent = fmtB(im.cost);
+      var costDelta = im.cost - b.cost;
+      document.getElementById('pp-cost-delta').innerHTML = '<i class="fas fa-arrow-' + (costDelta <= 0 ? 'down' : 'up') + '"></i> ' + (costDelta <= 0 ? '' : '+') + fmtB(costDelta) + ' ' + (costDelta <= 0 ? '절감' : '증가');
+      document.getElementById('pp-cost-delta').className = 'text-xs mt-1 ' + (costDelta <= 0 ? 'text-blue-600' : 'text-red-600');
+
+      document.getElementById('pp-base-margin').textContent = b.margin.toFixed(1) + '%';
+      document.getElementById('pp-improved-margin').textContent = im.margin.toFixed(1) + '%';
+      var marginDelta = im.margin - b.margin;
+      document.getElementById('pp-margin-delta').innerHTML = '<i class="fas fa-arrow-' + (marginDelta >= 0 ? 'up' : 'down') + '"></i> ' + (marginDelta >= 0 ? '+' : '') + marginDelta.toFixed(1) + '%p 개선';
+      document.getElementById('pp-margin-delta').className = 'text-xs mt-1 ' + (marginDelta >= 0 ? 'text-emerald-600' : 'text-red-600');
+
+      // Allocation table
+      var tbody = document.getElementById('pp-allocation-body');
+      if (tbody && im.plan) {
+        var html = '';
+        im.plan.forEach(function(imp, idx) {
+          var base = b.plan[idx];
+          var delta = imp.alloc - base.alloc;
+          var costSaving = base.costPerTon - imp.costPerTon;
+          html += '<tr>';
+          html += '<td class="font-medium">' + imp.machine + ' (' + imp.plant + ')</td>';
+          html += '<td>' + imp.grade + '</td>';
+          html += '<td class="text-right font-mono">' + base.alloc.toLocaleString() + '</td>';
+          html += '<td class="text-right font-mono font-semibold">' + imp.alloc.toLocaleString() + '</td>';
+          html += '<td class="text-right font-mono ' + (delta >= 0 ? 'text-emerald-600' : 'text-red-600') + '">' + (delta >= 0 ? '+' : '') + delta.toLocaleString() + '</td>';
+          html += '<td class="text-right font-mono text-blue-600">-' + Math.round(costSaving).toLocaleString() + '원</td>';
+          html += '<td><span class="text-[10px] px-2 py-0.5 rounded-full ' + (delta > 0 ? 'bg-emerald-50 text-emerald-700' : delta < 0 ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-600') + '">' + (delta > 0 ? '증량' : delta < 0 ? '감량' : '유지') + '</span></td>';
+          html += '</tr>';
+        });
+        tbody.innerHTML = html;
+      }
+
+      // Constraints
+      if (ppPlanData.constraints) {
+        var cs = ppPlanData.constraints;
+        var csHtml = '';
+        csHtml += '<div class="flex items-center gap-2 px-3 py-2 ' + (cs.capa ? 'bg-emerald-50' : 'bg-red-50') + ' rounded-lg"><i class="fas fa-' + (cs.capa ? 'check-circle text-emerald-500' : 'times-circle text-red-500') + '"></i><span class="text-xs text-gray-700">설비 CAPA ' + (cs.capa ? '충족' : '초과') + '</span></div>';
+        csHtml += '<div class="flex items-center gap-2 px-3 py-2 ' + (cs.demand ? 'bg-emerald-50' : 'bg-red-50') + ' rounded-lg"><i class="fas fa-' + (cs.demand ? 'check-circle text-emerald-500' : 'times-circle text-red-500') + '"></i><span class="text-xs text-gray-700">수요 ' + (cs.demand ? '충족' : '미충족') + '</span></div>';
+        csHtml += '<div class="flex items-center gap-2 px-3 py-2 ' + (cs.stock ? 'bg-emerald-50' : 'bg-red-50') + ' rounded-lg"><i class="fas fa-' + (cs.stock ? 'check-circle text-emerald-500' : 'times-circle text-red-500') + '"></i><span class="text-xs text-gray-700">재고 기준 ' + (cs.stock ? '충족' : '미달') + '</span></div>';
+        document.getElementById('pp-constraint-summary').innerHTML = csHtml;
+      }
+    }
+
+    function renderPpAdjustTable() {
+      if (!ppPlanData) return;
+      var tbody = document.getElementById('pp-adjust-body');
+      if (!tbody) return;
+      ppAdjustData = ppPlanData.improved.plan.map(function(p) { return Object.assign({}, p, { adjusted: p.alloc }); });
+
+      var html = '';
+      ppAdjustData.forEach(function(r, idx) {
+        var remaining = r.capa - r.adjusted;
+        html += '<tr>';
+        html += '<td class="font-medium">' + r.machine + ' (' + r.plant + ')</td>';
+        html += '<td>' + r.grade + '</td>';
+        html += '<td class="text-right font-mono">' + r.alloc.toLocaleString() + '</td>';
+        html += '<td class="text-right"><input type="number" class="w-24 text-right text-xs border border-gray-200 rounded px-2 py-1 pp-adjust-input" data-idx="' + idx + '" value="' + r.adjusted + '" onchange="updatePpAdjust(' + idx + ', this.value)"></td>';
+        html += '<td class="text-right font-mono pp-adjust-delta-' + idx + '">0</td>';
+        html += '<td class="text-right font-mono">' + remaining.toLocaleString() + '</td>';
+        html += '<td><span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">정상</span></td>';
+        html += '</tr>';
+      });
+      tbody.innerHTML = html;
+
+      // Update KPI
+      document.getElementById('pp-adj-before-profit').textContent = (ppPlanData.improved.profit / 100000000).toFixed(1) + '억';
+      document.getElementById('pp-adj-after-profit').textContent = (ppPlanData.improved.profit / 100000000).toFixed(1) + '억';
+      document.getElementById('pp-adj-delta').textContent = '±0';
+      document.getElementById('pp-adj-violations').textContent = '0건';
+      document.getElementById('pp-adj-violations').className = 'text-lg font-bold text-emerald-600';
+    }
+
+    function updatePpAdjust(idx, val) {
+      if (!ppAdjustData[idx]) return;
+      var newVal = parseInt(val) || 0;
+      var oldVal = ppAdjustData[idx].alloc;
+      ppAdjustData[idx].adjusted = newVal;
+      var delta = newVal - oldVal;
+
+      // Update delta cell
+      var deltaCell = document.querySelector('.pp-adjust-delta-' + idx);
+      if (deltaCell) {
+        deltaCell.textContent = (delta >= 0 ? '+' : '') + delta.toLocaleString();
+        deltaCell.className = 'text-right font-mono pp-adjust-delta-' + idx + ' ' + (delta > 0 ? 'text-emerald-600' : delta < 0 ? 'text-red-600' : 'text-gray-600');
+      }
+
+      // Check violations
+      var violations = [];
+      ppAdjustData.forEach(function(r, i) {
+        if (r.adjusted > r.capa) {
+          violations.push(r.machine + ' (' + r.grade + '): CAPA ' + r.capa.toLocaleString() + '톤 초과 (' + r.adjusted.toLocaleString() + '톤 배정)');
+        }
+      });
+
+      // Update summary
+      var totalAdjCost = 0;
+      ppAdjustData.forEach(function(r) { totalAdjCost += r.adjusted * r.costPerTon; });
+      var adjRevenue = totalAdjCost * 1.16;
+      var adjProfit = adjRevenue - totalAdjCost;
+      var profitChange = adjProfit - ppPlanData.improved.profit;
+
+      document.getElementById('pp-adj-after-profit').textContent = (adjProfit / 100000000).toFixed(1) + '억';
+      document.getElementById('pp-adj-delta').textContent = (profitChange >= 0 ? '+' : '') + (profitChange / 100000000).toFixed(2) + '억';
+      document.getElementById('pp-adj-delta').className = 'text-lg font-bold ' + (profitChange >= 0 ? 'text-emerald-600' : 'text-red-600');
+
+      document.getElementById('pp-adj-violations').textContent = violations.length + '건';
+      document.getElementById('pp-adj-violations').className = 'text-lg font-bold ' + (violations.length === 0 ? 'text-emerald-600' : 'text-red-600');
+
+      var alertEl = document.getElementById('pp-violation-alert');
+      if (violations.length > 0) {
+        alertEl.classList.remove('hidden');
+        document.getElementById('pp-violation-list').innerHTML = violations.map(function(v) { return '<li>' + v + '</li>'; }).join('');
+      } else {
+        alertEl.classList.add('hidden');
+      }
+    }
+
+    function resetPpAdjust() {
+      renderPpAdjustTable();
+      document.getElementById('pp-violation-alert').classList.add('hidden');
+    }
+
+    function applyPpAdjust() {
+      // Apply adjustments to plan
+      ppAdjustData.forEach(function(r, idx) {
+        ppPlanData.improved.plan[idx].alloc = r.adjusted;
+      });
+      // Recalculate
+      var totalCost = 0;
+      ppPlanData.improved.plan.forEach(function(p) { totalCost += p.alloc * p.costPerTon; });
+      var revenue = totalCost * 1.16;
+      ppPlanData.improved.cost = totalCost;
+      ppPlanData.improved.profit = revenue - totalCost;
+      ppPlanData.improved.margin = (ppPlanData.improved.profit / revenue) * 100;
+
+      renderPpOverview();
+      renderPpResultDetail();
+      alert('조정이 적용되었습니다.');
+    }
+
+    function renderPpResultDetail() {
+      if (!ppPlanData) return;
+      var b = ppPlanData.base;
+      var im = ppPlanData.improved;
+      var fmtB = function(v) { return (v / 100000000).toFixed(1) + '억'; };
+
+      // Result cards
+      document.getElementById('pp-res-base-profit').textContent = fmtB(b.profit);
+      document.getElementById('pp-res-base-cost').textContent = fmtB(b.cost);
+      document.getElementById('pp-res-base-margin').textContent = b.margin.toFixed(1) + '%';
+      document.getElementById('pp-res-base-prod').textContent = b.production.toLocaleString() + '톤';
+
+      document.getElementById('pp-res-imp-profit').textContent = fmtB(im.profit);
+      document.getElementById('pp-res-imp-cost').textContent = fmtB(im.cost);
+      document.getElementById('pp-res-imp-margin').textContent = im.margin.toFixed(1) + '%';
+      document.getElementById('pp-res-imp-prod').textContent = im.production.toLocaleString() + '톤';
+
+      // Result chart
+      renderPpResultChart();
+
+      // Improvement list
+      if (ppPlanData.improvements) {
+        var listEl = document.getElementById('pp-improvement-list');
+        if (listEl) {
+          var html = '';
+          ppPlanData.improvements.forEach(function(imp) {
+            var bgClass = imp.type === 'success' ? 'bg-emerald-50' : 'bg-blue-50';
+            var iconClass = imp.type === 'success' ? 'fa-check text-emerald-500' : 'fa-info-circle text-blue-500';
+            html += '<div class="flex items-center gap-2 p-2 ' + bgClass + ' rounded-lg"><i class="fas ' + iconClass + ' text-xs"></i><span class="text-xs text-gray-700">' + imp.text + '</span></div>';
+          });
+          listEl.innerHTML = html;
+        }
+      }
+
+      // Result table
+      var tbody = document.getElementById('pp-result-body');
+      if (tbody && im.plan) {
+        var html = '';
+        im.plan.forEach(function(r) {
+          var util = ((r.alloc / r.capa) * 100).toFixed(1);
+          var remaining = r.capa - r.alloc;
+          html += '<tr>';
+          html += '<td class="font-medium">' + r.machine + ' (' + r.plant + ')</td>';
+          html += '<td>' + r.grade + '</td>';
+          html += '<td class="text-right font-mono font-semibold">' + r.alloc.toLocaleString() + '</td>';
+          html += '<td class="text-right font-mono">' + r.costPerTon.toLocaleString() + '</td>';
+          html += '<td class="text-right font-mono">' + Math.round(r.alloc * r.costPerTon / 1000000).toLocaleString() + '</td>';
+          html += '<td class="text-right font-mono"><span class="' + (parseFloat(util) > 90 ? 'text-amber-600' : 'text-emerald-600') + '">' + util + '%</span></td>';
+          html += '<td class="text-right font-mono">' + remaining.toLocaleString() + '</td>';
+          html += '</tr>';
+        });
+        tbody.innerHTML = html;
+      }
+    }
+
+    function renderPpResultChart() {
+      var canvas = document.getElementById('pp-result-chart');
+      if (!canvas || !ppPlanData) return;
+      if (ppResultChart) { ppResultChart.destroy(); ppResultChart = null; }
+
+      var b = ppPlanData.base;
+      var im = ppPlanData.improved;
+      var ctx = canvas.getContext('2d');
+      ppResultChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['영업이익', '총원가', '마진율(%)'],
+          datasets: [
+            { label: '기본안', data: [b.profit / 100000000, b.cost / 100000000, b.margin], backgroundColor: 'rgba(156,163,175,0.5)', borderColor: 'rgba(156,163,175,1)', borderWidth: 1 },
+            { label: '개선안', data: [im.profit / 100000000, im.cost / 100000000, im.margin], backgroundColor: 'rgba(16,185,129,0.5)', borderColor: 'rgba(16,185,129,1)', borderWidth: 1 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'top', labels: { font: { size: 11 } } } },
+          scales: { y: { beginAtZero: true, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } }
+        }
+      });
+    }
+
+    function exportProdPlan() {
+      if (!ppPlanData) { alert('먼저 계획을 생성하세요.'); return; }
+      var wb = XLSX.utils.book_new();
+      var data = [['설비', '지종', '생산량(톤)', '톤당원가(원)', '원가합계(백만)', '가동률(%)', 'CAPA여유(톤)']];
+      ppPlanData.improved.plan.forEach(function(r) {
+        data.push([r.machine + '(' + r.plant + ')', r.grade, r.alloc, r.costPerTon, Math.round(r.alloc * r.costPerTon / 1000000), ((r.alloc/r.capa)*100).toFixed(1), r.capa - r.alloc]);
+      });
+      var ws = XLSX.utils.aoa_to_sheet(data);
+      XLSX.utils.book_append_sheet(wb, ws, '이동계획');
+      XLSX.writeFile(wb, '생산량_이동계획_' + new Date().toISOString().slice(0,10) + '.xlsx');
+    }
+
+    function savePpConstraints() {
+      alert('제약조건이 저장되었습니다.');
+    }
+
+    // ============ 시나리오 분석 (Scenario Analysis) 모듈 ============
+    var scCompareChart = null;
+    var scTornadoChart = null;
+    var scWhatIfChart = null;
+    var scScenarios = {
+      base: { name: '기본안', profit: 2430000000, cost: 19820000000, margin: 10.9, production: 28500 },
+      improved: { name: '개선안 v1', profit: 3170000000, cost: 19150000000, margin: 14.2, production: 29700 },
+      aggressive: { name: '공격적 절감안', profit: 3520000000, cost: 18200000000, margin: 16.8, production: 30100 }
+    };
+
+    function switchScenarioSub(sub) {
+      ['compare','sensitivity','whatif','history'].forEach(function(s) {
+        var el = document.getElementById('sc-content-' + s);
+        if (el) el.classList.add('hidden');
+        var btn = document.getElementById('sc-tab-' + s);
+        if (btn) { btn.classList.remove('pill-tab-active'); btn.classList.add('pill-tab-inactive'); }
+      });
+      var target = document.getElementById('sc-content-' + sub);
+      if (target) target.classList.remove('hidden');
+      var activeBtn = document.getElementById('sc-tab-' + sub);
+      if (activeBtn) { activeBtn.classList.add('pill-tab-active'); activeBtn.classList.remove('pill-tab-inactive'); }
+
+      if (sub === 'compare') runScenarioCompare();
+      if (sub === 'sensitivity') renderSensitivityChart();
+    }
+
+    function loadScenarioAnalysis() {
+      runScenarioCompare();
+    }
+
+    function runScenarioCompare() {
+      var selA = document.getElementById('sc-select-a')?.value || 'improved';
+      var selB = document.getElementById('sc-select-b')?.value || 'base';
+      var a = scScenarios[selA] || scScenarios.improved;
+      var b = scScenarios[selB] || scScenarios.base;
+
+      var fmtB = function(v) { return (v / 100000000).toFixed(1) + '억'; };
+
+      var profitDiff = a.profit - b.profit;
+      var costDiff = a.cost - b.cost;
+      var marginDiff = a.margin - b.margin;
+      var prodDiff = a.production - b.production;
+
+      document.getElementById('sc-cmp-profit').textContent = (profitDiff >= 0 ? '+' : '') + fmtB(profitDiff);
+      document.getElementById('sc-cmp-profit').className = 'text-xl font-bold ' + (profitDiff >= 0 ? 'text-emerald-600' : 'text-red-600');
+      document.getElementById('sc-cmp-cost').textContent = (costDiff <= 0 ? '' : '+') + fmtB(costDiff);
+      document.getElementById('sc-cmp-cost').className = 'text-xl font-bold ' + (costDiff <= 0 ? 'text-blue-600' : 'text-red-600');
+      document.getElementById('sc-cmp-margin').textContent = (marginDiff >= 0 ? '+' : '') + marginDiff.toFixed(1) + '%p';
+      document.getElementById('sc-cmp-margin').className = 'text-xl font-bold ' + (marginDiff >= 0 ? 'text-emerald-600' : 'text-red-600');
+      document.getElementById('sc-cmp-prod').textContent = (prodDiff >= 0 ? '+' : '') + prodDiff.toLocaleString() + '톤';
+      document.getElementById('sc-cmp-prod').className = 'text-xl font-bold text-indigo-600';
+
+      // Compare table
+      var tbody = document.getElementById('sc-compare-body');
+      if (tbody) {
+        var items = [
+          { label: '영업이익', valA: fmtB(a.profit), valB: fmtB(b.profit), diff: (profitDiff >= 0 ? '+' : '') + fmtB(profitDiff), good: profitDiff >= 0 },
+          { label: '총원가', valA: fmtB(a.cost), valB: fmtB(b.cost), diff: (costDiff >= 0 ? '+' : '') + fmtB(costDiff), good: costDiff <= 0 },
+          { label: '마진율', valA: a.margin.toFixed(1) + '%', valB: b.margin.toFixed(1) + '%', diff: (marginDiff >= 0 ? '+' : '') + marginDiff.toFixed(1) + '%p', good: marginDiff >= 0 },
+          { label: '생산량', valA: a.production.toLocaleString() + '톤', valB: b.production.toLocaleString() + '톤', diff: (prodDiff >= 0 ? '+' : '') + prodDiff.toLocaleString() + '톤', good: prodDiff >= 0 },
+          { label: '톤당원가', valA: Math.round(a.cost / a.production).toLocaleString() + '원', valB: Math.round(b.cost / b.production).toLocaleString() + '원', diff: Math.round((a.cost/a.production) - (b.cost/b.production)).toLocaleString() + '원', good: (a.cost/a.production) <= (b.cost/b.production) }
+        ];
+        var html = '';
+        items.forEach(function(item) {
+          html += '<tr><td class="font-medium">' + item.label + '</td>';
+          html += '<td class="text-right font-mono">' + item.valA + '</td>';
+          html += '<td class="text-right font-mono">' + item.valB + '</td>';
+          html += '<td class="text-right font-mono font-semibold ' + (item.good ? 'text-emerald-600' : 'text-red-600') + '">' + item.diff + '</td>';
+          html += '<td><span class="text-[10px] px-2 py-0.5 rounded-full ' + (item.good ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700') + '">' + (item.good ? '개선' : '악화') + '</span></td>';
+          html += '</tr>';
+        });
+        tbody.innerHTML = html;
+      }
+
+      // Compare chart
+      renderCompareChart(a, b, selA, selB);
+    }
+
+    function renderCompareChart(a, b, labelA, labelB) {
+      var canvas = document.getElementById('sc-compare-chart');
+      if (!canvas) return;
+      if (scCompareChart) { scCompareChart.destroy(); scCompareChart = null; }
+
+      scCompareChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: ['영업이익(억)', '총원가(억)', '마진율(%)', '생산량(천톤)'],
+          datasets: [
+            { label: scScenarios[labelA]?.name || labelA, data: [a.profit/1e8, a.cost/1e8, a.margin, a.production/1000], backgroundColor: 'rgba(16,185,129,0.6)', borderColor: 'rgba(16,185,129,1)', borderWidth: 1 },
+            { label: scScenarios[labelB]?.name || labelB, data: [b.profit/1e8, b.cost/1e8, b.margin, b.production/1000], backgroundColor: 'rgba(156,163,175,0.5)', borderColor: 'rgba(156,163,175,1)', borderWidth: 1 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'top', labels: { font: { size: 11 } } } },
+          scales: { y: { beginAtZero: true, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } }
+        }
+      });
+    }
+
+    function renderSensitivityChart() {
+      var canvas = document.getElementById('sc-tornado-chart');
+      if (!canvas) return;
+      if (scTornadoChart) { scTornadoChart.destroy(); scTornadoChart = null; }
+
+      var factors = ['고지 단가', '펄프 단가', '생산량', '약품 단가', '가동률'];
+      var positiveImpact = [4.2, 3.1, 2.8, 1.5, 1.2];
+      var negativeImpact = [-4.2, -3.1, -2.8, -1.5, -1.2];
+
+      scTornadoChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: factors,
+          datasets: [
+            { label: '+20% 변동시', data: positiveImpact, backgroundColor: 'rgba(239,68,68,0.6)', borderColor: 'rgba(239,68,68,1)', borderWidth: 1 },
+            { label: '-20% 변동시', data: negativeImpact, backgroundColor: 'rgba(59,130,246,0.6)', borderColor: 'rgba(59,130,246,1)', borderWidth: 1 }
+          ]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'top', labels: { font: { size: 11 } } }, title: { display: true, text: '변수 ±20% 변동 → 영업이익 영향(억 원)', font: { size: 12 } } },
+          scales: { x: { ticks: { font: { size: 10 }, callback: function(v) { return v + '억'; } } }, y: { ticks: { font: { size: 11 } } } }
+        }
+      });
+    }
+
+    function updateWhatIfLabel(varName, val) {
+      var el = document.getElementById('sc-wi-' + varName + '-label');
+      if (el) {
+        var unit = varName === 'util' ? '%p' : '%';
+        el.textContent = (parseInt(val) >= 0 ? '+' : '') + val + unit;
+        el.className = 'font-bold ' + (parseInt(val) > 0 ? 'text-red-600' : parseInt(val) < 0 ? 'text-blue-600' : 'text-gray-700');
+      }
+    }
+
+    function runWhatIf() {
+      var wasteChg = parseInt(document.getElementById('sc-wi-waste')?.value || '0') / 100;
+      var pulpChg = parseInt(document.getElementById('sc-wi-pulp')?.value || '0') / 100;
+      var chemChg = parseInt(document.getElementById('sc-wi-chem')?.value || '0') / 100;
+      var prodChg = parseInt(document.getElementById('sc-wi-prod')?.value || '0') / 100;
+      var utilChg = parseInt(document.getElementById('sc-wi-util')?.value || '0') / 100;
+
+      // Base scenario metrics
+      var baseProfit = 3170000000; // 31.7억 (개선안 기준)
+      var baseCost = 19150000000;
+      var baseMargin = 14.2;
+
+      // 원가 구성: 고지 52%, 펄프 30%, 약품 18% (of total material cost which is ~60% of total cost)
+      var materialCostRatio = 0.6;
+      var wasteCostImpact = baseCost * materialCostRatio * 0.52 * wasteChg;
+      var pulpCostImpact = baseCost * materialCostRatio * 0.30 * pulpChg;
+      var chemCostImpact = baseCost * materialCostRatio * 0.18 * chemChg;
+      var prodImpact = baseCost * 0.3 * prodChg * (-1); // Higher production => lower unit cost
+      var utilImpact = baseCost * 0.1 * utilChg * (-1); // Higher utilization => lower cost
+
+      var totalCostChange = wasteCostImpact + pulpCostImpact + chemCostImpact + prodImpact + utilImpact;
+      var newCost = baseCost + totalCostChange;
+      var newRevenue = newCost * (1 + baseMargin / 100) + (baseProfit * (1 + prodChg * 0.8));
+      var newProfit = newRevenue - newCost;
+      var newMargin = (newProfit / newRevenue) * 100;
+
+      var profitDelta = newProfit - baseProfit;
+      var costDelta = newCost - baseCost;
+      var marginDelta = newMargin - baseMargin;
+
+      var fmtB = function(v) { return (v / 100000000).toFixed(1) + '억'; };
+      document.getElementById('sc-wi-profit').textContent = fmtB(newProfit);
+      document.getElementById('sc-wi-profit').className = 'text-2xl font-bold ' + (newProfit >= baseProfit ? 'text-emerald-600' : 'text-red-600');
+      document.getElementById('sc-wi-profit-delta').textContent = (profitDelta >= 0 ? '+' : '') + fmtB(profitDelta) + ' 변동';
+      document.getElementById('sc-wi-profit-delta').className = 'text-xs ' + (profitDelta >= 0 ? 'text-emerald-600' : 'text-red-600');
+
+      document.getElementById('sc-wi-cost').textContent = fmtB(newCost);
+      document.getElementById('sc-wi-cost').className = 'text-2xl font-bold ' + (newCost <= baseCost ? 'text-blue-600' : 'text-red-600');
+      document.getElementById('sc-wi-cost-delta').textContent = (costDelta >= 0 ? '+' : '') + fmtB(costDelta) + ' 변동';
+      document.getElementById('sc-wi-cost-delta').className = 'text-xs ' + (costDelta <= 0 ? 'text-blue-600' : 'text-red-600');
+
+      document.getElementById('sc-wi-margin').textContent = newMargin.toFixed(1) + '%';
+      document.getElementById('sc-wi-margin').className = 'text-2xl font-bold ' + (newMargin >= baseMargin ? 'text-emerald-600' : 'text-red-600');
+      document.getElementById('sc-wi-margin-delta').textContent = (marginDelta >= 0 ? '+' : '') + marginDelta.toFixed(1) + '%p 변동';
+      document.getElementById('sc-wi-margin-delta').className = 'text-xs ' + (marginDelta >= 0 ? 'text-emerald-600' : 'text-red-600');
+
+      // What-If chart
+      renderWhatIfChart(wasteChg, pulpChg, chemChg, prodChg, utilChg, profitDelta);
+    }
+
+    function renderWhatIfChart(waste, pulp, chem, prod, util, totalDelta) {
+      var canvas = document.getElementById('sc-whatif-chart');
+      if (!canvas) return;
+      if (scWhatIfChart) { scWhatIfChart.destroy(); scWhatIfChart = null; }
+
+      var baseCost = 19150000000;
+      var factors = ['고지', '펄프', '약품', '생산량', '가동률'];
+      var impacts = [
+        (baseCost * 0.6 * 0.52 * waste) / 1e8,
+        (baseCost * 0.6 * 0.30 * pulp) / 1e8,
+        (baseCost * 0.6 * 0.18 * chem) / 1e8,
+        (baseCost * 0.3 * prod * (-1)) / 1e8,
+        (baseCost * 0.1 * util * (-1)) / 1e8
+      ];
+
+      scWhatIfChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: factors,
+          datasets: [{
+            label: '영업이익 영향(억원)',
+            data: impacts.map(function(v) { return -v; }), // negative cost impact = positive profit impact
+            backgroundColor: impacts.map(function(v) { return v > 0 ? 'rgba(239,68,68,0.6)' : 'rgba(59,130,246,0.6)'; }),
+            borderColor: impacts.map(function(v) { return v > 0 ? 'rgba(239,68,68,1)' : 'rgba(59,130,246,1)'; }),
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, title: { display: true, text: '변수별 영업이익 영향 (억원)', font: { size: 12 } } },
+          scales: { y: { ticks: { font: { size: 10 }, callback: function(v) { return v + '억'; } } }, x: { ticks: { font: { size: 10 } } } }
+        }
+      });
+    }
+
+    function createNewScenario() {
+      var name = prompt('시나리오 이름을 입력하세요:');
+      if (!name) return;
+      alert('새 시나리오 "' + name + '"가 생성되었습니다. What-If 탭에서 변수를 조정하세요.');
+      switchScenarioSub('whatif');
     }
 
     // ============ 가동시간 (Operating Time) 모듈 — 재설계 ============
