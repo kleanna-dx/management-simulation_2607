@@ -107,6 +107,161 @@ app.get('/api/divisions/:code/material-groups', (c) => {
 
 // ============ 기본 마스터 API ============
 
+// ============ 원가 변수 예측 (Cost Forecast) API ============
+app.get('/api/cost-forecast/monthly', async (c) => {
+  const db = c.env.DB
+  const year = c.req.query('year') || new Date().getFullYear().toString()
+  const month = c.req.query('month') || '06'
+  const machine = c.req.query('machine') || 'ALL'
+  const div = c.req.query('division') || 'PS'
+  const monthsCount = parseInt(c.req.query('months') || '12')
+
+  // 기준 YM 계산
+  const baseYm = `${year}${month.padStart(2, '0')}`
+  
+  // 과거 N개월 YM 리스트 생성
+  const ymList: string[] = []
+  let y = parseInt(year)
+  let m = parseInt(month)
+  for (let i = 0; i < monthsCount; i++) {
+    ymList.unshift(`${y}${String(m).padStart(2, '0')}`)
+    m--
+    if (m < 1) { m = 12; y-- }
+  }
+
+  const machineFilter = machine === 'ALL' ? '' : ` AND machine_code = '${machine}'`
+  
+  // 각 월별 원가 데이터 집계
+  const months: any[] = []
+  for (const ym of ymList) {
+    try {
+      const res = await db.prepare(`
+        SELECT 
+          SUM(CASE WHEN material_group_major_name = '고지'
+            THEN CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL) ELSE 0 END) as waste_paper_cost,
+          SUM(CASE WHEN material_group_major_name = '펄프'
+            THEN CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL) ELSE 0 END) as pulp_cost,
+          SUM(CASE WHEN material_group_major_name = '약품'
+            THEN CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL) ELSE 0 END) as chemical_cost,
+          SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as total_cost
+        FROM raw_records
+        WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
+          ${machineFilter}
+          AND CAST(actual_alloc_qty AS REAL) != 0
+      `).bind(ym, div).first()
+
+      months.push({
+        ym,
+        waste_paper_cost: Number(res?.waste_paper_cost) || 0,
+        pulp_cost: Number(res?.pulp_cost) || 0,
+        chemical_cost: Number(res?.chemical_cost) || 0,
+        total_cost: Number(res?.total_cost) || 0
+      })
+    } catch(e) {
+      months.push({ ym, waste_paper_cost: 0, pulp_cost: 0, chemical_cost: 0, total_cost: 0 })
+    }
+  }
+
+  // 생산량 데이터 (투입량 분석용) - 최근 2개월
+  const recentYms = ymList.slice(-2)
+  const production: any[] = []
+  
+  if (recentYms.length >= 2) {
+    const prevYm = recentYms[0]
+    const curYm = recentYms[1]
+    
+    // 실제 데이터가 있는 ym 찾기 (fallback)
+    let effectiveCurYm = curYm
+    let effectivePrevYm = prevYm
+    
+    const checkData = await db.prepare(`
+      SELECT calendar_ym, COUNT(*) as cnt FROM raw_records 
+      WHERE calendar_ym IN (?, ?) AND calendar_ym != 'CALMONTH' AND division = ? ${machineFilter}
+      GROUP BY calendar_ym
+    `).bind(curYm, prevYm, div).all()
+    
+    const ymCounts = new Map<string, number>()
+    for (const r of checkData.results as any[]) {
+      ymCounts.set(r.calendar_ym, r.cnt)
+    }
+    
+    // 데이터가 없는 경우 이전 2개월로 시도
+    if (!ymCounts.has(curYm) && !ymCounts.has(prevYm) && ymList.length >= 4) {
+      effectiveCurYm = ymList[ymList.length - 3] || prevYm
+      effectivePrevYm = ymList[ymList.length - 4] || prevYm
+    } else if (!ymCounts.has(curYm)) {
+      effectiveCurYm = prevYm
+      // prevYm을 한 달 더 이전으로
+      let py = parseInt(prevYm.substring(0, 4))
+      let pm = parseInt(prevYm.substring(4, 6)) - 1
+      if (pm < 1) { pm = 12; py-- }
+      effectivePrevYm = `${py}${String(pm).padStart(2, '0')}`
+    }
+
+    const prodSql = `
+      SELECT 
+        product_level2_name as grade,
+        SUM(total_prod) as ton,
+        SUM(cost) as cost
+      FROM (
+        SELECT 
+          CASE 
+            WHEN product_level2_name IN ('SC','백판지 기타') AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 300 THEN 'SC저평량'
+            WHEN product_level2_name IN ('SC','백판지 기타') AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 300 THEN 'SC고평량'
+            ELSE product_level2_name
+          END as product_level2_name,
+          product_level4,
+          MAX(CAST(total_production AS REAL)) as total_prod,
+          SUM(CAST(actual_alloc_qty AS REAL) * CAST(actual_unit_price AS REAL)) as cost
+        FROM raw_records
+        WHERE calendar_ym = ? AND calendar_ym != 'CALMONTH' AND division = ?
+          ${machineFilter}
+          AND CAST(total_production AS REAL) > 0
+        GROUP BY 
+          CASE 
+            WHEN product_level2_name IN ('SC','백판지 기타') AND CAST(SUBSTR(product_level4, -3) AS INTEGER) < 300 THEN 'SC저평량'
+            WHEN product_level2_name IN ('SC','백판지 기타') AND CAST(SUBSTR(product_level4, -3) AS INTEGER) >= 300 THEN 'SC고평량'
+            ELSE product_level2_name
+          END,
+          product_level4
+      )
+      GROUP BY product_level2_name
+      ORDER BY ton DESC
+    `
+    
+    const prevProd = await db.prepare(prodSql).bind(effectivePrevYm, div).all()
+    const curProd = await db.prepare(prodSql).bind(effectiveCurYm, div).all()
+    
+    const prevMap = new Map<string, { ton: number, cost: number }>()
+    const curMap = new Map<string, { ton: number, cost: number }>()
+    for (const r of prevProd.results as any[]) {
+      prevMap.set(r.grade, { ton: Number(r.ton) || 0, cost: Number(r.cost) || 0 })
+    }
+    for (const r of curProd.results as any[]) {
+      curMap.set(r.grade, { ton: Number(r.ton) || 0, cost: Number(r.cost) || 0 })
+    }
+    
+    const allGrades = new Set([...prevMap.keys(), ...curMap.keys()])
+    for (const grade of allGrades) {
+      const prev = prevMap.get(grade) || { ton: 0, cost: 0 }
+      const cur = curMap.get(grade) || { ton: 0, cost: 0 }
+      production.push({
+        grade,
+        prev_ton: prev.ton,
+        cur_ton: cur.ton,
+        prev_cost: prev.cost,
+        cur_cost: cur.cost
+      })
+    }
+    production.sort((a, b) => b.cur_ton - a.cur_ton)
+  }
+
+  // 데이터가 없는 월 제거 (total_cost === 0)
+  const filteredMonths = months.filter(m => m.total_cost > 0)
+
+  return c.json({ months: filteredMonths, production, baseYm })
+})
+
 // ============ 손익 대시보드 (P&L Dashboard) API ============
 app.get('/api/pl-dashboard', async (c) => {
   const { env } = c
