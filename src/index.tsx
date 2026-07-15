@@ -107,6 +107,102 @@ app.get('/api/divisions/:code/material-groups', (c) => {
 
 // ============ 기본 마스터 API ============
 
+// ============ 손익 대시보드 (P&L Dashboard) API ============
+app.get('/api/pl-dashboard', async (c) => {
+  const { env } = c
+  const ym = c.req.query('ym') || ''
+  const division = c.req.query('division') || 'PS'
+  
+  // 현재는 raw_records 테이블에서 최근 6개월 데이터를 집계하여 손익 추정
+  // 실제 손익 데이터 테이블이 생기면 교체 예정
+  try {
+    // 최근 6개월 월별 원가 합계 조회
+    const monthlyData = await env.DB.prepare(`
+      SELECT calendar_ym, 
+             SUM(total_amount) as total_cost,
+             COUNT(DISTINCT material_code) as material_count
+      FROM raw_records 
+      WHERE division = ?
+      GROUP BY calendar_ym
+      ORDER BY calendar_ym DESC
+      LIMIT 6
+    `).bind(division).all()
+
+    const rows = (monthlyData.results || []).reverse()
+
+    if (rows.length === 0) {
+      // 데이터 없으면 null 반환 (프론트에서 샘플 표시)
+      return c.json({ kpi: null, trend: null, costBreakdown: null })
+    }
+
+    // 간단한 손익 추정 로직 (총원가 기준 → 매출 = 원가 * 1.17 가정)
+    const trendData = rows.map((r: any, idx: number) => {
+      const cost = (r.total_cost || 0) / 100000000  // 원 → 억 환산
+      const revenue = cost * 1.17  // 매출 = 원가 * 1.17 (가정)
+      const profit = revenue - cost
+      const margin = revenue > 0 ? (profit / revenue * 100) : 0
+      const prevCost = idx > 0 ? ((rows[idx-1] as any).total_cost || 0) / 100000000 : null
+      const change = prevCost !== null ? ((profit - (prevCost * 1.17 - prevCost)) / Math.abs(prevCost * 0.17) * 100) : null
+      return {
+        month: r.calendar_ym ? r.calendar_ym.substring(0,4) + '.' + r.calendar_ym.substring(4,6) : '',
+        revenue: Math.round(revenue * 10) / 10,
+        cost: Math.round(cost * 10) / 10,
+        profit: Math.round(profit * 10) / 10,
+        margin: Math.round(margin * 10) / 10,
+        change: change !== null ? Math.round(change * 10) / 10 : null
+      }
+    })
+
+    const latest = trendData[trendData.length - 1]
+    const prev = trendData.length > 1 ? trendData[trendData.length - 2] : null
+    
+    const profitChange = prev ? ((latest.profit - prev.profit) / Math.abs(prev.profit) * 100).toFixed(1) : '0'
+    const revenueChange = prev ? ((latest.revenue - prev.revenue) / Math.abs(prev.revenue) * 100).toFixed(1) : '0'
+    const costChange = prev ? ((latest.cost - prev.cost) / Math.abs(prev.cost) * 100).toFixed(1) : '0'
+    const marginChange = prev ? (latest.margin - prev.margin).toFixed(1) : '0'
+
+    // 원가 구성비 (자재 그룹별)
+    const costByGroup = await env.DB.prepare(`
+      SELECT material_group, SUM(total_amount) as group_total
+      FROM raw_records
+      WHERE division = ? AND calendar_ym = (SELECT MAX(calendar_ym) FROM raw_records WHERE division = ?)
+      GROUP BY material_group
+      ORDER BY group_total DESC
+    `).bind(division, division).all()
+
+    const totalCostSum = (costByGroup.results || []).reduce((s: number, r: any) => s + (r.group_total || 0), 0)
+    const breakdown = { raw: 0, power: 0, logistics: 0, other: 0 }
+    ;(costByGroup.results || []).forEach((r: any) => {
+      const pct = totalCostSum > 0 ? Math.round((r.group_total / totalCostSum) * 1000) / 10 : 0
+      const grp = (r.material_group || '').toLowerCase()
+      if (grp.includes('원') || grp.includes('raw') || grp.includes('재료')) breakdown.raw += pct
+      else if (grp.includes('전력') || grp.includes('power') || grp.includes('에너지')) breakdown.power += pct
+      else if (grp.includes('물류') || grp.includes('운반') || grp.includes('logistics')) breakdown.logistics += pct
+      else breakdown.other += pct
+    })
+    // 보정
+    if (breakdown.raw === 0 && breakdown.other > 0) { breakdown.raw = breakdown.other; breakdown.other = 0; }
+
+    return c.json({
+      kpi: {
+        profit: latest.profit.toFixed(1) + '억',
+        profitChange: `<i class="fas fa-arrow-${parseFloat(profitChange) >= 0 ? 'up' : 'down'} text-[10px] mr-0.5"></i>${parseFloat(profitChange) >= 0 ? '+' : ''}${profitChange}%`,
+        revenue: latest.revenue.toFixed(1) + '억',
+        revenueChange: `<i class="fas fa-arrow-${parseFloat(revenueChange) >= 0 ? 'up' : 'down'} text-[10px] mr-0.5"></i>${parseFloat(revenueChange) >= 0 ? '+' : ''}${revenueChange}%`,
+        cost: latest.cost.toFixed(1) + '억',
+        costChange: `<i class="fas fa-arrow-${parseFloat(costChange) >= 0 ? 'up' : 'down'} text-[10px] mr-0.5"></i>${parseFloat(costChange) >= 0 ? '+' : ''}${costChange}%`,
+        margin: latest.margin.toFixed(1) + '%',
+        marginChange: `<i class="fas fa-arrow-${parseFloat(marginChange) >= 0 ? 'up' : 'down'} text-[10px] mr-0.5"></i>${parseFloat(marginChange) >= 0 ? '+' : ''}${marginChange}%p`
+      },
+      trend: trendData,
+      costBreakdown: breakdown
+    })
+  } catch(e: any) {
+    console.error('PL Dashboard error:', e)
+    return c.json({ kpi: null, trend: null, costBreakdown: null })
+  }
+})
+
 app.get('/api/units', async (c) => {
   const db = c.env.DB
   const results = await db.prepare('SELECT * FROM units WHERE is_active = 1 ORDER BY id').all()

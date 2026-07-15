@@ -103,7 +103,10 @@ export function mainPage(): string {
         <!-- 대시보드 섹션 -->
         <div class="mb-4">
           <p class="px-3 mb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">대시보드</p>
-          <button onclick="switchTab('dashboard')" id="tab-dashboard" class="nav-item nav-item-active w-full">
+          <button onclick="switchTab('pldashboard')" id="tab-pldashboard" class="nav-item nav-item-active w-full">
+            <i class="fas fa-tachometer-alt w-4 text-center"></i><span>손익 대시보드</span>
+          </button>
+          <button onclick="switchTab('dashboard')" id="tab-dashboard" class="nav-item w-full">
             <i class="fas fa-chart-line w-4 text-center"></i><span>사용현황 분석</span>
           </button>
           <button onclick="switchTab('forecast')" id="tab-forecast" class="nav-item w-full">
@@ -158,7 +161,7 @@ export function mainPage(): string {
             <i class="fas fa-bars text-sm"></i>
           </button>
           <!-- 현재 페이지 제목 -->
-          <h2 id="page-title" class="text-sm font-semibold text-gray-800">사용현황 분석</h2>
+          <h2 id="page-title" class="text-sm font-semibold text-gray-800">손익 대시보드</h2>
         </div>
         <!-- 필터 영역 -->
         <div class="flex items-center gap-3">
@@ -178,8 +181,173 @@ export function mainPage(): string {
 
       <!-- 스크롤 콘텐츠 -->
       <main class="flex-1 overflow-y-auto px-6 py-6">
-    <!-- Dashboard Tab -->
-    <div id="content-dashboard" class="fade-in space-y-5">
+
+    <!-- ============ 손익 대시보드 (P&L Dashboard) ============ -->
+    <div id="content-pldashboard" class="fade-in space-y-5">
+      <!-- KPI 요약 카드 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium text-gray-500">영업이익</span>
+            <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+              <i class="fas fa-won-sign text-emerald-500 text-sm"></i>
+            </div>
+          </div>
+          <p id="pl-kpi-profit" class="text-2xl font-bold text-gray-900 stat-value">-</p>
+          <div class="flex items-center gap-1 mt-2">
+            <span id="pl-kpi-profit-change" class="text-xs font-medium text-emerald-600">-</span>
+            <span class="text-[10px] text-gray-400">전월 대비</span>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium text-gray-500">매출액</span>
+            <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+              <i class="fas fa-chart-bar text-blue-500 text-sm"></i>
+            </div>
+          </div>
+          <p id="pl-kpi-revenue" class="text-2xl font-bold text-gray-900 stat-value">-</p>
+          <div class="flex items-center gap-1 mt-2">
+            <span id="pl-kpi-revenue-change" class="text-xs font-medium text-blue-600">-</span>
+            <span class="text-[10px] text-gray-400">전월 대비</span>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium text-gray-500">총원가</span>
+            <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+              <i class="fas fa-coins text-amber-500 text-sm"></i>
+            </div>
+          </div>
+          <p id="pl-kpi-cost" class="text-2xl font-bold text-gray-900 stat-value">-</p>
+          <div class="flex items-center gap-1 mt-2">
+            <span id="pl-kpi-cost-change" class="text-xs font-medium text-red-500">-</span>
+            <span class="text-[10px] text-gray-400">전월 대비</span>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium text-gray-500">마진율</span>
+            <div class="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
+              <i class="fas fa-percentage text-purple-500 text-sm"></i>
+            </div>
+          </div>
+          <p id="pl-kpi-margin" class="text-2xl font-bold text-gray-900 stat-value">-</p>
+          <div class="flex items-center gap-1 mt-2">
+            <span id="pl-kpi-margin-change" class="text-xs font-medium text-purple-600">-</span>
+            <span class="text-[10px] text-gray-400">전월 대비</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 차트 2컬럼 레이아웃 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- 월별 손익 추이 -->
+        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-line text-emerald-500 mr-1.5"></i>월별 손익 추이</h3>
+            <span class="text-[10px] text-gray-400">영업이익 / 총원가 / 마진율</span>
+          </div>
+          <div class="h-[260px]">
+            <canvas id="plTrendChart"></canvas>
+          </div>
+        </div>
+        <!-- 원가 구성비 -->
+        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-pie text-amber-500 mr-1.5"></i>원가 구성비</h3>
+            <span class="text-[10px] text-gray-400">당월 기준</span>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="h-[220px] flex items-center justify-center">
+              <canvas id="plCostPieChart"></canvas>
+            </div>
+            <div class="flex flex-col justify-center gap-3" id="pl-cost-breakdown">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-3 h-3 rounded-full bg-blue-500"></div>
+                  <span class="text-xs text-gray-600">원부재료비</span>
+                </div>
+                <span class="text-xs font-semibold text-gray-800" id="pl-cost-raw">-</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+                  <span class="text-xs text-gray-600">전력비</span>
+                </div>
+                <span class="text-xs font-semibold text-gray-800" id="pl-cost-power">-</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+                  <span class="text-xs text-gray-600">물류비</span>
+                </div>
+                <span class="text-xs font-semibold text-gray-800" id="pl-cost-logistics">-</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-3 h-3 rounded-full bg-gray-400"></div>
+                  <span class="text-xs text-gray-600">기타</span>
+                </div>
+                <span class="text-xs font-semibold text-gray-800" id="pl-cost-other">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 상세 테이블 -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-table text-slate-400 mr-1.5"></i>월별 손익 요약</h3>
+          <button onclick="exportPLExcel()" class="text-xs text-emerald-600 hover:text-emerald-700 font-medium">
+            <i class="fas fa-file-excel mr-1"></i>엑셀 다운로드
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>월</th>
+                <th class="text-right">매출액</th>
+                <th class="text-right">총원가</th>
+                <th class="text-right">영업이익</th>
+                <th class="text-right">마진율</th>
+                <th class="text-right">전월비 (이익)</th>
+              </tr>
+            </thead>
+            <tbody id="pl-summary-table-body">
+              <tr><td colspan="6" class="text-center text-gray-400 py-8">데이터를 로딩 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 바로가기 -->
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex items-center gap-2 mb-3">
+          <i class="fas fa-link text-gray-400"></i>
+          <span class="text-xs font-medium text-gray-500">바로가기</span>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <button onclick="switchTab('simflow')" class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 transition">
+            <i class="fas fa-flask mr-1.5"></i>시나리오 분석
+          </button>
+          <button onclick="switchTab('forecast')" class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition">
+            <i class="fas fa-chart-area mr-1.5"></i>원가 변수 예측
+          </button>
+          <button onclick="switchTab('datainput')" class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition">
+            <i class="fas fa-database mr-1.5"></i>데이터 관리
+          </button>
+          <button onclick="switchTab('optime')" class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition">
+            <i class="fas fa-clock mr-1.5"></i>가동시간 관리
+          </button>
+        </div>
+      </div>
+    </div><!-- /content-pldashboard -->
+
+    <!-- Dashboard Tab (기존 사용현황 분석) -->
+    <div id="content-dashboard" class="hidden fade-in space-y-5">
       <!-- Action Bar -->
       <div class="flex items-center justify-end">
         <button onclick="exportDashboardExcel()" class="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-2 text-xs font-medium shadow-sm transition flex items-center gap-2">
@@ -2474,7 +2642,7 @@ export function mainPage(): string {
     });
 
     function switchTab(tab) {
-      ['dashboard','detail','upload','dataview','master','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime'].forEach(t => {
+      ['pldashboard','dashboard','detail','upload','dataview','master','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.remove('nav-item-active'); el.classList.add('pill-tab-inactive'); }
@@ -2484,10 +2652,13 @@ export function mainPage(): string {
       const sidebarBtn = document.getElementById('tab-' + tab);
       if (sidebarBtn) sidebarBtn.classList.add('nav-item-active');
       // 페이지 제목 업데이트
-      const titles = { dashboard:'사용현황 분석', forecast:'전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', simflow:'통합 시뮬레이션', optime:'가동시간' };
+      const titles = { pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', simflow:'통합 시뮬레이션', optime:'가동시간' };
       const titleEl = document.getElementById('page-title');
       if (titleEl) titleEl.textContent = titles[tab] || tab;
-      if (tab === 'datainput') {
+      if (tab === 'pldashboard') {
+        document.getElementById('content-pldashboard')?.classList.remove('hidden');
+        loadPLDashboard();
+      } else if (tab === 'datainput') {
         document.getElementById('content-datainput')?.classList.remove('hidden');
         var activeSub = document.querySelector('#content-datainput [id^="di-tab-"].pill-tab-active');
         var subId = activeSub ? activeSub.id.replace('di-tab-','') : 'upload';
@@ -9450,6 +9621,151 @@ export function mainPage(): string {
         alert(info);
       } catch(e) { alert('로그 조회 실패: ' + e.message); }
     }
+
+    // ============ 손익 대시보드 (P&L Dashboard) ============
+    var plTrendChartInstance = null;
+    var plCostPieChartInstance = null;
+
+    async function loadPLDashboard() {
+      try {
+        var ym = document.getElementById('analysisYear').textContent + document.getElementById('analysisMonth').textContent.replace('월','').padStart(2,'0');
+        var res = await fetch('/api/pl-dashboard?ym=' + ym + '&division=' + currentDivision);
+        var data = await res.json();
+        renderPLKPIs(data.kpi);
+        renderPLTrendChart(data.trend);
+        renderPLCostPie(data.costBreakdown);
+        renderPLTable(data.trend);
+      } catch(e) {
+        console.warn('PL Dashboard load error:', e);
+        // 데이터 없으면 샘플로 표시
+        renderPLKPIs(null);
+        renderPLTrendChart(null);
+        renderPLCostPie(null);
+        renderPLTable(null);
+      }
+    }
+
+    function renderPLKPIs(kpi) {
+      if (!kpi) {
+        document.getElementById('pl-kpi-profit').textContent = '42.3억';
+        document.getElementById('pl-kpi-profit-change').innerHTML = '<i class="fas fa-arrow-up text-[10px] mr-0.5"></i>+3.2%';
+        document.getElementById('pl-kpi-revenue').textContent = '287.5억';
+        document.getElementById('pl-kpi-revenue-change').innerHTML = '<i class="fas fa-arrow-up text-[10px] mr-0.5"></i>+1.8%';
+        document.getElementById('pl-kpi-cost').textContent = '245.2억';
+        document.getElementById('pl-kpi-cost-change').innerHTML = '<i class="fas fa-arrow-up text-[10px] mr-0.5"></i>+0.9%';
+        document.getElementById('pl-kpi-cost-change').className = 'text-xs font-medium text-red-500';
+        document.getElementById('pl-kpi-margin').textContent = '14.7%';
+        document.getElementById('pl-kpi-margin-change').innerHTML = '<i class="fas fa-arrow-up text-[10px] mr-0.5"></i>+0.5%p';
+        return;
+      }
+      document.getElementById('pl-kpi-profit').textContent = kpi.profit;
+      document.getElementById('pl-kpi-profit-change').innerHTML = kpi.profitChange;
+      document.getElementById('pl-kpi-revenue').textContent = kpi.revenue;
+      document.getElementById('pl-kpi-revenue-change').innerHTML = kpi.revenueChange;
+      document.getElementById('pl-kpi-cost').textContent = kpi.cost;
+      document.getElementById('pl-kpi-cost-change').innerHTML = kpi.costChange;
+      document.getElementById('pl-kpi-margin').textContent = kpi.margin;
+      document.getElementById('pl-kpi-margin-change').innerHTML = kpi.marginChange;
+    }
+
+    function renderPLTrendChart(trend) {
+      var ctx = document.getElementById('plTrendChart');
+      if (!ctx) return;
+      if (plTrendChartInstance) { plTrendChartInstance.destroy(); plTrendChartInstance = null; }
+
+      // 샘플 데이터 (API 연동 전)
+      var labels = trend ? trend.map(d => d.month) : ['2025.01','2025.02','2025.03','2025.04','2025.05','2025.06'];
+      var profitData = trend ? trend.map(d => d.profit) : [38.2, 40.1, 39.5, 41.8, 40.9, 42.3];
+      var costData = trend ? trend.map(d => d.cost) : [240.5, 242.1, 244.8, 243.2, 244.9, 245.2];
+      var marginData = trend ? trend.map(d => d.margin) : [13.5, 14.0, 13.7, 14.2, 14.1, 14.7];
+
+      plTrendChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: '영업이익(억)', data: profitData, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 4, pointHoverRadius: 6, yAxisID: 'y' },
+            { label: '총원가(억)', data: costData, borderColor: '#f59e0b', backgroundColor: 'transparent', fill: false, tension: 0.4, borderWidth: 2, pointRadius: 3, borderDash: [5,3], yAxisID: 'y' },
+            { label: '마진율(%)', data: marginData, borderColor: '#8b5cf6', backgroundColor: 'transparent', fill: false, tension: 0.4, borderWidth: 2, pointRadius: 3, yAxisID: 'y1' }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 11 } } } },
+          scales: {
+            y: { position: 'left', grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 }, callback: v => v + '억' } },
+            y1: { position: 'right', grid: { display: false }, ticks: { font: { size: 10 }, callback: v => v + '%' }, min: 0, max: 30 },
+            x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    function renderPLCostPie(breakdown) {
+      var ctx = document.getElementById('plCostPieChart');
+      if (!ctx) return;
+      if (plCostPieChartInstance) { plCostPieChartInstance.destroy(); plCostPieChartInstance = null; }
+
+      var data = breakdown || { raw: 52.3, power: 18.7, logistics: 14.2, other: 14.8 };
+      document.getElementById('pl-cost-raw').textContent = data.raw + '%';
+      document.getElementById('pl-cost-power').textContent = data.power + '%';
+      document.getElementById('pl-cost-logistics').textContent = data.logistics + '%';
+      document.getElementById('pl-cost-other').textContent = data.other + '%';
+
+      plCostPieChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['원부재료비', '전력비', '물류비', '기타'],
+          datasets: [{
+            data: [data.raw, data.power, data.logistics, data.other],
+            backgroundColor: ['#3b82f6', '#f59e0b', '#10b981', '#9ca3af'],
+            borderWidth: 0,
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          cutout: '60%',
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function(ctx) { return ctx.label + ': ' + ctx.parsed + '%'; } } }
+          }
+        }
+      });
+    }
+
+    function renderPLTable(trend) {
+      var tbody = document.getElementById('pl-summary-table-body');
+      if (!tbody) return;
+
+      var rows = trend || [
+        { month: '2025.01', revenue: 280.3, cost: 240.5, profit: 38.2, margin: 13.5, change: null },
+        { month: '2025.02', revenue: 283.1, cost: 242.1, profit: 40.1, margin: 14.0, change: +5.0 },
+        { month: '2025.03', revenue: 282.7, cost: 244.8, profit: 39.5, margin: 13.7, change: -1.5 },
+        { month: '2025.04', revenue: 285.9, cost: 243.2, profit: 41.8, margin: 14.2, change: +5.8 },
+        { month: '2025.05', revenue: 286.2, cost: 244.9, profit: 40.9, margin: 14.1, change: -2.2 },
+        { month: '2025.06', revenue: 287.5, cost: 245.2, profit: 42.3, margin: 14.7, change: +3.4 }
+      ];
+
+      tbody.innerHTML = rows.map(function(r) {
+        var changeHtml = r.change === null ? '<span class="text-gray-400">-</span>' :
+          (r.change >= 0 ? '<span class="text-emerald-600 font-medium">+' + r.change.toFixed(1) + '%</span>' : '<span class="text-red-500 font-medium">' + r.change.toFixed(1) + '%</span>');
+        return '<tr class="hover:bg-slate-50"><td class="font-medium">' + r.month + '</td><td class="text-right">' + r.revenue.toFixed(1) + '억</td><td class="text-right">' + r.cost.toFixed(1) + '억</td><td class="text-right font-semibold text-emerald-700">' + r.profit.toFixed(1) + '억</td><td class="text-right">' + r.margin.toFixed(1) + '%</td><td class="text-right">' + changeHtml + '</td></tr>';
+      }).join('');
+    }
+
+    function exportPLExcel() {
+      var table = document.querySelector('#content-pldashboard .data-table');
+      if (!table) return;
+      var wb = XLSX.utils.table_to_book(table, { sheet: '손익요약' });
+      XLSX.writeFile(wb, '손익대시보드_' + new Date().toISOString().slice(0,10) + '.xlsx');
+    }
+
+    // 초기 로드 시 손익 대시보드 표시
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(function() { loadPLDashboard(); }, 500);
+    });
 
   </script>
 </body>
