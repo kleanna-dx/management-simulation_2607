@@ -3711,28 +3711,87 @@ app.post('/api/grade-production/simulate', async (c) => {
 
 // ===================== SAP Batch Jobs API =====================
 
+// --- RFC Master CRUD ---
+
+// GET /api/rfc-master - RFC 목록 조회
+app.get('/api/rfc-master', async (c) => {
+  const db = c.env.DB
+  const { results } = await db.prepare(
+    'SELECT * FROM rfc_master ORDER BY sort_order, id'
+  ).all()
+  return c.json({ rfcs: results || [] })
+})
+
+// POST /api/rfc-master - RFC 등록
+app.post('/api/rfc-master', async (c) => {
+  const db = c.env.DB
+  const body = await c.req.json()
+  const { rfc_code, rfc_function, description, target_table, param_name = 'I_CMONTH', param_format = 'YYYYMM', sort_order = 0 } = body
+
+  if (!rfc_code || !rfc_function || !target_table) {
+    return c.json({ error: 'rfc_code, rfc_function, target_table은 필수입니다.' }, 400)
+  }
+
+  try {
+    await db.prepare(
+      `INSERT INTO rfc_master (rfc_code, rfc_function, description, target_table, param_name, param_format, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).bind(rfc_code, rfc_function, description || '', target_table, param_name, param_format, sort_order).run()
+    return c.json({ success: true })
+  } catch (err: any) {
+    return c.json({ error: err.message }, 400)
+  }
+})
+
+// PUT /api/rfc-master/:id - RFC 수정
+app.put('/api/rfc-master/:id', async (c) => {
+  const id = c.req.param('id')
+  const db = c.env.DB
+  const body = await c.req.json()
+  const { rfc_code, rfc_function, description, target_table, param_name, param_format, sort_order, is_active } = body
+
+  await db.prepare(
+    `UPDATE rfc_master SET rfc_code=?, rfc_function=?, description=?, target_table=?, param_name=?, param_format=?, sort_order=?, is_active=?, updated_at=datetime('now','+9 hours')
+     WHERE id=?`
+  ).bind(rfc_code, rfc_function, description || '', target_table, param_name || 'I_CMONTH', param_format || 'YYYYMM', sort_order || 0, is_active ?? 1, id).run()
+
+  return c.json({ success: true })
+})
+
+// DELETE /api/rfc-master/:id - RFC 삭제
+app.delete('/api/rfc-master/:id', async (c) => {
+  const id = c.req.param('id')
+  const db = c.env.DB
+  await db.prepare('DELETE FROM rfc_master WHERE id = ?').bind(id).run()
+  return c.json({ success: true })
+})
+
+// --- Batch Jobs ---
+
 // GET /api/batch/jobs - 작업 이력 조회
 app.get('/api/batch/jobs', async (c) => {
-  const { limit = '50', offset = '0', status } = c.req.query()
+  const { limit = '50', offset = '0', status, rfc_code } = c.req.query()
   const db = c.env.DB
 
   let query = 'SELECT * FROM batch_jobs'
+  const conditions: string[] = []
   const params: any[] = []
 
-  if (status) {
-    query += ' WHERE status = ?'
-    params.push(status)
-  }
+  if (status) { conditions.push('status = ?'); params.push(status) }
+  if (rfc_code) { conditions.push('rfc_code = ?'); params.push(rfc_code) }
+  if (conditions.length) query += ' WHERE ' + conditions.join(' AND ')
 
   query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?'
   params.push(Number(limit), Number(offset))
 
   const { results } = await db.prepare(query).bind(...params).all()
 
-  // Total count
   let countQuery = 'SELECT COUNT(*) as total FROM batch_jobs'
-  if (status) countQuery += ` WHERE status = '${status}'`
-  const countResult = await db.prepare(countQuery).first()
+  if (conditions.length) countQuery += ' WHERE ' + conditions.join(' AND ')
+  const countParams = params.slice(0, conditions.length)
+  const countResult = countParams.length > 0
+    ? await db.prepare(countQuery).bind(...countParams).first()
+    : await db.prepare(countQuery).first()
 
   return c.json({ jobs: results, total: countResult?.total || 0 })
 })
@@ -3778,82 +3837,109 @@ app.get('/api/batch/monthly-chart', async (c) => {
   return c.json({ months: results || [] })
 })
 
-// POST /api/batch/execute - 배치 작업 실행
+// POST /api/batch/execute - 배치 작업 실행 (단일 RFC 또는 전체)
 app.post('/api/batch/execute', async (c) => {
   const db = c.env.DB
   const body = await c.req.json()
-  const { input_month, execution_mode = 'REPLACE' } = body
+  const { input_month, execution_mode = 'REPLACE', rfc_code } = body
 
   if (!input_month || !/^\d{6}$/.test(input_month)) {
     return c.json({ error: '입력년월은 YYYYMM 형식이어야 합니다.' }, 400)
   }
 
-  const jobId = `JOB_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
-  const startedAt = new Date(Date.now() + 9 * 3600000).toISOString().replace('T', ' ').substring(0, 19)
+  // Get RFC(s) to execute
+  let rfcs: any[] = []
+  if (rfc_code && rfc_code !== 'ALL') {
+    const rfc = await db.prepare('SELECT * FROM rfc_master WHERE rfc_code = ? AND is_active = 1').bind(rfc_code).first()
+    if (!rfc) return c.json({ error: `RFC [${rfc_code}] 을(를) 찾을 수 없습니다.` }, 404)
+    rfcs = [rfc]
+  } else {
+    const { results } = await db.prepare('SELECT * FROM rfc_master WHERE is_active = 1 ORDER BY sort_order').all()
+    rfcs = results || []
+  }
 
-  // Insert job record
-  await db.prepare(
-    `INSERT INTO batch_jobs (job_id, input_month, execution_mode, status, started_at, executed_by)
-     VALUES (?, ?, ?, 'RUNNING', ?, 'admin')`
-  ).bind(jobId, input_month, execution_mode, startedAt).run()
+  if (rfcs.length === 0) {
+    return c.json({ error: '실행할 활성 RFC가 없습니다. RFC 마스터를 확인하세요.' }, 400)
+  }
 
-    // Simulate SAP RFC call (in real production, this would call SAP via external API)
-    // For now, simulate processing with raw_records data
+  const year = input_month.substring(0, 4)
+  const month = input_month.substring(4, 6)
+  const ym = `${year}-${month}`
+  const results: any[] = []
+
+  for (const rfc of rfcs) {
+    const jobId = `JOB_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+    const startedAt = new Date(Date.now() + 9 * 3600000).toISOString().replace('T', ' ').substring(0, 19)
+
+    await db.prepare(
+      `INSERT INTO batch_jobs (job_id, input_month, execution_mode, status, started_at, executed_by, rfc_code)
+       VALUES (?, ?, ?, 'RUNNING', ?, 'admin', ?)`
+    ).bind(jobId, input_month, execution_mode, startedAt, rfc.rfc_code).run()
+
     try {
       let sourceCount = 0
       let insertCount = 0
 
-      const year = input_month.substring(0, 4)
-      const month = input_month.substring(4, 6)
-      const ym = `${year}-${month}`
+      // Check if target table exists and handle accordingly
+      const targetTable = rfc.target_table
 
       if (execution_mode === 'REPLACE') {
-        // Delete existing data for this month
-        const delResult = await db.prepare(
-          'DELETE FROM raw_records WHERE calendar_ym = ?'
-        ).bind(ym).run()
-        sourceCount = delResult.meta.changes || 0
+        try {
+          const delResult = await db.prepare(
+            `DELETE FROM ${targetTable} WHERE calendar_ym = ?`
+          ).bind(ym).run()
+          sourceCount = delResult.meta.changes || 0
+        } catch (e) {
+          // Table might not have calendar_ym column - try alternative
+          try {
+            const delResult2 = await db.prepare(
+              `DELETE FROM ${targetTable} WHERE substr(created_at, 1, 7) = ?`
+            ).bind(ym).run()
+            sourceCount = delResult2.meta.changes || 0
+          } catch (e2) { /* ignore */ }
+        }
       }
 
-      // Count existing records to simulate "fetched from SAP"
-      const existing = await db.prepare(
-        'SELECT COUNT(*) as cnt FROM raw_records WHERE calendar_ym = ?'
-      ).bind(ym).first()
-      insertCount = existing?.cnt || 0
+      // Count records (simulating "fetched from SAP")
+      try {
+        const existing = await db.prepare(
+          `SELECT COUNT(*) as cnt FROM ${targetTable} WHERE calendar_ym = ?`
+        ).bind(ym).first()
+        insertCount = (existing?.cnt as number) || 0
+      } catch (e) {
+        try {
+          const existing2 = await db.prepare(`SELECT COUNT(*) as cnt FROM ${targetTable}`).first()
+          insertCount = (existing2?.cnt as number) || 0
+        } catch (e2) { insertCount = 0 }
+      }
 
-    // Update job as success
-    const completedAt = new Date(Date.now() + 9 * 3600000).toISOString().replace('T', ' ').substring(0, 19)
-    const durationMs = Math.floor(Math.random() * 80000) + 5000 // simulated
+      const completedAt = new Date(Date.now() + 9 * 3600000).toISOString().replace('T', ' ').substring(0, 19)
+      const durationMs = Math.floor(Math.random() * 80000) + 5000
 
-    await db.prepare(
-      `UPDATE batch_jobs SET status = 'SUCCESS', source_count = ?, insert_count = ?,
-       duration_ms = ?, completed_at = ? WHERE job_id = ?`
-    ).bind(sourceCount + insertCount, insertCount, durationMs, completedAt, jobId).run()
+      await db.prepare(
+        `UPDATE batch_jobs SET status = 'SUCCESS', source_count = ?, insert_count = ?,
+         duration_ms = ?, completed_at = ? WHERE job_id = ?`
+      ).bind(sourceCount + insertCount, insertCount, durationMs, completedAt, jobId).run()
 
-    return c.json({
-      success: true,
-      job_id: jobId,
-      status: 'SUCCESS',
-      source_count: sourceCount + insertCount,
-      insert_count: insertCount,
-      duration_ms: durationMs
-    })
-  } catch (err: any) {
-    const completedAt = new Date(Date.now() + 9 * 3600000).toISOString().replace('T', ' ').substring(0, 19)
-    await db.prepare(
-      `UPDATE batch_jobs SET status = 'FAILED', error_message = ?, completed_at = ? WHERE job_id = ?`
-    ).bind(err.message || 'Unknown error', completedAt, jobId).run()
-
-    return c.json({
-      success: false,
-      job_id: jobId,
-      status: 'FAILED',
-      error: err.message
-    }, 500)
+      results.push({ rfc_code: rfc.rfc_code, rfc_function: rfc.rfc_function, job_id: jobId, status: 'SUCCESS', source_count: sourceCount + insertCount, insert_count: insertCount, duration_ms: durationMs })
+    } catch (err: any) {
+      const completedAt = new Date(Date.now() + 9 * 3600000).toISOString().replace('T', ' ').substring(0, 19)
+      await db.prepare(
+        `UPDATE batch_jobs SET status = 'FAILED', error_message = ?, completed_at = ? WHERE job_id = ?`
+      ).bind(err.message || 'Unknown error', completedAt, jobId).run()
+      results.push({ rfc_code: rfc.rfc_code, rfc_function: rfc.rfc_function, job_id: jobId, status: 'FAILED', error: err.message })
+    }
   }
+
+  const allSuccess = results.every(r => r.status === 'SUCCESS')
+  return c.json({
+    success: allSuccess,
+    executed_count: results.length,
+    results
+  })
 })
 
-// POST /api/batch/check - 확인 (조회 미리보기 - SAP에 몇 건 있는지 확인)
+// POST /api/batch/check - 확인 (현재 데이터 상태 조회)
 app.post('/api/batch/check', async (c) => {
   const db = c.env.DB
   const body = await c.req.json()
@@ -3867,24 +3953,33 @@ app.post('/api/batch/check', async (c) => {
   const month = input_month.substring(4, 6)
   const ym = `${year}-${month}`
 
-  // Check existing data
-  const existing = await db.prepare(
-    'SELECT COUNT(*) as cnt FROM raw_records WHERE calendar_ym = ?'
-  ).bind(ym).first()
+  // Get all active RFCs and check each target table
+  const { results: rfcs } = await db.prepare('SELECT * FROM rfc_master WHERE is_active = 1 ORDER BY sort_order').all()
+  const checkResults: any[] = []
 
-  // Check previous batch for this month
-  const prevJob = await db.prepare(
-    `SELECT * FROM batch_jobs WHERE input_month = ? ORDER BY created_at DESC LIMIT 1`
-  ).bind(input_month).first()
+  for (const rfc of (rfcs || [])) {
+    let cnt = 0
+    try {
+      const existing = await db.prepare(
+        `SELECT COUNT(*) as cnt FROM ${(rfc as any).target_table} WHERE calendar_ym = ?`
+      ).bind(ym).first()
+      cnt = (existing?.cnt as number) || 0
+    } catch (e) { /* table might not exist or have different schema */ }
 
-  return c.json({
-    input_month,
-    existing_records: existing?.cnt || 0,
-    last_job: prevJob || null,
-    message: (existing?.cnt || 0) > 0
-      ? `${ym} 데이터 ${existing?.cnt}건이 이미 존재합니다.`
-      : `${ym} 데이터가 없습니다. 신규 적재 가능합니다.`
-  })
+    const prevJob = await db.prepare(
+      `SELECT status, started_at, insert_count FROM batch_jobs WHERE input_month = ? AND rfc_code = ? ORDER BY created_at DESC LIMIT 1`
+    ).bind(input_month, (rfc as any).rfc_code).first()
+
+    checkResults.push({
+      rfc_code: (rfc as any).rfc_code,
+      rfc_function: (rfc as any).rfc_function,
+      target_table: (rfc as any).target_table,
+      existing_records: cnt,
+      last_job: prevJob || null
+    })
+  }
+
+  return c.json({ input_month, checks: checkResults })
 })
 
 // GET /api/batch/jobs/:jobId/log - 작업 로그 조회

@@ -1162,8 +1162,8 @@ export function mainPage(): string {
             <i class="fas fa-satellite-dish text-indigo-300 text-lg"></i>
             <h3 class="text-base font-bold text-white">SAP RFC 데이터 동기화</h3>
           </div>
-          <p class="text-xs text-indigo-300/80 mb-1">SAP BW에서 수익성 분석 데이터(원/부자재 실적)를 가져와 분석 DB(material_usage)에 적재합니다.</p>
-          <p class="text-[10px] text-indigo-400/60 mb-5">RFC 함수: Z_BI_WEB_EX_BL | 매개변수: I_CMONTH (입력년월)</p>
+          <p class="text-xs text-indigo-300/80 mb-1">SAP BW에서 수익성 분석 데이터를 가져와 운영 DB에 적재합니다. 등록된 RFC별로 개별/일괄 실행 가능합니다.</p>
+          <p class="text-[10px] text-indigo-400/60 mb-5">등록된 RFC 함수: <span id="sap-rfc-count">-</span>개 | 매개변수: I_CMONTH (입력년월)</p>
 
           <div class="flex items-center gap-3 flex-wrap">
             <div>
@@ -1182,16 +1182,65 @@ export function mainPage(): string {
               <button onclick="sapBatchCheck()" class="px-4 py-2 rounded-lg bg-white/10 border border-indigo-300/40 text-indigo-200 text-sm font-medium hover:bg-white/20 transition flex items-center gap-1.5">
                 <i class="fas fa-search text-xs"></i>확인
               </button>
-              <button onclick="sapBatchExecute()" class="px-5 py-2 rounded-lg bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-400 transition shadow-lg flex items-center gap-1.5">
-                <i class="fas fa-play text-xs"></i>실행
+              <button onclick="sapBatchExecuteAll()" class="px-5 py-2 rounded-lg bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-400 transition shadow-lg flex items-center gap-1.5">
+                <i class="fas fa-play text-xs"></i>전체 실행
               </button>
             </div>
           </div>
 
           <!-- Check result area -->
           <div id="sap-check-result" class="hidden mt-4 p-3 rounded-lg bg-white/5 border border-indigo-400/20">
-            <p id="sap-check-msg" class="text-xs text-indigo-200"></p>
+            <div id="sap-check-msg" class="text-xs text-indigo-200 space-y-1"></div>
           </div>
+        </div>
+      </div>
+
+      <!-- RFC 목록 카드 -->
+      <div class="card overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="fas fa-plug text-indigo-400 text-sm"></i>
+            <h4 class="text-sm font-semibold text-gray-700">등록된 RFC 목록</h4>
+            <span id="sap-rfc-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-medium"></span>
+          </div>
+          <button onclick="showAddRfcForm()" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition font-medium shadow-sm">
+            <i class="fas fa-plus mr-1"></i>RFC 추가
+          </button>
+        </div>
+
+        <!-- RFC 추가 폼 (숨김) -->
+        <div id="rfc-add-form" class="hidden px-5 py-4 bg-indigo-50/50 border-b border-indigo-100">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <input type="text" id="new-rfc-code" placeholder="코드 (예: BL)" class="text-xs border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-200">
+            <input type="text" id="new-rfc-function" placeholder="함수명 (예: Z_BI_WEB_EX_BL)" class="text-xs border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-200">
+            <input type="text" id="new-rfc-table" placeholder="적재 테이블 (예: raw_records)" class="text-xs border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-200">
+            <input type="text" id="new-rfc-desc" placeholder="설명" class="text-xs border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-200">
+          </div>
+          <div class="flex items-center gap-2 mt-3">
+            <button onclick="saveNewRfc()" class="text-xs px-4 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-medium">저장</button>
+            <button onclick="document.getElementById('rfc-add-form').classList.add('hidden')" class="text-xs px-4 py-1.5 rounded-lg bg-slate-100 text-gray-600 hover:bg-slate-200">취소</button>
+          </div>
+        </div>
+
+        <!-- RFC 목록 테이블 -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th class="px-3 py-2.5 text-center font-semibold text-gray-500 w-10">순서</th>
+                <th class="px-3 py-2.5 text-left font-semibold text-gray-500">코드</th>
+                <th class="px-3 py-2.5 text-left font-semibold text-gray-500">RFC 함수명</th>
+                <th class="px-3 py-2.5 text-left font-semibold text-gray-500">설명</th>
+                <th class="px-3 py-2.5 text-left font-semibold text-gray-500">적재 테이블</th>
+                <th class="px-3 py-2.5 text-center font-semibold text-gray-500">상태</th>
+                <th class="px-3 py-2.5 text-center font-semibold text-gray-500">개별 실행</th>
+                <th class="px-3 py-2.5 text-center font-semibold text-gray-500">관리</th>
+              </tr>
+            </thead>
+            <tbody id="rfc-list-body">
+              <tr><td colspan="8" class="text-center text-gray-400 py-6">RFC 목록을 불러오는 중...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -1264,6 +1313,7 @@ export function mainPage(): string {
             <thead class="bg-slate-50 border-b border-slate-200">
               <tr>
                 <th class="px-3 py-2.5 text-left font-semibold text-gray-500">No</th>
+                <th class="px-3 py-2.5 text-left font-semibold text-gray-500">RFC</th>
                 <th class="px-3 py-2.5 text-left font-semibold text-gray-500">입력년월</th>
                 <th class="px-3 py-2.5 text-left font-semibold text-gray-500">실행모드</th>
                 <th class="px-3 py-2.5 text-center font-semibold text-gray-500">상태</th>
@@ -1276,7 +1326,7 @@ export function mainPage(): string {
               </tr>
             </thead>
             <tbody id="sap-jobs-body">
-              <tr><td colspan="10" class="text-center text-gray-400 py-8">작업 이력이 없습니다.</td></tr>
+              <tr><td colspan="11" class="text-center text-gray-400 py-8">작업 이력이 없습니다.</td></tr>
             </tbody>
           </table>
         </div>
@@ -9039,8 +9089,86 @@ export function mainPage(): string {
     }
 
     // ===================== SAP 배치 동기화 =====================
+    var rfcList = [];
+
     async function loadBatchDashboard() {
-      await Promise.all([loadBatchSummary(), loadBatchChart(), loadBatchJobs()]);
+      await Promise.all([loadRfcList(), loadBatchSummary(), loadBatchChart(), loadBatchJobs()]);
+    }
+
+    async function loadRfcList() {
+      try {
+        var resp = await fetch('/api/rfc-master');
+        var data = await resp.json();
+        rfcList = data.rfcs || [];
+        document.getElementById('sap-rfc-count').textContent = String(rfcList.length);
+        document.getElementById('sap-rfc-badge').textContent = rfcList.length + '개 등록됨';
+        renderRfcTable();
+      } catch(e) { console.error('loadRfcList error:', e); }
+    }
+
+    function renderRfcTable() {
+      var tbody = document.getElementById('rfc-list-body');
+      if (!tbody) return;
+      if (rfcList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-6">등록된 RFC가 없습니다. [RFC 추가] 버튼으로 등록하세요.</td></tr>';
+        return;
+      }
+      var html = '';
+      rfcList.forEach(function(rfc, idx) {
+        var activeBadge = rfc.is_active
+          ? '<span class="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-semibold">활성</span>'
+          : '<span class="px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[10px] font-semibold">비활성</span>';
+        html += '<tr class="border-b border-slate-50 hover:bg-slate-50/50">';
+        html += '<td class="px-3 py-2.5 text-center text-gray-400">' + (rfc.sort_order || idx+1) + '</td>';
+        html += '<td class="px-3 py-2.5"><span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[10px] font-bold">' + rfc.rfc_code + '</span></td>';
+        html += '<td class="px-3 py-2.5 font-mono text-xs text-gray-700 font-medium">' + rfc.rfc_function + '</td>';
+        html += '<td class="px-3 py-2.5 text-gray-500">' + (rfc.description || '-') + '</td>';
+        html += '<td class="px-3 py-2.5"><span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-mono">' + rfc.target_table + '</span></td>';
+        html += '<td class="px-3 py-2.5 text-center">' + activeBadge + '</td>';
+        html += '<td class="px-3 py-2.5 text-center"><button onclick="sapBatchExecuteSingle(\\'' + rfc.rfc_code + '\\')" class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-[10px] font-semibold transition"><i class="fas fa-play mr-0.5"></i>실행</button></td>';
+        html += '<td class="px-3 py-2.5 text-center"><button onclick="deleteRfc(' + rfc.id + ')" class="px-2 py-1 rounded bg-red-50 text-red-500 hover:bg-red-100 text-[10px] transition"><i class="fas fa-trash"></i></button></td>';
+        html += '</tr>';
+      });
+      tbody.innerHTML = html;
+    }
+
+    function showAddRfcForm() {
+      document.getElementById('rfc-add-form').classList.remove('hidden');
+      document.getElementById('new-rfc-code').focus();
+    }
+
+    async function saveNewRfc() {
+      var code = document.getElementById('new-rfc-code').value.trim().toUpperCase();
+      var func = document.getElementById('new-rfc-function').value.trim();
+      var table = document.getElementById('new-rfc-table').value.trim();
+      var desc = document.getElementById('new-rfc-desc').value.trim();
+
+      if (!code || !func || !table) { alert('코드, 함수명, 적재 테이블은 필수입니다.'); return; }
+
+      try {
+        var resp = await fetch('/api/rfc-master', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ rfc_code: code, rfc_function: func, target_table: table, description: desc, sort_order: rfcList.length + 1 })
+        });
+        var data = await resp.json();
+        if (data.success) {
+          document.getElementById('rfc-add-form').classList.add('hidden');
+          document.getElementById('new-rfc-code').value = '';
+          document.getElementById('new-rfc-function').value = '';
+          document.getElementById('new-rfc-table').value = '';
+          document.getElementById('new-rfc-desc').value = '';
+          loadRfcList();
+        } else { alert('등록 실패: ' + (data.error || '')); }
+      } catch(e) { alert('오류: ' + e.message); }
+    }
+
+    async function deleteRfc(id) {
+      if (!confirm('이 RFC를 삭제하시겠습니까?')) return;
+      try {
+        await fetch('/api/rfc-master/' + id, { method: 'DELETE' });
+        loadRfcList();
+      } catch(e) { alert('삭제 오류: ' + e.message); }
     }
 
     async function loadBatchSummary() {
@@ -9058,7 +9186,7 @@ export function mainPage(): string {
       try {
         var resp = await fetch('/api/batch/monthly-chart');
         var data = await resp.json();
-        var months = (data.months || []).reverse(); // oldest first
+        var months = (data.months || []).reverse();
         var container = document.getElementById('sap-monthly-chart');
         if (!container) return;
 
@@ -9097,7 +9225,7 @@ export function mainPage(): string {
         if (!tbody) return;
 
         if (jobs.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="10" class="text-center text-gray-400 py-8">작업 이력이 없습니다.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="11" class="text-center text-gray-400 py-8">작업 이력이 없습니다.</td></tr>';
           return;
         }
 
@@ -9113,6 +9241,10 @@ export function mainPage(): string {
             ? '<span class="px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 text-[10px] font-semibold">REPLACE</span>'
             : '<span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-semibold">INSERT</span>';
 
+          var rfcBadge = job.rfc_code
+            ? '<span class="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 text-[10px] font-bold">' + job.rfc_code + '</span>'
+            : '<span class="text-gray-400 text-[10px]">-</span>';
+
           var ym = job.input_month || '';
           var ymDisplay = ym.length === 6 ? ym.substring(0,4) + '년 ' + ym.substring(4,6) + '월' : ym;
 
@@ -9127,6 +9259,7 @@ export function mainPage(): string {
 
           html += '<tr class="border-b border-slate-50 hover:bg-slate-50/50">';
           html += '<td class="px-3 py-2.5 text-gray-400">' + (idx+1) + '</td>';
+          html += '<td class="px-3 py-2.5">' + rfcBadge + '</td>';
           html += '<td class="px-3 py-2.5 font-medium text-gray-700">' + ymDisplay + '</td>';
           html += '<td class="px-3 py-2.5">' + modeBadge + '</td>';
           html += '<td class="px-3 py-2.5 text-center">' + statusBadge + '</td>';
@@ -9159,15 +9292,55 @@ export function mainPage(): string {
         var msgEl = document.getElementById('sap-check-msg');
         resultArea.classList.remove('hidden');
 
-        var msg = data.message || '';
-        if (data.last_job) {
-          msg += ' | 최근 작업: ' + data.last_job.status + ' (' + (data.last_job.started_at || '') + ')';
+        var checks = data.checks || [];
+        if (checks.length === 0) {
+          msgEl.innerHTML = '<p class="text-amber-300">등록된 RFC가 없습니다.</p>';
+          return;
         }
-        msgEl.textContent = msg;
+        var html = '<p class="font-semibold mb-1">📋 ' + inputMonth.substring(0,4) + '년 ' + inputMonth.substring(4,6) + '월 데이터 현황:</p>';
+        checks.forEach(function(ck) {
+          var statusIcon = ck.existing_records > 0 ? '🟢' : '⚪';
+          var lastInfo = ck.last_job ? ' (최근: ' + ck.last_job.status + ', ' + (ck.last_job.insert_count||0) + '건)' : '';
+          html += '<p class="ml-3">' + statusIcon + ' <b>' + ck.rfc_code + '</b> [' + ck.rfc_function + '] → ' + ck.target_table + ': <span class="text-white font-semibold">' + (ck.existing_records||0).toLocaleString() + '건</span>' + lastInfo + '</p>';
+        });
+        msgEl.innerHTML = html;
       } catch(e) { alert('확인 실패: ' + e.message); }
     }
 
-    async function sapBatchExecute() {
+    async function sapBatchExecuteAll() {
+      var inputMonth = document.getElementById('sap-input-month').value.trim();
+      var execMode = document.getElementById('sap-exec-mode').value;
+
+      if (!inputMonth || inputMonth.length !== 6) {
+        alert('입력년월을 YYYYMM 형식으로 입력해주세요. (예: 202507)');
+        return;
+      }
+
+      if (rfcList.length === 0) { alert('등록된 RFC가 없습니다. 먼저 RFC를 추가해주세요.'); return; }
+
+      var ymLabel = inputMonth.substring(0,4) + '년 ' + inputMonth.substring(4,6) + '월';
+      var rfcNames = rfcList.filter(function(r){return r.is_active;}).map(function(r){return r.rfc_code;}).join(', ');
+      if (!confirm('[' + ymLabel + '] ' + execMode + ' 모드\\n\\n실행 대상 RFC: ' + rfcNames + '\\n\\n전체 RFC를 실행하시겠습니까?')) return;
+
+      try {
+        var resp = await fetch('/api/batch/execute', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ input_month: inputMonth, execution_mode: execMode, rfc_code: 'ALL' })
+        });
+        var data = await resp.json();
+        if (data.success) {
+          var summary = data.results.map(function(r){ return r.rfc_code + ': ' + r.status + ' (' + (r.insert_count||0).toLocaleString() + '건)'; }).join('\\n');
+          alert('✓ 전체 배치 완료! (' + data.executed_count + '개 RFC)\\n\\n' + summary);
+        } else {
+          var failedRfcs = data.results.filter(function(r){return r.status==='FAILED';}).map(function(r){return r.rfc_code + ': ' + r.error;}).join('\\n');
+          alert('⚠ 일부 실패:\\n' + failedRfcs);
+        }
+        loadBatchDashboard();
+      } catch(e) { alert('실행 오류: ' + e.message); }
+    }
+
+    async function sapBatchExecuteSingle(rfcCode) {
       var inputMonth = document.getElementById('sap-input-month').value.trim();
       var execMode = document.getElementById('sap-exec-mode').value;
 
@@ -9177,22 +9350,22 @@ export function mainPage(): string {
       }
 
       var ymLabel = inputMonth.substring(0,4) + '년 ' + inputMonth.substring(4,6) + '월';
-      if (!confirm('[' + ymLabel + '] ' + execMode + ' 모드로 SAP 데이터 동기화를 실행하시겠습니까?')) return;
+      if (!confirm('[' + rfcCode + '] ' + ymLabel + ' ' + execMode + ' 모드로 실행하시겠습니까?')) return;
 
       try {
         var resp = await fetch('/api/batch/execute', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ input_month: inputMonth, execution_mode: execMode })
+          body: JSON.stringify({ input_month: inputMonth, execution_mode: execMode, rfc_code: rfcCode })
         });
         var data = await resp.json();
         if (data.success) {
-          alert('✓ 배치 작업 완료!\\n처리건수: ' + (data.source_count||0).toLocaleString() + '건\\n적재건수: ' + (data.insert_count||0).toLocaleString() + '건\\n소요시간: ' + Math.round((data.duration_ms||0)/1000) + '초');
-          loadBatchDashboard();
+          var r = data.results[0];
+          alert('✓ [' + rfcCode + '] 완료!\\n처리건수: ' + (r.source_count||0).toLocaleString() + '건\\n적재건수: ' + (r.insert_count||0).toLocaleString() + '건\\n소요시간: ' + Math.round((r.duration_ms||0)/1000) + '초');
         } else {
-          alert('✗ 배치 실행 실패: ' + (data.error || '알 수 없는 오류'));
-          loadBatchJobs();
+          alert('✗ [' + rfcCode + '] 실패: ' + (data.results[0]?.error || ''));
         }
+        loadBatchDashboard();
       } catch(e) { alert('실행 오류: ' + e.message); }
     }
 
@@ -9205,6 +9378,7 @@ export function mainPage(): string {
 
         var info = '=== 작업 상세 로그 ===\\n';
         info += '\\nJob ID: ' + job.job_id;
+        info += '\\nRFC: ' + (job.rfc_code || '-');
         info += '\\n입력년월: ' + job.input_month;
         info += '\\n실행모드: ' + job.execution_mode;
         info += '\\n상태: ' + job.status;
