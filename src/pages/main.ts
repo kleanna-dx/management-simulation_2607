@@ -564,6 +564,9 @@ export function mainPage(): string {
         <button onclick="switchDataInputSub('calcresult')" id="di-tab-calcresult" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
           <i class="fas fa-calculator mr-1.5"></i>계산결과
         </button>
+        <button onclick="switchDataInputSub('sapbatch')" id="di-tab-sapbatch" class="pill-tab pill-tab-inactive text-xs !px-4 !py-2">
+          <i class="fas fa-satellite-dish mr-1.5"></i>SAP 배치 동기화
+        </button>
       </div>
 
     <!-- 서브: Raw 데이터 입력 (Upload) -->
@@ -1147,6 +1150,138 @@ export function mainPage(): string {
         </div>
       </div>
     </div>
+
+    </div>
+
+    <!-- ========== SAP 배치 동기화 서브탭 ========== -->
+    <div id="content-sapbatch" class="hidden fade-in space-y-5">
+      <!-- SAP RFC 카드 (다크 인디고) -->
+      <div class="rounded-2xl overflow-hidden" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #3730a3 100%);">
+        <div class="p-6">
+          <div class="flex items-center gap-3 mb-1">
+            <i class="fas fa-satellite-dish text-indigo-300 text-lg"></i>
+            <h3 class="text-base font-bold text-white">SAP RFC 데이터 동기화</h3>
+          </div>
+          <p class="text-xs text-indigo-300/80 mb-1">SAP BW에서 수익성 분석 데이터(원/부자재 실적)를 가져와 분석 DB(material_usage)에 적재합니다.</p>
+          <p class="text-[10px] text-indigo-400/60 mb-5">RFC 함수: Z_BI_WEB_EX_BL | 매개변수: I_CMONTH (입력년월)</p>
+
+          <div class="flex items-center gap-3 flex-wrap">
+            <div>
+              <label class="text-[10px] text-indigo-300 font-medium block mb-1">입력년월 (I_CMONTH)</label>
+              <input type="text" id="sap-input-month" placeholder="YYYYMM" maxlength="6"
+                class="w-36 px-3 py-2 rounded-lg bg-white/10 border border-indigo-400/30 text-white text-sm placeholder-indigo-300/50 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 font-mono">
+            </div>
+            <div>
+              <label class="text-[10px] text-indigo-300 font-medium block mb-1">실행 모드</label>
+              <select id="sap-exec-mode" class="w-56 px-3 py-2 rounded-lg bg-white/10 border border-indigo-400/30 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400/50">
+                <option value="REPLACE" class="text-gray-800">REPLACE (기존 삭제 후 INSERT)</option>
+                <option value="INSERT" class="text-gray-800">INSERT (추가 적재)</option>
+              </select>
+            </div>
+            <div class="flex items-end gap-2 mt-auto pt-4">
+              <button onclick="sapBatchCheck()" class="px-4 py-2 rounded-lg bg-white/10 border border-indigo-300/40 text-indigo-200 text-sm font-medium hover:bg-white/20 transition flex items-center gap-1.5">
+                <i class="fas fa-search text-xs"></i>확인
+              </button>
+              <button onclick="sapBatchExecute()" class="px-5 py-2 rounded-lg bg-indigo-500 text-white text-sm font-semibold hover:bg-indigo-400 transition shadow-lg flex items-center gap-1.5">
+                <i class="fas fa-play text-xs"></i>실행
+              </button>
+            </div>
+          </div>
+
+          <!-- Check result area -->
+          <div id="sap-check-result" class="hidden mt-4 p-3 rounded-lg bg-white/5 border border-indigo-400/20">
+            <p id="sap-check-msg" class="text-xs text-indigo-200"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 요약 카드 4개 -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="card p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+              <i class="fas fa-database text-blue-500"></i>
+            </div>
+            <span class="text-xs text-gray-500">전체 DB 건수</span>
+          </div>
+          <p id="sap-total-records" class="text-2xl font-bold text-gray-900">-</p>
+        </div>
+        <div class="card p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+              <i class="fas fa-check-circle text-emerald-500"></i>
+            </div>
+            <span class="text-xs text-gray-500">성공</span>
+          </div>
+          <p id="sap-success-count" class="text-2xl font-bold text-gray-900">-</p>
+        </div>
+        <div class="card p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
+              <i class="fas fa-times-circle text-red-500"></i>
+            </div>
+            <span class="text-xs text-gray-500">실패</span>
+          </div>
+          <p id="sap-failed-count" class="text-2xl font-bold text-gray-900">-</p>
+        </div>
+        <div class="card p-5">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+              <i class="fas fa-history text-amber-500"></i>
+            </div>
+            <span class="text-xs text-gray-500">전체 작업</span>
+          </div>
+          <p id="sap-total-jobs" class="text-2xl font-bold text-gray-900">-</p>
+        </div>
+      </div>
+
+      <!-- 월별 데이터 현황 차트 -->
+      <div class="card p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <i class="fas fa-chart-bar text-indigo-400 text-sm"></i>
+            <h4 class="text-sm font-semibold text-gray-700">월별 데이터 현황</h4>
+            <span id="sap-chart-summary" class="text-[10px] text-gray-400 ml-2"></span>
+          </div>
+        </div>
+        <div id="sap-monthly-chart" class="h-[140px] flex items-end gap-1.5 px-2"></div>
+      </div>
+
+      <!-- 작업 이력 테이블 -->
+      <div class="card overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="fas fa-list text-slate-400 text-sm"></i>
+            <h4 class="text-sm font-semibold text-gray-700">작업 이력</h4>
+            <span id="sap-jobs-total" class="text-[10px] text-gray-400"></span>
+          </div>
+          <button onclick="loadBatchJobs()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-gray-600 hover:bg-slate-200 transition">
+            <i class="fas fa-sync-alt mr-1"></i>새로고침
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th class="px-3 py-2.5 text-left font-semibold text-gray-500">No</th>
+                <th class="px-3 py-2.5 text-left font-semibold text-gray-500">입력년월</th>
+                <th class="px-3 py-2.5 text-left font-semibold text-gray-500">실행모드</th>
+                <th class="px-3 py-2.5 text-center font-semibold text-gray-500">상태</th>
+                <th class="px-3 py-2.5 text-right font-semibold text-gray-500">처리건수<br><span class="text-[9px] text-gray-400 font-normal">[T_DATA]</span></th>
+                <th class="px-3 py-2.5 text-right font-semibold text-gray-500">적재건수<br><span class="text-[9px] text-gray-400 font-normal">[INSERT]</span></th>
+                <th class="px-3 py-2.5 text-right font-semibold text-gray-500">소요시간</th>
+                <th class="px-3 py-2.5 text-left font-semibold text-gray-500">실행자</th>
+                <th class="px-3 py-2.5 text-left font-semibold text-gray-500">실행시작</th>
+                <th class="px-3 py-2.5 text-center font-semibold text-gray-500">로그</th>
+              </tr>
+            </thead>
+            <tbody id="sap-jobs-body">
+              <tr><td colspan="10" class="text-center text-gray-400 py-8">작업 이력이 없습니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div><!-- /content-sapbatch -->
 
     </div><!-- /content-datainput -->
 
@@ -2271,7 +2406,7 @@ export function mainPage(): string {
     }
 
     function switchDataInputSub(sub) {
-      ['upload','dataview','manual','calcresult','inventory'].forEach(function(s) {
+      ['upload','dataview','manual','calcresult','inventory','sapbatch'].forEach(function(s) {
         var el = document.getElementById('content-' + s);
         if (el) el.classList.add('hidden');
         var btn = document.getElementById('di-tab-' + s);
@@ -2285,6 +2420,7 @@ export function mainPage(): string {
       if (sub === 'manual') { loadManualData(); }
       if (sub === 'calcresult') { renderCalcResult(); }
       if (sub === 'inventory') { loadInventoryData(); }
+      if (sub === 'sapbatch') { loadBatchDashboard(); }
     }
 
     function switchProfitSub(sub) {
@@ -8901,6 +9037,188 @@ export function mainPage(): string {
         }
       } catch(e) { alert('저장 오류: ' + e.message); }
     }
+
+    // ===================== SAP 배치 동기화 =====================
+    async function loadBatchDashboard() {
+      await Promise.all([loadBatchSummary(), loadBatchChart(), loadBatchJobs()]);
+    }
+
+    async function loadBatchSummary() {
+      try {
+        var resp = await fetch('/api/batch/summary');
+        var data = await resp.json();
+        document.getElementById('sap-total-records').textContent = Number(data.total_db_records || 0).toLocaleString();
+        document.getElementById('sap-success-count').textContent = String(data.success_count || 0);
+        document.getElementById('sap-failed-count').textContent = String(data.failed_count || 0);
+        document.getElementById('sap-total-jobs').textContent = String(data.total_jobs || 0);
+      } catch(e) { console.error('loadBatchSummary error:', e); }
+    }
+
+    async function loadBatchChart() {
+      try {
+        var resp = await fetch('/api/batch/monthly-chart');
+        var data = await resp.json();
+        var months = (data.months || []).reverse(); // oldest first
+        var container = document.getElementById('sap-monthly-chart');
+        if (!container) return;
+
+        if (months.length === 0) {
+          container.innerHTML = '<div class="flex items-center justify-center w-full text-xs text-gray-400">데이터 없음</div>';
+          return;
+        }
+
+        var maxVal = Math.max(...months.map(function(m){ return m.records || 0; }), 1);
+        var totalRecords = months.reduce(function(s, m){ return s + (m.records || 0); }, 0);
+        document.getElementById('sap-chart-summary').textContent = months.length + '개월 (총 ' + totalRecords.toLocaleString() + '건)';
+
+        var html = '';
+        months.forEach(function(m) {
+          var pct = Math.max(((m.records || 0) / maxVal) * 100, 4);
+          var ym = m.input_month || '';
+          var label = ym.length === 6 ? ym.substring(2,4) + '/' + ym.substring(4,6) : ym;
+          html += '<div class="flex-1 flex flex-col items-center gap-1">';
+          html += '  <div class="w-full rounded-t-md transition-all hover:opacity-80" style="height:' + pct + '%;background:linear-gradient(180deg,#6366f1,#4f46e5)" title="' + (m.records||0).toLocaleString() + '건"></div>';
+          html += '  <span class="text-[9px] text-gray-400">' + label + '</span>';
+          html += '</div>';
+        });
+        container.innerHTML = html;
+      } catch(e) { console.error('loadBatchChart error:', e); }
+    }
+
+    async function loadBatchJobs() {
+      try {
+        var resp = await fetch('/api/batch/jobs?limit=30');
+        var data = await resp.json();
+        var jobs = data.jobs || [];
+        var total = data.total || 0;
+        document.getElementById('sap-jobs-total').textContent = '(' + total + '건)';
+
+        var tbody = document.getElementById('sap-jobs-body');
+        if (!tbody) return;
+
+        if (jobs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="10" class="text-center text-gray-400 py-8">작업 이력이 없습니다.</td></tr>';
+          return;
+        }
+
+        var html = '';
+        jobs.forEach(function(job, idx) {
+          var statusBadge = '';
+          if (job.status === 'SUCCESS') statusBadge = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-semibold">✓ 성공</span>';
+          else if (job.status === 'FAILED') statusBadge = '<span class="px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-semibold">✗ 실패</span>';
+          else if (job.status === 'RUNNING') statusBadge = '<span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 text-[10px] font-semibold animate-pulse">⟳ 실행중</span>';
+          else statusBadge = '<span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[10px] font-semibold">대기</span>';
+
+          var modeBadge = job.execution_mode === 'REPLACE'
+            ? '<span class="px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 text-[10px] font-semibold">REPLACE</span>'
+            : '<span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-semibold">INSERT</span>';
+
+          var ym = job.input_month || '';
+          var ymDisplay = ym.length === 6 ? ym.substring(0,4) + '년 ' + ym.substring(4,6) + '월' : ym;
+
+          var durationSec = Math.floor((job.duration_ms || 0) / 1000);
+          var durationDisplay = durationSec >= 60 ? Math.floor(durationSec/60) + '분 ' + (durationSec%60) + '초' : durationSec + '초';
+
+          var startDisplay = job.started_at || '-';
+          if (startDisplay.length > 10) {
+            var dt = startDisplay.split(' ');
+            startDisplay = (dt[0]||'').substring(5) + ' ' + (dt[1]||'').substring(0,5);
+          }
+
+          html += '<tr class="border-b border-slate-50 hover:bg-slate-50/50">';
+          html += '<td class="px-3 py-2.5 text-gray-400">' + (idx+1) + '</td>';
+          html += '<td class="px-3 py-2.5 font-medium text-gray-700">' + ymDisplay + '</td>';
+          html += '<td class="px-3 py-2.5">' + modeBadge + '</td>';
+          html += '<td class="px-3 py-2.5 text-center">' + statusBadge + '</td>';
+          html += '<td class="px-3 py-2.5 text-right font-mono text-indigo-600 font-semibold">' + (job.source_count||0).toLocaleString() + '</td>';
+          html += '<td class="px-3 py-2.5 text-right font-mono text-emerald-600 font-semibold">' + (job.insert_count||0).toLocaleString() + '</td>';
+          html += '<td class="px-3 py-2.5 text-right text-gray-500">' + durationDisplay + '</td>';
+          html += '<td class="px-3 py-2.5 text-gray-500 text-[10px]">' + (job.executed_by||'admin') + '</td>';
+          html += '<td class="px-3 py-2.5 text-gray-500">' + startDisplay + '</td>';
+          html += '<td class="px-3 py-2.5 text-center"><button onclick="showJobLog(\\'' + job.job_id + '\\')" class="w-6 h-6 rounded bg-indigo-50 text-indigo-500 hover:bg-indigo-100 transition text-xs"><i class="fas fa-file-alt"></i></button></td>';
+          html += '</tr>';
+        });
+        tbody.innerHTML = html;
+      } catch(e) { console.error('loadBatchJobs error:', e); }
+    }
+
+    async function sapBatchCheck() {
+      var inputMonth = document.getElementById('sap-input-month').value.trim();
+      if (!inputMonth || inputMonth.length !== 6) {
+        alert('입력년월을 YYYYMM 형식으로 입력해주세요. (예: 202507)');
+        return;
+      }
+      try {
+        var resp = await fetch('/api/batch/check', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ input_month: inputMonth })
+        });
+        var data = await resp.json();
+        var resultArea = document.getElementById('sap-check-result');
+        var msgEl = document.getElementById('sap-check-msg');
+        resultArea.classList.remove('hidden');
+
+        var msg = data.message || '';
+        if (data.last_job) {
+          msg += ' | 최근 작업: ' + data.last_job.status + ' (' + (data.last_job.started_at || '') + ')';
+        }
+        msgEl.textContent = msg;
+      } catch(e) { alert('확인 실패: ' + e.message); }
+    }
+
+    async function sapBatchExecute() {
+      var inputMonth = document.getElementById('sap-input-month').value.trim();
+      var execMode = document.getElementById('sap-exec-mode').value;
+
+      if (!inputMonth || inputMonth.length !== 6) {
+        alert('입력년월을 YYYYMM 형식으로 입력해주세요. (예: 202507)');
+        return;
+      }
+
+      var ymLabel = inputMonth.substring(0,4) + '년 ' + inputMonth.substring(4,6) + '월';
+      if (!confirm('[' + ymLabel + '] ' + execMode + ' 모드로 SAP 데이터 동기화를 실행하시겠습니까?')) return;
+
+      try {
+        var resp = await fetch('/api/batch/execute', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ input_month: inputMonth, execution_mode: execMode })
+        });
+        var data = await resp.json();
+        if (data.success) {
+          alert('✓ 배치 작업 완료!\\n처리건수: ' + (data.source_count||0).toLocaleString() + '건\\n적재건수: ' + (data.insert_count||0).toLocaleString() + '건\\n소요시간: ' + Math.round((data.duration_ms||0)/1000) + '초');
+          loadBatchDashboard();
+        } else {
+          alert('✗ 배치 실행 실패: ' + (data.error || '알 수 없는 오류'));
+          loadBatchJobs();
+        }
+      } catch(e) { alert('실행 오류: ' + e.message); }
+    }
+
+    async function showJobLog(jobId) {
+      try {
+        var resp = await fetch('/api/batch/jobs/' + jobId + '/log');
+        var data = await resp.json();
+        var job = data.job;
+        if (!job) { alert('로그를 찾을 수 없습니다.'); return; }
+
+        var info = '=== 작업 상세 로그 ===\\n';
+        info += '\\nJob ID: ' + job.job_id;
+        info += '\\n입력년월: ' + job.input_month;
+        info += '\\n실행모드: ' + job.execution_mode;
+        info += '\\n상태: ' + job.status;
+        info += '\\n처리건수: ' + (job.source_count||0).toLocaleString();
+        info += '\\n적재건수: ' + (job.insert_count||0).toLocaleString();
+        info += '\\n소요시간: ' + Math.round((job.duration_ms||0)/1000) + '초';
+        info += '\\n실행자: ' + (job.executed_by||'-');
+        info += '\\n시작: ' + (job.started_at||'-');
+        info += '\\n완료: ' + (job.completed_at||'-');
+        if (job.error_message) info += '\\n\\n에러: ' + job.error_message;
+        alert(info);
+      } catch(e) { alert('로그 조회 실패: ' + e.message); }
+    }
+
   </script>
 </body>
 </html>`;

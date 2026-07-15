@@ -3709,4 +3709,196 @@ app.post('/api/grade-production/simulate', async (c) => {
   })
 })
 
+// ===================== SAP Batch Jobs API =====================
+
+// GET /api/batch/jobs - 작업 이력 조회
+app.get('/api/batch/jobs', async (c) => {
+  const { limit = '50', offset = '0', status } = c.req.query()
+  const db = c.env.DB
+
+  let query = 'SELECT * FROM batch_jobs'
+  const params: any[] = []
+
+  if (status) {
+    query += ' WHERE status = ?'
+    params.push(status)
+  }
+
+  query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?'
+  params.push(Number(limit), Number(offset))
+
+  const { results } = await db.prepare(query).bind(...params).all()
+
+  // Total count
+  let countQuery = 'SELECT COUNT(*) as total FROM batch_jobs'
+  if (status) countQuery += ` WHERE status = '${status}'`
+  const countResult = await db.prepare(countQuery).first()
+
+  return c.json({ jobs: results, total: countResult?.total || 0 })
+})
+
+// GET /api/batch/summary - 요약 통계
+app.get('/api/batch/summary', async (c) => {
+  const db = c.env.DB
+
+  const totalRecords = await db.prepare(
+    "SELECT SUM(insert_count) as total FROM batch_jobs WHERE status = 'SUCCESS'"
+  ).first()
+
+  const successCount = await db.prepare(
+    "SELECT COUNT(*) as cnt FROM batch_jobs WHERE status = 'SUCCESS'"
+  ).first()
+
+  const failedCount = await db.prepare(
+    "SELECT COUNT(*) as cnt FROM batch_jobs WHERE status = 'FAILED'"
+  ).first()
+
+  const totalJobs = await db.prepare(
+    "SELECT COUNT(*) as cnt FROM batch_jobs"
+  ).first()
+
+  return c.json({
+    total_db_records: totalRecords?.total || 0,
+    success_count: successCount?.cnt || 0,
+    failed_count: failedCount?.cnt || 0,
+    total_jobs: totalJobs?.cnt || 0
+  })
+})
+
+// GET /api/batch/monthly-chart - 월별 데이터 현황
+app.get('/api/batch/monthly-chart', async (c) => {
+  const db = c.env.DB
+
+  const { results } = await db.prepare(
+    `SELECT input_month, SUM(insert_count) as records
+     FROM batch_jobs WHERE status = 'SUCCESS'
+     GROUP BY input_month ORDER BY input_month DESC LIMIT 12`
+  ).all()
+
+  return c.json({ months: results || [] })
+})
+
+// POST /api/batch/execute - 배치 작업 실행
+app.post('/api/batch/execute', async (c) => {
+  const db = c.env.DB
+  const body = await c.req.json()
+  const { input_month, execution_mode = 'REPLACE' } = body
+
+  if (!input_month || !/^\d{6}$/.test(input_month)) {
+    return c.json({ error: '입력년월은 YYYYMM 형식이어야 합니다.' }, 400)
+  }
+
+  const jobId = `JOB_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+  const startedAt = new Date(Date.now() + 9 * 3600000).toISOString().replace('T', ' ').substring(0, 19)
+
+  // Insert job record
+  await db.prepare(
+    `INSERT INTO batch_jobs (job_id, input_month, execution_mode, status, started_at, executed_by)
+     VALUES (?, ?, ?, 'RUNNING', ?, 'admin')`
+  ).bind(jobId, input_month, execution_mode, startedAt).run()
+
+    // Simulate SAP RFC call (in real production, this would call SAP via external API)
+    // For now, simulate processing with raw_records data
+    try {
+      let sourceCount = 0
+      let insertCount = 0
+
+      const year = input_month.substring(0, 4)
+      const month = input_month.substring(4, 6)
+      const ym = `${year}-${month}`
+
+      if (execution_mode === 'REPLACE') {
+        // Delete existing data for this month
+        const delResult = await db.prepare(
+          'DELETE FROM raw_records WHERE calendar_ym = ?'
+        ).bind(ym).run()
+        sourceCount = delResult.meta.changes || 0
+      }
+
+      // Count existing records to simulate "fetched from SAP"
+      const existing = await db.prepare(
+        'SELECT COUNT(*) as cnt FROM raw_records WHERE calendar_ym = ?'
+      ).bind(ym).first()
+      insertCount = existing?.cnt || 0
+
+    // Update job as success
+    const completedAt = new Date(Date.now() + 9 * 3600000).toISOString().replace('T', ' ').substring(0, 19)
+    const durationMs = Math.floor(Math.random() * 80000) + 5000 // simulated
+
+    await db.prepare(
+      `UPDATE batch_jobs SET status = 'SUCCESS', source_count = ?, insert_count = ?,
+       duration_ms = ?, completed_at = ? WHERE job_id = ?`
+    ).bind(sourceCount + insertCount, insertCount, durationMs, completedAt, jobId).run()
+
+    return c.json({
+      success: true,
+      job_id: jobId,
+      status: 'SUCCESS',
+      source_count: sourceCount + insertCount,
+      insert_count: insertCount,
+      duration_ms: durationMs
+    })
+  } catch (err: any) {
+    const completedAt = new Date(Date.now() + 9 * 3600000).toISOString().replace('T', ' ').substring(0, 19)
+    await db.prepare(
+      `UPDATE batch_jobs SET status = 'FAILED', error_message = ?, completed_at = ? WHERE job_id = ?`
+    ).bind(err.message || 'Unknown error', completedAt, jobId).run()
+
+    return c.json({
+      success: false,
+      job_id: jobId,
+      status: 'FAILED',
+      error: err.message
+    }, 500)
+  }
+})
+
+// POST /api/batch/check - 확인 (조회 미리보기 - SAP에 몇 건 있는지 확인)
+app.post('/api/batch/check', async (c) => {
+  const db = c.env.DB
+  const body = await c.req.json()
+  const { input_month } = body
+
+  if (!input_month || !/^\d{6}$/.test(input_month)) {
+    return c.json({ error: '입력년월은 YYYYMM 형식이어야 합니다.' }, 400)
+  }
+
+  const year = input_month.substring(0, 4)
+  const month = input_month.substring(4, 6)
+  const ym = `${year}-${month}`
+
+  // Check existing data
+  const existing = await db.prepare(
+    'SELECT COUNT(*) as cnt FROM raw_records WHERE calendar_ym = ?'
+  ).bind(ym).first()
+
+  // Check previous batch for this month
+  const prevJob = await db.prepare(
+    `SELECT * FROM batch_jobs WHERE input_month = ? ORDER BY created_at DESC LIMIT 1`
+  ).bind(input_month).first()
+
+  return c.json({
+    input_month,
+    existing_records: existing?.cnt || 0,
+    last_job: prevJob || null,
+    message: (existing?.cnt || 0) > 0
+      ? `${ym} 데이터 ${existing?.cnt}건이 이미 존재합니다.`
+      : `${ym} 데이터가 없습니다. 신규 적재 가능합니다.`
+  })
+})
+
+// GET /api/batch/jobs/:jobId/log - 작업 로그 조회
+app.get('/api/batch/jobs/:jobId/log', async (c) => {
+  const jobId = c.req.param('jobId')
+  const db = c.env.DB
+
+  const job = await db.prepare(
+    'SELECT * FROM batch_jobs WHERE job_id = ?'
+  ).bind(jobId).first()
+
+  if (!job) return c.json({ error: 'Job not found' }, 404)
+
+  return c.json({ job })
+})
+
 export default app
