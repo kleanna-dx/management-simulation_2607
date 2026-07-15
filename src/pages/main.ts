@@ -4,8 +4,8 @@ export function mainPage(): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>원부자재 사전원가 분석</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231e40af'/%3E%3Cpath d='M6 22 L12 16 L18 19 L26 10' stroke='%2393c5fd' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='26' cy='10' r='2' fill='%2393c5fd'/%3E%3Ctext x='7' y='28' font-size='7' fill='%2393c5fd' font-family='sans-serif' font-weight='bold'%3E%E2%82%A9%3C/text%3E%3C/svg%3E">
+  <title>제지 시뮬 - 경영의사결정 분석 플랫폼</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23059669'/%3E%3Cpath d='M8 22 L14 14 L20 18 L24 10' stroke='%23a7f3d0' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='24' cy='10' r='2' fill='%23a7f3d0'/%3E%3Ctext x='7' y='28' font-size='7' fill='%23a7f3d0' font-family='sans-serif' font-weight='bold'%3E%EC%8B%9C%3C/text%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
@@ -63,6 +63,11 @@ export function mainPage(): string {
     .chart-container { height: 200px; position: relative; }
     .gradient-header { background: linear-gradient(135deg, #4B6C61 0%, #5A7C8E 100%); }
     .stat-value { font-variant-numeric: tabular-nums; }
+    /* 사이드바 네비게이션 아이템 */
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #4b5563; background: transparent; border: none; cursor: pointer; transition: all 0.15s; text-align: left; }
+    .nav-item:hover { background: #f0fdf4; color: #166534; }
+    .nav-item-active { background: #ecfdf5 !important; color: #047857 !important; font-weight: 600; box-shadow: inset 3px 0 0 #10b981; }
+    .sidebar-collapsed { width: 0 !important; overflow: hidden; padding: 0 !important; border: none !important; }
     select, input[type="number"], input[type="text"] { font-size: 13px; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
@@ -70,58 +75,94 @@ export function mainPage(): string {
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
   </style>
 </head>
-<body class="bg-slate-50 min-h-screen">
-  <!-- Header -->
-  <header class="gradient-header text-white">
-    <div class="max-w-[1800px] mx-auto px-6 py-5">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <div class="w-10 h-10 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
-            <i class="fas fa-chart-pie text-lg"></i>
-          </div>
-          <div>
-            <h1 class="text-lg font-bold tracking-tight">원부자재 사전원가 분석</h1>
-            <p class="text-xs text-white/70 mt-0.5">Material Cost Pre-Analysis System</p>
-          </div>
+<body class="bg-slate-50 min-h-screen overflow-hidden">
+  <div class="flex h-screen">
+    <!-- ============ 좌측 사이드바 ============ -->
+    <aside id="app-sidebar" class="w-[240px] bg-white border-r border-slate-200 flex flex-col flex-shrink-0 h-screen transition-all duration-300 z-50">
+      <!-- 사이드바 헤더 -->
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm">
+          <i class="fas fa-industry text-white text-sm"></i>
         </div>
-        <div class="flex items-center gap-4">
-          <span class="text-sm text-white/80"><i class="fas fa-user-circle mr-1.5"></i>관리자</span>
-          <select id="divisionSelect" onchange="onDivisionChange()" class="bg-white/20 backdrop-blur border border-white/30 text-white text-sm font-semibold rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-white/50 cursor-pointer">
-            <option value="PS" class="text-gray-800">PS사업부 (제지)</option>
-            <option value="HL" class="text-gray-800">HL사업부 (생활용품)</option>
-          </select>
+        <div class="min-w-0">
+          <h1 class="text-sm font-bold text-gray-800 truncate">제지 시뮬</h1>
+          <p class="text-[10px] text-gray-400 truncate">경영의사결정 분석 플랫폼</p>
         </div>
       </div>
-    </div>
-  </header>
 
-  <!-- Navigation -->
-  <nav class="bg-white border-b border-gray-100 sticky top-0 z-40">
-    <div class="max-w-[1800px] mx-auto px-6 py-3">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <button onclick="switchTab('datainput')" id="tab-datainput" class="pill-tab pill-tab-inactive">
-            <i class="fas fa-file-upload mr-1.5"></i>데이터 입력
+      <!-- 사업부 선택 -->
+      <div class="px-4 py-3 border-b border-slate-100">
+        <select id="divisionSelect" onchange="onDivisionChange()" class="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 cursor-pointer text-gray-700">
+          <option value="PS">PS사업부 (제지)</option>
+          <option value="HL">HL사업부 (생활용품)</option>
+        </select>
+      </div>
+
+      <!-- 네비게이션 메뉴 -->
+      <nav class="flex-1 overflow-y-auto py-3 px-3">
+        <!-- 대시보드 섹션 -->
+        <div class="mb-4">
+          <p class="px-3 mb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">대시보드</p>
+          <button onclick="switchTab('dashboard')" id="tab-dashboard" class="nav-item nav-item-active w-full">
+            <i class="fas fa-chart-line w-4 text-center"></i><span>사용현황 분석</span>
           </button>
-          <button onclick="switchTab('dashboard')" id="tab-dashboard" class="pill-tab pill-tab-active">
-            <i class="fas fa-chart-line mr-1.5"></i>사용현황 분석
-          </button>
-          <button onclick="switchTab('forecast')" id="tab-forecast" class="pill-tab pill-tab-inactive">
-            <i class="fas fa-chart-area mr-1.5"></i>전월 대비 예상 손익
-          </button>
-          <button onclick="switchTab('master')" id="tab-master" class="pill-tab pill-tab-inactive">
-            <i class="fas fa-cog mr-1.5"></i>기준정보
-          </button>
-          <button onclick="switchTab('simflow')" id="tab-simflow" class="pill-tab pill-tab-inactive">
-            <i class="fas fa-flask mr-1.5"></i>통합 시뮬레이션
-          </button>
-          <button onclick="switchTab('optime')" id="tab-optime" class="pill-tab pill-tab-inactive">
-            <i class="fas fa-clock mr-1.5"></i>가동시간
+          <button onclick="switchTab('forecast')" id="tab-forecast" class="nav-item w-full">
+            <i class="fas fa-chart-area w-4 text-center"></i><span>전월 대비 예상 손익</span>
           </button>
         </div>
-        <!-- Filters -->
+
+        <!-- 원가 예측 섹션 -->
+        <div class="mb-4">
+          <p class="px-3 mb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">원가 분석</p>
+          <button onclick="switchTab('simflow')" id="tab-simflow" class="nav-item w-full">
+            <i class="fas fa-flask w-4 text-center"></i><span>통합 시뮬레이션</span>
+          </button>
+          <button onclick="switchTab('optime')" id="tab-optime" class="nav-item w-full">
+            <i class="fas fa-clock w-4 text-center"></i><span>가동시간</span>
+          </button>
+        </div>
+
+        <!-- 데이터 관리 섹션 -->
+        <div class="mb-4">
+          <p class="px-3 mb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">데이터 관리</p>
+          <button onclick="switchTab('datainput')" id="tab-datainput" class="nav-item w-full">
+            <i class="fas fa-file-upload w-4 text-center"></i><span>데이터 입력</span>
+          </button>
+          <button onclick="switchTab('master')" id="tab-master" class="nav-item w-full">
+            <i class="fas fa-cog w-4 text-center"></i><span>기준정보</span>
+          </button>
+        </div>
+      </nav>
+
+      <!-- 사이드바 하단 -->
+      <div class="px-4 py-3 border-t border-slate-100">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center">
+            <i class="fas fa-user text-slate-400 text-xs"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs font-medium text-gray-700 truncate">관리자</p>
+            <p class="text-[10px] text-gray-400 truncate" id="sidebar-division-label">PS사업부</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============ 메인 콘텐츠 영역 ============ -->
+    <div class="flex-1 flex flex-col min-w-0 h-screen">
+      <!-- 상단 헤더 -->
+      <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between flex-shrink-0 z-40">
         <div class="flex items-center gap-3">
-          <div class="flex items-center gap-1 bg-slate-50 rounded-lg px-3 py-1.5">
+          <!-- 사이드바 토글 -->
+          <button onclick="toggleSidebar()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-gray-500 transition lg:hidden">
+            <i class="fas fa-bars text-sm"></i>
+          </button>
+          <!-- 현재 페이지 제목 -->
+          <h2 id="page-title" class="text-sm font-semibold text-gray-800">사용현황 분석</h2>
+        </div>
+        <!-- 필터 영역 -->
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1 bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-200">
             <button onclick="stepYear(-1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-xs"><i class="fas fa-chevron-left"></i></button>
             <span id="analysisYear" class="text-sm font-bold text-gray-700 min-w-[52px] text-center select-none"></span>
             <button onclick="stepYear(1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-xs"><i class="fas fa-chevron-right"></i></button>
@@ -129,16 +170,14 @@ export function mainPage(): string {
             <button onclick="stepMonth(-1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-xs"><i class="fas fa-chevron-left"></i></button>
             <span id="analysisMonth" class="text-sm font-bold text-gray-700 min-w-[36px] text-center select-none"></span>
             <button onclick="stepMonth(1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 text-gray-500 hover:text-gray-800 transition text-xs"><i class="fas fa-chevron-right"></i></button>
-            <button onclick="loadAnalysis()" class="ml-2 px-3 py-1 bg-indigo-600 text-white text-xs font-semibold rounded-md hover:bg-indigo-700 transition shadow-sm"><i class="fas fa-search mr-1"></i>조회</button>
-            <span id="period-hint" class="text-xs text-blue-600 font-medium ml-1 whitespace-nowrap"></span>
+            <button onclick="loadAnalysis()" class="ml-2 px-3 py-1 bg-emerald-600 text-white text-xs font-semibold rounded-md hover:bg-emerald-700 transition shadow-sm"><i class="fas fa-search mr-1"></i>조회</button>
+            <span id="period-hint" class="text-xs text-emerald-600 font-medium ml-1 whitespace-nowrap"></span>
           </div>
         </div>
-      </div>
-    </div>
-  </nav>
+      </header>
 
-  <!-- Content -->
-  <main class="max-w-[1800px] mx-auto px-6 py-6">
+      <!-- 스크롤 콘텐츠 -->
+      <main class="flex-1 overflow-y-auto px-6 py-6">
     <!-- Dashboard Tab -->
     <div id="content-dashboard" class="fade-in space-y-5">
       <!-- Action Bar -->
@@ -2156,9 +2195,17 @@ export function mainPage(): string {
 
     </div><!-- /content-optime -->
 
-  </main>
+      </main>
+    </div><!-- /메인 콘텐츠 영역 -->
+  </div><!-- /flex container -->
 
   <script>
+    // ============ 사이드바 토글 ============
+    function toggleSidebar() {
+      const sidebar = document.getElementById('app-sidebar');
+      sidebar.classList.toggle('sidebar-collapsed');
+    }
+
     let analysisData = null, unitSummaryData = null, unitsCache = [], materialsCache = [];
     let productsCache = [], simResultData = null;
     let unitChartInstance = null, effectChartInstance = null, currentUnitFilter = '', uploadData = [];
@@ -2204,6 +2251,9 @@ export function mainPage(): string {
     async function onDivisionChange() {
       var sel = document.getElementById('divisionSelect');
       currentDivision = sel.value;
+      // 사이드바 라벨 업데이트
+      var lbl = document.getElementById('sidebar-division-label');
+      if (lbl) lbl.textContent = sel.options[sel.selectedIndex].text;
       try {
         // 공통코드 + 사업부 설정 동시 로드
         await loadCommonCodes(currentDivision);
@@ -2214,7 +2264,7 @@ export function mainPage(): string {
         updateDivisionUI();
 
         // 현재 활성 탭에 따라 데이터 재조회
-        var activeTab = document.querySelector('.pill-tab-active');
+        var activeTab = document.querySelector('.nav-item-active') || document.querySelector('.pill-tab-active');
         var tabId = '';
         if (activeTab) {
           var onclick = activeTab.getAttribute('onclick') || '';
@@ -2427,8 +2477,16 @@ export function mainPage(): string {
       ['dashboard','detail','upload','dataview','master','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
-        if (el) { el.classList.remove('pill-tab-active'); el.classList.add('pill-tab-inactive'); }
+        if (el) { el.classList.remove('pill-tab-active'); el.classList.remove('nav-item-active'); el.classList.add('pill-tab-inactive'); }
       });
+      // 사이드바 활성 상태 업데이트
+      document.querySelectorAll('#app-sidebar .nav-item').forEach(el => el.classList.remove('nav-item-active'));
+      const sidebarBtn = document.getElementById('tab-' + tab);
+      if (sidebarBtn) sidebarBtn.classList.add('nav-item-active');
+      // 페이지 제목 업데이트
+      const titles = { dashboard:'사용현황 분석', forecast:'전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', simflow:'통합 시뮬레이션', optime:'가동시간' };
+      const titleEl = document.getElementById('page-title');
+      if (titleEl) titleEl.textContent = titles[tab] || tab;
       if (tab === 'datainput') {
         document.getElementById('content-datainput')?.classList.remove('hidden');
         var activeSub = document.querySelector('#content-datainput [id^="di-tab-"].pill-tab-active');
