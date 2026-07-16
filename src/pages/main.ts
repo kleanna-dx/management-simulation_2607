@@ -110,7 +110,7 @@ export function mainPage(): string {
             <i class="fas fa-chart-line w-4 text-center"></i><span>사용현황 분석</span>
           </button>
           <button onclick="switchTab('forecast')" id="tab-forecast" class="nav-item w-full">
-            <i class="fas fa-chart-area w-4 text-center"></i><span>전월 대비 예상 손익</span>
+            <i class="fas fa-chart-area w-4 text-center"></i><span>원부재료 전월 대비 예상 손익</span>
           </button>
         </div>
 
@@ -1940,7 +1940,7 @@ export function mainPage(): string {
       </div>
     </div>
 
-    <!-- 전월 대비 예상 손익 (메인 탭 래퍼) -->
+    <!-- 원부재료 전월 대비 예상 손익 (메인 탭 래퍼) -->
     <div id="content-profitanalysis" class="hidden fade-in space-y-4">
       <!-- 서브탭 네비게이션 (상단 고정) -->
       <div class="sticky top-0 z-30 bg-white/95 backdrop-blur-sm pt-2 pb-2 -mx-1 px-1 border-b border-slate-100 shadow-sm" id="pa-sticky-header">
@@ -3509,7 +3509,7 @@ export function mainPage(): string {
       const sidebarBtn = document.getElementById('tab-' + tab);
       if (sidebarBtn) sidebarBtn.classList.add('nav-item-active');
       // 페이지 제목 업데이트
-      const titles = { pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측', prodplan:'생산량 이동계획', scenario:'시나리오 분석' };
+      const titles = { pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'원부재료 전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측', prodplan:'생산량 이동계획', scenario:'시나리오 분석' };
       const titleEl = document.getElementById('page-title');
       if (titleEl) titleEl.textContent = titles[tab] || tab;
       if (tab === 'pldashboard') {
