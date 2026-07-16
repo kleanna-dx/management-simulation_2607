@@ -4,8 +4,8 @@ export function mainPage(): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>제지 시뮬 - 경영의사결정 분석 플랫폼</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23059669'/%3E%3Cpath d='M8 22 L14 14 L20 18 L24 10' stroke='%23a7f3d0' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='24' cy='10' r='2' fill='%23a7f3d0'/%3E%3Ctext x='7' y='28' font-size='7' fill='%23a7f3d0' font-family='sans-serif' font-weight='bold'%3E%EC%8B%9C%3C/text%3E%3C/svg%3E">
+  <title>경영시뮬레이션 - 경영의사결정 분석 플랫폼</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23059669'/%3E%3Cpath d='M8 22 L14 14 L20 18 L24 10' stroke='%23a7f3d0' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='24' cy='10' r='2' fill='%23a7f3d0'/%3E%3Ctext x='7' y='28' font-size='7' fill='%23a7f3d0' font-family='sans-serif' font-weight='bold'%3E%EA%B2%BD%3C/text%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
@@ -85,7 +85,7 @@ export function mainPage(): string {
           <i class="fas fa-industry text-white text-sm"></i>
         </div>
         <div class="min-w-0">
-          <h1 class="text-sm font-bold text-gray-800 truncate">제지 시뮬</h1>
+          <h1 class="text-sm font-bold text-gray-800 truncate">경영시뮬레이션</h1>
           <p class="text-[10px] text-gray-400 truncate">경영의사결정 분석 플랫폼</p>
         </div>
       </div>
