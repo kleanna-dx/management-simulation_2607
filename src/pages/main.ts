@@ -733,11 +733,21 @@ export function mainPage(): string {
     <!-- Detail Tab -->
     <div id="content-detail" class="hidden fade-in">
       <div class="card overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
           <h3 class="text-sm font-semibold text-gray-700">전월 대비 상세 분석표</h3>
-          <button onclick="exportCSV()" class="btn-primary">
-            <i class="fas fa-download mr-1.5"></i>CSV 내보내기
-          </button>
+          <div class="flex items-center gap-2 flex-wrap">
+            <select id="detail-machine-filter" onchange="filterDetailTable()" class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-emerald-200">
+              <option value="">전체 호기</option>
+            </select>
+            <select id="detail-category-filter" onchange="filterDetailTable()" class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-emerald-200">
+              <option value="">전체</option>
+              <option value="원">원재료 (고지/펄프)</option>
+              <option value="부">부재료 (약품)</option>
+            </select>
+            <button onclick="exportCSV()" class="btn-primary">
+              <i class="fas fa-download mr-1.5"></i>CSV 내보내기
+            </button>
+          </div>
         </div>
         <div class="overflow-x-auto">
           <table class="data-table">
@@ -5105,6 +5115,8 @@ export function mainPage(): string {
     function renderTopImpact() {}
 
     // ============ 상세 분석표 (raw_records 기반, 전월 vs 전전월 비교) ============
+    var detailAllRows = []; // 필터링용 전체 데이터 저장
+
     async function loadDetailAnalysis() {
       var year = document.getElementById('analysisYear').value;
       var month = document.getElementById('analysisMonth').value.padStart(2, '0');
@@ -5160,6 +5172,20 @@ export function mainPage(): string {
           }
         }
 
+        // 호기 필터 옵션 동적 생성
+        var machines = {};
+        curData.rows.forEach(function(r) { if (r.machine_code) machines[r.machine_code] = true; });
+        var machineFilter = document.getElementById('detail-machine-filter');
+        if (machineFilter) {
+          var mHtml = '<option value="">전체 호기</option>';
+          Object.keys(machines).sort().forEach(function(mc) {
+            mHtml += '<option value="' + mc + '">' + mc + '</option>';
+          });
+          machineFilter.innerHTML = mHtml;
+        }
+
+        // 전체 행 데이터 저장 (필터링용)
+        detailAllRows = [];
         var html = '';
         curData.rows.forEach(function(r) {
           var key = r.machine_code + '|' + r.material_code;
@@ -5176,34 +5202,83 @@ export function mainPage(): string {
           var qtyEffect = (curUsage - prevUsage) * prevPrice;
           var priceEffect = (curPrice - prevPrice) * curUsage;
 
-          var chipClass = getCC(r.machine_code);
-          var catLabel = (r.material_group_major_name || '').includes('원') ? '원' : '부';
-          var catClass = catLabel === '원' ? 'bg-steel-50 text-steel-400' : 'bg-sage-50 text-sage-600';
+          var catLabel = (r.material_group_major_name || '');
+          var isRaw = catLabel === '고지' || catLabel === '펄프';
+          var displayCat = isRaw ? '원' : '부';
+          var catClass = isRaw ? 'bg-steel-50 text-steel-400' : 'bg-sage-50 text-sage-600';
 
-          html += '<tr class="hover:bg-slate-50/50">';
-          html += '<td><span class="unit-chip ' + chipClass + '">' + r.machine_code + '</span></td>';
-          html += '<td><span class="text-[10px] px-1.5 py-0.5 rounded ' + catClass + '">' + catLabel + '</span></td>';
-          html += '<td class="text-gray-400 font-mono text-[11px]">' + r.material_code + '</td>';
-          html += '<td class="font-medium text-xs">' + (r.material_name || '') + '</td>';
-          html += '<td class="text-gray-400 text-xs">kg</td>';
-          html += '<td class="text-right font-mono text-xs">' + (prevUsage ? Math.round(prevUsage).toLocaleString() : '-') + '</td>';
-          html += '<td class="text-right font-mono text-xs">' + (curUsage ? Math.round(curUsage).toLocaleString() : '-') + '</td>';
-          html += '<td class="text-right font-mono text-xs ' + (qtyDiff > 0 ? 'text-red-500' : qtyDiff < 0 ? 'text-blue-500' : '') + '">' + (qtyDiff ? Math.round(qtyDiff).toLocaleString() : '-') + '</td>';
-          html += '<td class="text-right font-mono text-xs">' + (prevPrice ? Math.round(prevPrice).toLocaleString() : '-') + '</td>';
-          html += '<td class="text-right font-mono text-xs">' + (curPrice ? Math.round(curPrice).toLocaleString() : '-') + '</td>';
-          html += '<td class="text-right font-mono text-xs ' + (priceDiff > 0 ? 'text-red-500' : priceDiff < 0 ? 'text-blue-500' : '') + '">' + (priceDiff ? Math.round(priceDiff).toLocaleString() : '-') + '</td>';
-          html += '<td class="text-right font-mono text-xs">' + (prevCost ? (prevCost/1000000).toFixed(1) : '-') + '</td>';
-          html += '<td class="text-right font-mono text-xs">' + (curCost ? (curCost/1000000).toFixed(1) : '-') + '</td>';
-          html += '<td class="text-right font-mono text-xs font-medium ' + (qtyEffect > 0 ? 'text-red-500' : qtyEffect < 0 ? 'text-blue-500' : '') + '">' + (qtyEffect ? (qtyEffect/1000000).toFixed(1) : '-') + '</td>';
-          html += '<td class="text-right font-mono text-xs font-medium ' + (priceEffect > 0 ? 'text-red-500' : priceEffect < 0 ? 'text-blue-500' : '') + '">' + (priceEffect ? (priceEffect/1000000).toFixed(1) : '-') + '</td>';
-          html += '<td class="text-right font-mono text-xs font-bold ' + (costDiff > 0 ? 'text-red-500' : costDiff < 0 ? 'text-blue-500' : '') + '">' + (costDiff ? (costDiff/1000000).toFixed(1) : '-') + '</td>';
-          html += '</tr>';
+          detailAllRows.push({
+            machine_code: r.machine_code,
+            category: displayCat,
+            catClass: catClass,
+            material_code: r.material_code,
+            material_name: r.material_name || '',
+            prevUsage: prevUsage,
+            curUsage: curUsage,
+            qtyDiff: qtyDiff,
+            prevPrice: prevPrice,
+            curPrice: curPrice,
+            priceDiff: priceDiff,
+            prevCost: prevCost,
+            curCost: curCost,
+            qtyEffect: qtyEffect,
+            priceEffect: priceEffect,
+            costDiff: costDiff
+          });
         });
-        tb.innerHTML = html;
+
+        filterDetailTable();
       } catch(e) {
         console.error('Detail analysis error:', e);
         tb.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-400">데이터 로드 오류</td></tr>';
       }
+    }
+
+    function filterDetailTable() {
+      var tb = document.getElementById('detail-table-body');
+      if (!tb) return;
+      if (!detailAllRows || detailAllRows.length === 0) {
+        tb.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-400">데이터 없음</td></tr>';
+        return;
+      }
+
+      var machineFilter = document.getElementById('detail-machine-filter')?.value || '';
+      var categoryFilter = document.getElementById('detail-category-filter')?.value || '';
+
+      var filtered = detailAllRows.filter(function(r) {
+        if (machineFilter && r.machine_code !== machineFilter) return false;
+        if (categoryFilter && r.category !== categoryFilter) return false;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tb.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-400">필터 조건에 맞는 데이터가 없습니다</td></tr>';
+        return;
+      }
+
+      var html = '';
+      filtered.forEach(function(r) {
+        var chipClass = getCC(r.machine_code);
+        html += '<tr class="hover:bg-slate-50/50">';
+        html += '<td><span class="unit-chip ' + chipClass + '">' + r.machine_code + '</span></td>';
+        html += '<td><span class="text-[10px] px-1.5 py-0.5 rounded ' + r.catClass + '">' + r.category + '</span></td>';
+        html += '<td class="text-gray-400 font-mono text-[11px]">' + r.material_code + '</td>';
+        html += '<td class="font-medium text-xs">' + r.material_name + '</td>';
+        html += '<td class="text-gray-400 text-xs">kg</td>';
+        html += '<td class="text-right font-mono text-xs">' + (r.prevUsage ? Math.round(r.prevUsage).toLocaleString() : '-') + '</td>';
+        html += '<td class="text-right font-mono text-xs">' + (r.curUsage ? Math.round(r.curUsage).toLocaleString() : '-') + '</td>';
+        html += '<td class="text-right font-mono text-xs ' + (r.qtyDiff > 0 ? 'text-red-500' : r.qtyDiff < 0 ? 'text-blue-500' : '') + '">' + (r.qtyDiff ? Math.round(r.qtyDiff).toLocaleString() : '-') + '</td>';
+        html += '<td class="text-right font-mono text-xs">' + (r.prevPrice ? Math.round(r.prevPrice).toLocaleString() : '-') + '</td>';
+        html += '<td class="text-right font-mono text-xs">' + (r.curPrice ? Math.round(r.curPrice).toLocaleString() : '-') + '</td>';
+        html += '<td class="text-right font-mono text-xs ' + (r.priceDiff > 0 ? 'text-red-500' : r.priceDiff < 0 ? 'text-blue-500' : '') + '">' + (r.priceDiff ? Math.round(r.priceDiff).toLocaleString() : '-') + '</td>';
+        html += '<td class="text-right font-mono text-xs">' + (r.prevCost ? (r.prevCost/1000000).toFixed(1) : '-') + '</td>';
+        html += '<td class="text-right font-mono text-xs">' + (r.curCost ? (r.curCost/1000000).toFixed(1) : '-') + '</td>';
+        html += '<td class="text-right font-mono text-xs font-medium ' + (r.qtyEffect > 0 ? 'text-red-500' : r.qtyEffect < 0 ? 'text-blue-500' : '') + '">' + (r.qtyEffect ? (r.qtyEffect/1000000).toFixed(1) : '-') + '</td>';
+        html += '<td class="text-right font-mono text-xs font-medium ' + (r.priceEffect > 0 ? 'text-red-500' : r.priceEffect < 0 ? 'text-blue-500' : '') + '">' + (r.priceEffect ? (r.priceEffect/1000000).toFixed(1) : '-') + '</td>';
+        html += '<td class="text-right font-mono text-xs font-bold ' + (r.costDiff > 0 ? 'text-red-500' : r.costDiff < 0 ? 'text-blue-500' : '') + '">' + (r.costDiff ? (r.costDiff/1000000).toFixed(1) : '-') + '</td>';
+        html += '</tr>';
+      });
+      tb.innerHTML = html;
     }
 
     function renderDetailTable() {
