@@ -10125,45 +10125,9 @@ export function mainPage(): string {
         renderPpCapaTable(data.capa || []);
         renderPpDemandTable(data.demand || []);
       } catch(e) {
-        // Use default data
-        renderPpCapaTable(getDefaultCapaData());
-        renderPpDemandTable(getDefaultDemandData());
-      }
-    }
-
-    function getDefaultCapaData() {
-      var division = document.getElementById('divisionSelect')?.value || 'PS';
-      if (division === 'PS') {
-        return [
-          { plant: '청주', machine: 'PM2', grade: '백상지', capa: 8500, utilization: 92, maxCapa: 7820, status: 'normal' },
-          { plant: '청주', machine: 'PM2', grade: '미도용지', capa: 8500, utilization: 92, maxCapa: 7820, status: 'normal' },
-          { plant: '광주', machine: 'PM3', grade: '백판지', capa: 12000, utilization: 88, maxCapa: 10560, status: 'normal' },
-          { plant: '광주', machine: 'PM3', grade: '식품용지', capa: 12000, utilization: 88, maxCapa: 10560, status: 'normal' },
-          { plant: '청주', machine: 'PM2', grade: '아트지', capa: 8500, utilization: 85, maxCapa: 7225, status: 'warning' }
-        ];
-      } else {
-        return [
-          { plant: '청주', machine: 'TM5', grade: '티슈원지', capa: 6000, utilization: 90, maxCapa: 5400, status: 'normal' },
-          { plant: '광주', machine: 'PD1', grade: '위생용지', capa: 4500, utilization: 85, maxCapa: 3825, status: 'normal' }
-        ];
-      }
-    }
-
-    function getDefaultDemandData() {
-      var division = document.getElementById('divisionSelect')?.value || 'PS';
-      if (division === 'PS') {
-        return [
-          { group: 'PS제지', grade: '백상지', demand: 6200, minStock: 800, curStock: 1200, priority: '상' },
-          { group: 'PS제지', grade: '미도용지', demand: 3800, minStock: 500, curStock: 750, priority: '중' },
-          { group: 'PS제지', grade: '백판지', demand: 9500, minStock: 1000, curStock: 1500, priority: '상' },
-          { group: 'PS제지', grade: '식품용지', demand: 4200, minStock: 600, curStock: 900, priority: '중' },
-          { group: 'PS제지', grade: '아트지', demand: 2800, minStock: 400, curStock: 600, priority: '하' }
-        ];
-      } else {
-        return [
-          { group: 'HL생활', grade: '티슈원지', demand: 4800, minStock: 500, curStock: 700, priority: '상' },
-          { group: 'HL생활', grade: '위생용지', demand: 3200, minStock: 400, curStock: 550, priority: '중' }
-        ];
+        // API 실패 시 빈 상태 표시
+        renderPpCapaTable([]);
+        renderPpDemandTable([]);
       }
     }
 
@@ -10222,8 +10186,9 @@ export function mainPage(): string {
         });
         ppPlanData = await resp.json();
       } catch(e) {
-        // Fallback: generate client-side simulation
-        ppPlanData = generateLocalPlan(division);
+        // API 실패 시 빈 상태
+        ppPlanData = null;
+        alert('생산 계획 생성에 실패했습니다. 데이터를 확인해주세요.');
       }
 
       renderPpOverview();
@@ -10231,65 +10196,6 @@ export function mainPage(): string {
       renderPpResultDetail();
 
       if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-magic mr-1"></i>최적 계획 생성'; }
-    }
-
-    function generateLocalPlan(division) {
-      // Client-side simulation based on actual production data
-      var capaData = getDefaultCapaData();
-      var demandData = getDefaultDemandData();
-
-      var basePlan = [];
-      var improvedPlan = [];
-      var totalBaseProduction = 0;
-      var totalImprovedProduction = 0;
-
-      capaData.forEach(function(c, idx) {
-        // 기본안: 균등 배분
-        var demand = 0;
-        demandData.forEach(function(d) { if (d.grade === c.grade) demand = d.demand; });
-        var baseAlloc = Math.min(demand, c.maxCapa * 0.85);
-        // 개선안: 최적 배분 (가동률 높은 설비 우선)
-        var improvedAlloc = Math.min(demand, c.maxCapa * 0.95);
-        var costPerTonBase = division === 'PS' ? (380000 + Math.random() * 50000) : (420000 + Math.random() * 40000);
-        var costPerTonImproved = costPerTonBase * 0.92; // 8% 절감
-
-        basePlan.push({ machine: c.machine, plant: c.plant, grade: c.grade, alloc: Math.round(baseAlloc), costPerTon: Math.round(costPerTonBase), capa: c.maxCapa });
-        improvedPlan.push({ machine: c.machine, plant: c.plant, grade: c.grade, alloc: Math.round(improvedAlloc), costPerTon: Math.round(costPerTonImproved), capa: c.maxCapa });
-        totalBaseProduction += baseAlloc;
-        totalImprovedProduction += improvedAlloc;
-      });
-
-      var baseTotalCost = 0, improvedTotalCost = 0;
-      basePlan.forEach(function(p) { baseTotalCost += p.alloc * p.costPerTon; });
-      improvedPlan.forEach(function(p) { improvedTotalCost += p.alloc * p.costPerTon; });
-
-      var baseRevenue = baseTotalCost * 1.12;  // 12% 마진
-      var improvedRevenue = improvedTotalCost * 1.16;  // 16% 마진
-      var baseProfit = baseRevenue - baseTotalCost;
-      var improvedProfit = improvedRevenue - improvedTotalCost;
-
-      return {
-        base: {
-          profit: baseProfit,
-          cost: baseTotalCost,
-          margin: ((baseProfit / baseRevenue) * 100),
-          production: Math.round(totalBaseProduction),
-          plan: basePlan
-        },
-        improved: {
-          profit: improvedProfit,
-          cost: improvedTotalCost,
-          margin: ((improvedProfit / improvedRevenue) * 100),
-          production: Math.round(totalImprovedProduction),
-          plan: improvedPlan
-        },
-        improvements: [
-          { text: 'PM' + (division==='PS'?'3':'5') + ' 가동률 최적화로 톤당원가 8% 절감', type: 'success' },
-          { text: '설비 간 생산량 재배분으로 물류비 절감', type: 'success' },
-          { text: '고가동률 설비 우선 배정으로 효율 개선', type: 'info' }
-        ],
-        constraints: { capa: true, demand: true, stock: true }
-      };
     }
 
     function renderPpOverview() {
@@ -10547,11 +10453,7 @@ export function mainPage(): string {
     var scCompareChart = null;
     var scTornadoChart = null;
     var scWhatIfChart = null;
-    var scScenarios = {
-      base: { name: '기본안', profit: 2430000000, cost: 19820000000, margin: 10.9, production: 28500 },
-      improved: { name: '개선안 v1', profit: 3170000000, cost: 19150000000, margin: 14.2, production: 29700 },
-      aggressive: { name: '공격적 절감안', profit: 3520000000, cost: 18200000000, margin: 16.8, production: 30100 }
-    };
+    var scScenarios = {};
 
     function switchScenarioSub(sub) {
       ['compare','sensitivity','whatif','history'].forEach(function(s) {
@@ -10569,15 +10471,59 @@ export function mainPage(): string {
       if (sub === 'sensitivity') renderSensitivityChart();
     }
 
-    function loadScenarioAnalysis() {
-      runScenarioCompare();
+    async function loadScenarioAnalysis() {
+      // 생산 계획 데이터가 있으면 시나리오로 활용
+      if (ppPlanData && ppPlanData.base && ppPlanData.improved) {
+        scScenarios = {
+          base: { name: '기본안', profit: ppPlanData.base.profit, cost: ppPlanData.base.cost, margin: ppPlanData.base.margin, production: ppPlanData.base.production },
+          improved: { name: '개선안', profit: ppPlanData.improved.profit, cost: ppPlanData.improved.cost, margin: ppPlanData.improved.margin, production: ppPlanData.improved.production }
+        };
+      } else {
+        // API에서 시나리오 데이터 로드 시도
+        var division = currentDivision || 'PS';
+        var year = document.getElementById('analysisYear')?.value || '2026';
+        var month = (document.getElementById('analysisMonth')?.value || '6').toString().padStart(2, '0');
+        try {
+          var resp = await fetch('/api/prodplan/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ division: division, year: year, month: month })
+          });
+          var data = await resp.json();
+          if (data && data.base && data.improved) {
+            scScenarios = {
+              base: { name: '기본안', profit: data.base.profit, cost: data.base.cost, margin: data.base.margin, production: data.base.production },
+              improved: { name: '개선안', profit: data.improved.profit, cost: data.improved.cost, margin: data.improved.margin, production: data.improved.production }
+            };
+          }
+        } catch(e) {
+          scScenarios = {};
+        }
+      }
+      if (Object.keys(scScenarios).length > 0) {
+        runScenarioCompare();
+      } else {
+        renderScenarioEmpty();
+      }
+    }
+
+    function renderScenarioEmpty() {
+      var els = ['sc-cmp-profit','sc-cmp-cost','sc-cmp-margin','sc-cmp-prod'];
+      els.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) { el.textContent = '-'; el.className = 'text-xl font-bold text-gray-400'; }
+      });
+      var tbody = document.getElementById('sc-compare-body');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-400 text-sm">데이터 없음 - 먼저 생산량 이동계획을 생성하세요</td></tr>';
+      if (scCompareChart) { scCompareChart.destroy(); scCompareChart = null; }
     }
 
     function runScenarioCompare() {
+      if (!scScenarios || Object.keys(scScenarios).length === 0) { renderScenarioEmpty(); return; }
       var selA = document.getElementById('sc-select-a')?.value || 'improved';
       var selB = document.getElementById('sc-select-b')?.value || 'base';
-      var a = scScenarios[selA] || scScenarios.improved;
-      var b = scScenarios[selB] || scScenarios.base;
+      var a = scScenarios[selA] || scScenarios[Object.keys(scScenarios)[0]];
+      var b = scScenarios[selB] || scScenarios[Object.keys(scScenarios)[1]] || a;
 
       var fmtB = function(v) { return (v / 100000000).toFixed(1) + '억'; };
 
@@ -10648,9 +10594,25 @@ export function mainPage(): string {
       if (!canvas) return;
       if (scTornadoChart) { scTornadoChart.destroy(); scTornadoChart = null; }
 
+      if (!scScenarios || !scScenarios.base) {
+        // 데이터 없으면 빈 차트
+        var ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = '12px sans-serif';
+        ctx.fillStyle = '#9ca3af';
+        ctx.textAlign = 'center';
+        ctx.fillText('데이터 없음', canvas.width / 2, canvas.height / 2);
+        return;
+      }
+
+      // 실제 시나리오 데이터 기반 민감도 계산
+      var baseProfit = scScenarios.base.profit || 0;
+      var baseCost = scScenarios.base.cost || 1;
+      var materialCostRatio = 0.6;
       var factors = ['고지 단가', '펄프 단가', '생산량', '약품 단가', '가동률'];
-      var positiveImpact = [4.2, 3.1, 2.8, 1.5, 1.2];
-      var negativeImpact = [-4.2, -3.1, -2.8, -1.5, -1.2];
+      var weights = [0.52, 0.30, 0.30, 0.18, 0.10]; // 영향도 비율
+      var positiveImpact = weights.map(function(w) { return +(baseCost * materialCostRatio * w * 0.2 / 1e8).toFixed(1); });
+      var negativeImpact = positiveImpact.map(function(v) { return -v; });
 
       scTornadoChart = new Chart(canvas.getContext('2d'), {
         type: 'bar',
@@ -10686,10 +10648,20 @@ export function mainPage(): string {
       var prodChg = parseInt(document.getElementById('sc-wi-prod')?.value || '0') / 100;
       var utilChg = parseInt(document.getElementById('sc-wi-util')?.value || '0') / 100;
 
-      // Base scenario metrics
-      var baseProfit = 3170000000; // 31.7억 (개선안 기준)
-      var baseCost = 19150000000;
-      var baseMargin = 14.2;
+      // 시나리오 데이터에서 기준값 사용 (없으면 0)
+      var refScenario = scScenarios.improved || scScenarios.base || null;
+      if (!refScenario) {
+        document.getElementById('sc-wi-profit').textContent = '-';
+        document.getElementById('sc-wi-profit-delta').textContent = '시나리오 데이터 없음';
+        document.getElementById('sc-wi-cost').textContent = '-';
+        document.getElementById('sc-wi-cost-delta').textContent = '';
+        document.getElementById('sc-wi-margin').textContent = '-';
+        document.getElementById('sc-wi-margin-delta').textContent = '';
+        return;
+      }
+      var baseProfit = refScenario.profit;
+      var baseCost = refScenario.cost;
+      var baseMargin = refScenario.margin;
 
       // 원가 구성: 고지 52%, 펄프 30%, 약품 18% (of total material cost which is ~60% of total cost)
       var materialCostRatio = 0.6;
@@ -10734,7 +10706,9 @@ export function mainPage(): string {
       if (!canvas) return;
       if (scWhatIfChart) { scWhatIfChart.destroy(); scWhatIfChart = null; }
 
-      var baseCost = 19150000000;
+      var refScenario = scScenarios.improved || scScenarios.base || null;
+      if (!refScenario) return;
+      var baseCost = refScenario.cost;
       var factors = ['고지', '펄프', '약품', '생산량', '가동률'];
       var impacts = [
         (baseCost * 0.6 * 0.52 * waste) / 1e8,
@@ -11543,7 +11517,7 @@ export function mainPage(): string {
         renderPLTable(data.trend);
       } catch(e) {
         console.warn('PL Dashboard load error:', e);
-        // 데이터 없으면 샘플로 표시
+        // 데이터 없으면 빈 상태 표시
         renderPLKPIs(null);
         renderPLTrendChart(null);
         renderPLCostPie(null);
@@ -11553,15 +11527,14 @@ export function mainPage(): string {
 
     function renderPLKPIs(kpi) {
       if (!kpi) {
-        document.getElementById('pl-kpi-profit').textContent = '42.3억';
-        document.getElementById('pl-kpi-profit-change').innerHTML = '<i class="fas fa-arrow-up text-[10px] mr-0.5"></i>+3.2%';
-        document.getElementById('pl-kpi-revenue').textContent = '287.5억';
-        document.getElementById('pl-kpi-revenue-change').innerHTML = '<i class="fas fa-arrow-up text-[10px] mr-0.5"></i>+1.8%';
-        document.getElementById('pl-kpi-cost').textContent = '245.2억';
-        document.getElementById('pl-kpi-cost-change').innerHTML = '<i class="fas fa-arrow-up text-[10px] mr-0.5"></i>+0.9%';
-        document.getElementById('pl-kpi-cost-change').className = 'text-xs font-medium text-red-500';
-        document.getElementById('pl-kpi-margin').textContent = '14.7%';
-        document.getElementById('pl-kpi-margin-change').innerHTML = '<i class="fas fa-arrow-up text-[10px] mr-0.5"></i>+0.5%p';
+        document.getElementById('pl-kpi-profit').textContent = '-';
+        document.getElementById('pl-kpi-profit-change').innerHTML = '';
+        document.getElementById('pl-kpi-revenue').textContent = '-';
+        document.getElementById('pl-kpi-revenue-change').innerHTML = '';
+        document.getElementById('pl-kpi-cost').textContent = '-';
+        document.getElementById('pl-kpi-cost-change').innerHTML = '';
+        document.getElementById('pl-kpi-margin').textContent = '-';
+        document.getElementById('pl-kpi-margin-change').innerHTML = '';
         return;
       }
       document.getElementById('pl-kpi-profit').textContent = kpi.profit;
@@ -11579,11 +11552,20 @@ export function mainPage(): string {
       if (!ctx) return;
       if (plTrendChartInstance) { plTrendChartInstance.destroy(); plTrendChartInstance = null; }
 
-      // 샘플 데이터 (API 연동 전)
-      var labels = trend ? trend.map(d => d.month) : ['2025.01','2025.02','2025.03','2025.04','2025.05','2025.06'];
-      var profitData = trend ? trend.map(d => d.profit) : [38.2, 40.1, 39.5, 41.8, 40.9, 42.3];
-      var costData = trend ? trend.map(d => d.cost) : [240.5, 242.1, 244.8, 243.2, 244.9, 245.2];
-      var marginData = trend ? trend.map(d => d.margin) : [13.5, 14.0, 13.7, 14.2, 14.1, 14.7];
+      // 데이터가 없으면 빈 차트
+      if (!trend || trend.length === 0) {
+        var ctxEmpty = ctx.getContext('2d');
+        ctxEmpty.clearRect(0, 0, ctx.width, ctx.height);
+        ctxEmpty.font = '12px sans-serif';
+        ctxEmpty.fillStyle = '#9ca3af';
+        ctxEmpty.textAlign = 'center';
+        ctxEmpty.fillText('데이터 없음', ctx.width / 2, ctx.height / 2);
+        return;
+      }
+      var labels = trend.map(d => d.month);
+      var profitData = trend.map(d => d.profit);
+      var costData = trend.map(d => d.cost);
+      var marginData = trend.map(d => d.margin);
 
       plTrendChartInstance = new Chart(ctx, {
         type: 'line',
@@ -11613,7 +11595,14 @@ export function mainPage(): string {
       if (!ctx) return;
       if (plCostPieChartInstance) { plCostPieChartInstance.destroy(); plCostPieChartInstance = null; }
 
-      var data = breakdown || { raw: 52.3, power: 18.7, logistics: 14.2, other: 14.8 };
+      var data = breakdown || null;
+      if (!data) {
+        document.getElementById('pl-cost-raw').textContent = '-';
+        document.getElementById('pl-cost-power').textContent = '-';
+        document.getElementById('pl-cost-logistics').textContent = '-';
+        document.getElementById('pl-cost-other').textContent = '-';
+        return;
+      }
       document.getElementById('pl-cost-raw').textContent = data.raw + '%';
       document.getElementById('pl-cost-power').textContent = data.power + '%';
       document.getElementById('pl-cost-logistics').textContent = data.logistics + '%';
@@ -11645,14 +11634,11 @@ export function mainPage(): string {
       var tbody = document.getElementById('pl-summary-table-body');
       if (!tbody) return;
 
-      var rows = trend || [
-        { month: '2025.01', revenue: 280.3, cost: 240.5, profit: 38.2, margin: 13.5, change: null },
-        { month: '2025.02', revenue: 283.1, cost: 242.1, profit: 40.1, margin: 14.0, change: +5.0 },
-        { month: '2025.03', revenue: 282.7, cost: 244.8, profit: 39.5, margin: 13.7, change: -1.5 },
-        { month: '2025.04', revenue: 285.9, cost: 243.2, profit: 41.8, margin: 14.2, change: +5.8 },
-        { month: '2025.05', revenue: 286.2, cost: 244.9, profit: 40.9, margin: 14.1, change: -2.2 },
-        { month: '2025.06', revenue: 287.5, cost: 245.2, profit: 42.3, margin: 14.7, change: +3.4 }
-      ];
+      var rows = trend || [];
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-400 text-sm">데이터 없음</td></tr>';
+        return;
+      }
 
       tbody.innerHTML = rows.map(function(r) {
         var changeHtml = r.change === null ? '<span class="text-gray-400">-</span>' :
