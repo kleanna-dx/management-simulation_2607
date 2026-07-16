@@ -3255,18 +3255,51 @@ export function mainPage(): string {
         updateMachineSelects();
         updateDivisionUI();
 
-        // 현재 활성 탭에 따라 데이터 재조회
-        var activeTab = document.querySelector('.nav-item-active') || document.querySelector('.pill-tab-active');
-        var tabId = '';
-        if (activeTab) {
-          var onclick = activeTab.getAttribute('onclick') || '';
-          var match = onclick.match(/switchTab\(['"](\w+)['"]\)/);
-          if (match) tabId = match[1];
-        }
-        // 어떤 탭이든 대시보드 데이터 재로드
-        await loadAnalysis();
+        // 현재 활성 탭의 데이터 재조회
+        refreshActiveTab();
       } catch(e) {
         console.error('Division change error:', e);
+      }
+    }
+
+    /** 현재 활성 탭 ID를 반환 */
+    function getActiveTabId() {
+      var activeNav = document.querySelector('.nav-item-active');
+      if (activeNav) {
+        var onclick = activeNav.getAttribute('onclick') || '';
+        var match = onclick.match(/switchTab\(['"](\w+)['"]\)/);
+        if (match) return match[1];
+      }
+      // fallback: 숨겨지지 않은 content 패널 찾기
+      var panels = ['pldashboard','dashboard','forecast','costforecast','simflow','optime','prodplan','scenario','datainput','master'];
+      for (var i = 0; i < panels.length; i++) {
+        var el = document.getElementById('content-' + panels[i]);
+        if (el && !el.classList.contains('hidden')) return panels[i];
+      }
+      return 'dashboard';
+    }
+
+    /** 현재 활성 탭을 감지하여 해당 탭의 데이터를 갱신 */
+    function refreshActiveTab() {
+      var tabId = getActiveTabId();
+      switch(tabId) {
+        case 'pldashboard': loadPLDashboard(); break;
+        case 'dashboard': loadAnalysis(); break;
+        case 'forecast': loadAnalysis(); break;
+        case 'costforecast': loadCostForecast(); break;
+        case 'simflow': loadUnifiedSim(); break;
+        case 'optime': loadOperatingTime(); break;
+        case 'prodplan': loadProdPlan(); break;
+        case 'scenario': loadScenarioAnalysis(); break;
+        case 'datainput':
+          if (typeof loadDataView === 'function') loadDataView();
+          if (mnMachine && typeof loadManualData === 'function') loadManualData();
+          break;
+        case 'master':
+          if (typeof loadUnitsList === 'function') loadUnitsList();
+          if (typeof loadMaterialsList === 'function') loadMaterialsList();
+          break;
+        default: loadAnalysis(); break;
       }
     }
 
@@ -4225,10 +4258,7 @@ export function mainPage(): string {
     }
     // 메인 날짜 변경 시 현재 보이는 탭에 따라 데이터 갱신
     function onMainDateChange() {
-      var otPanel = document.getElementById('content-optime');
-      if (otPanel && !otPanel.classList.contains('hidden')) {
-        loadOperatingTime();
-      }
+      refreshActiveTab();
     }
     // 데이터 조회 (dv-year / dv-month)
     function stepDvYear(dir) {
