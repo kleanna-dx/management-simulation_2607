@@ -268,14 +268,12 @@ app.get('/api/pl-dashboard', async (c) => {
   const ym = c.req.query('ym') || ''
   const division = c.req.query('division') || 'PS'
   
-  // 현재는 raw_records 테이블에서 최근 6개월 데이터를 집계하여 손익 추정
-  // 실제 손익 데이터 테이블이 생기면 교체 예정
   try {
-    // 최근 6개월 월별 원가 합계 조회
+    // 최근 6개월 월별 원부재료비 합계 조회
     const monthlyData = await env.DB.prepare(`
       SELECT calendar_ym, 
-             SUM(total_amount) as total_cost,
-             COUNT(DISTINCT material_code) as material_count
+             SUM(actual_alloc_qty * actual_unit_price) as total_cost,
+             SUM(total_production) as total_prod
       FROM raw_records 
       WHERE division = ?
       GROUP BY calendar_ym
@@ -286,22 +284,23 @@ app.get('/api/pl-dashboard', async (c) => {
     const rows = (monthlyData.results || []).reverse()
 
     if (rows.length === 0) {
-      // 데이터 없으면 null 반환 (프론트에서 샘플 표시)
       return c.json({ kpi: null, trend: null, costBreakdown: null })
     }
 
-    // 간단한 손익 추정 로직 (총원가 기준 → 매출 = 원가 * 1.17 가정)
+    // 손익 추정: 원부재료비는 총원가의 약 60% → 총원가 = 재료비/0.6, 매출 = 총원가*1.15
     const trendData = rows.map((r: any, idx: number) => {
-      const cost = (r.total_cost || 0) / 100000000  // 원 → 억 환산
-      const revenue = cost * 1.17  // 매출 = 원가 * 1.17 (가정)
-      const profit = revenue - cost
+      const materialCost = (r.total_cost || 0) / 1e8  // 억원
+      const totalCost = materialCost / 0.6  // 총원가 추정 (재료비 비중 60%)
+      const revenue = totalCost * 1.15  // 매출 추정
+      const profit = revenue - totalCost
       const margin = revenue > 0 ? (profit / revenue * 100) : 0
-      const prevCost = idx > 0 ? ((rows[idx-1] as any).total_cost || 0) / 100000000 : null
-      const change = prevCost !== null ? ((profit - (prevCost * 1.17 - prevCost)) / Math.abs(prevCost * 0.17) * 100) : null
+      const prevMat = idx > 0 ? ((rows[idx-1] as any).total_cost || 0) / 1e8 : null
+      const prevProfit = prevMat !== null ? (prevMat / 0.6 * 1.15 - prevMat / 0.6) : null
+      const change = prevProfit !== null && prevProfit !== 0 ? ((profit - prevProfit) / Math.abs(prevProfit) * 100) : null
       return {
         month: r.calendar_ym ? r.calendar_ym.substring(0,4) + '.' + r.calendar_ym.substring(4,6) : '',
         revenue: Math.round(revenue * 10) / 10,
-        cost: Math.round(cost * 10) / 10,
+        cost: Math.round(totalCost * 10) / 10,
         profit: Math.round(profit * 10) / 10,
         margin: Math.round(margin * 10) / 10,
         change: change !== null ? Math.round(change * 10) / 10 : null
@@ -316,12 +315,12 @@ app.get('/api/pl-dashboard', async (c) => {
     const costChange = prev ? ((latest.cost - prev.cost) / Math.abs(prev.cost) * 100).toFixed(1) : '0'
     const marginChange = prev ? (latest.margin - prev.margin).toFixed(1) : '0'
 
-    // 원가 구성비 (자재 그룹별)
+    // 원가 구성비 (대분류: 고지/펄프/약품)
     const costByGroup = await env.DB.prepare(`
-      SELECT material_group, SUM(total_amount) as group_total
+      SELECT material_group_major_name, SUM(actual_alloc_qty * actual_unit_price) as group_total
       FROM raw_records
       WHERE division = ? AND calendar_ym = (SELECT MAX(calendar_ym) FROM raw_records WHERE division = ?)
-      GROUP BY material_group
+      GROUP BY material_group_major_name
       ORDER BY group_total DESC
     `).bind(division, division).all()
 
@@ -329,14 +328,12 @@ app.get('/api/pl-dashboard', async (c) => {
     const breakdown = { raw: 0, power: 0, logistics: 0, other: 0 }
     ;(costByGroup.results || []).forEach((r: any) => {
       const pct = totalCostSum > 0 ? Math.round((r.group_total / totalCostSum) * 1000) / 10 : 0
-      const grp = (r.material_group || '').toLowerCase()
-      if (grp.includes('원') || grp.includes('raw') || grp.includes('재료')) breakdown.raw += pct
-      else if (grp.includes('전력') || grp.includes('power') || grp.includes('에너지')) breakdown.power += pct
-      else if (grp.includes('물류') || grp.includes('운반') || grp.includes('logistics')) breakdown.logistics += pct
+      const grp = (r.material_group_major_name || '')
+      if (grp === '고지') breakdown.raw += pct
+      else if (grp === '펄프') breakdown.power += pct  // 펄프 → 두번째 항목으로
+      else if (grp === '약품') breakdown.logistics += pct  // 약품 → 세번째 항목으로
       else breakdown.other += pct
     })
-    // 보정
-    if (breakdown.raw === 0 && breakdown.other > 0) { breakdown.raw = breakdown.other; breakdown.other = 0; }
 
     return c.json({
       kpi: {

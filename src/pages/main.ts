@@ -281,21 +281,21 @@ export function mainPage(): string {
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <div class="w-3 h-3 rounded-full bg-blue-500"></div>
-                  <span class="text-xs text-gray-600">원부재료비</span>
+                  <span class="text-xs text-gray-600">고지</span>
                 </div>
                 <span class="text-xs font-semibold text-gray-800" id="pl-cost-raw">-</span>
               </div>
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <div class="w-3 h-3 rounded-full bg-amber-500"></div>
-                  <span class="text-xs text-gray-600">전력비</span>
+                  <span class="text-xs text-gray-600">펄프</span>
                 </div>
                 <span class="text-xs font-semibold text-gray-800" id="pl-cost-power">-</span>
               </div>
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
-                  <span class="text-xs text-gray-600">물류비</span>
+                  <span class="text-xs text-gray-600">약품</span>
                 </div>
                 <span class="text-xs font-semibold text-gray-800" id="pl-cost-logistics">-</span>
               </div>
@@ -11611,7 +11611,7 @@ export function mainPage(): string {
       plCostPieChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
-          labels: ['원부재료비', '전력비', '물류비', '기타'],
+          labels: ['고지', '펄프', '약품', '기타'],
           datasets: [{
             data: [data.raw, data.power, data.logistics, data.other],
             backgroundColor: ['#3b82f6', '#f59e0b', '#10b981', '#9ca3af'],
