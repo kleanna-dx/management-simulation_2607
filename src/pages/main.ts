@@ -1373,8 +1373,6 @@ export function mainPage(): string {
       </div>
     </div>
 
-    </div>
-
     <!-- ========== SAP 배치 동기화 서브탭 ========== -->
     <div id="content-sapbatch" class="hidden fade-in space-y-5">
       <!-- SAP RFC 카드 (다크 인디고) -->
@@ -1558,7 +1556,7 @@ export function mainPage(): string {
     </div><!-- /content-datainput -->
 
     <!-- Master Tab -->
-    <div id="content-master" class="hidden fade-in">
+    <div id="content-master" class="hidden fade-in w-full">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <!-- Units Master -->
         <div class="card p-6">
