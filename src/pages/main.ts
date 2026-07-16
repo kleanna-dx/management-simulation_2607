@@ -1909,11 +1909,12 @@ export function mainPage(): string {
                 <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200">자재명</th>
                 <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200">원본 대분류</th>
                 <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200">원본 소분류</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-40">매핑 카테고리</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-32">매핑 카테고리</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-32">매핑 분류 범위</th>
               </tr>
             </thead>
             <tbody id="mapping-table-body">
-              <tr><td colspan="5" class="text-center text-gray-400 py-8">로딩 중...</td></tr>
+              <tr><td colspan="6" class="text-center text-gray-400 py-8">로딩 중...</td></tr>
             </tbody>
           </table>
         </div>
@@ -5968,7 +5969,7 @@ export function mainPage(): string {
     }
 
     // ======== 자재 카테고리 매핑 관리 ========
-    var mappingData = []; // { material_code, material_name, major_name, group_name, mapped_category }
+    var mappingData = []; // { material_code, material_name, major_name, group_name, mapped_category, mapped_subcategory }
 
     async function loadMappingData() {
       var div = document.getElementById('division-select') ? document.getElementById('division-select').value : 'PS';
@@ -5978,7 +5979,7 @@ export function mainPage(): string {
         renderMappingTable();
       } catch(e) {
         console.error('매핑 데이터 로딩 실패:', e);
-        document.getElementById('mapping-table-body').innerHTML = '<tr><td colspan="5" class="text-center text-red-400 py-8">데이터 로딩 실패</td></tr>';
+        document.getElementById('mapping-table-body').innerHTML = '<tr><td colspan="6" class="text-center text-red-400 py-8">데이터 로딩 실패</td></tr>';
       }
     }
 
@@ -5986,13 +5987,14 @@ export function mainPage(): string {
       var tbody = document.getElementById('mapping-table-body');
       if (!tbody) return;
       if (!mappingData || !mappingData.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-400 py-8">매핑 대상 자재가 없습니다. 먼저 데이터를 업로드해주세요.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-8">매핑 대상 자재가 없습니다. 먼저 데이터를 업로드해주세요.</td></tr>';
         updateMappingCount();
         return;
       }
       var html = '';
       mappingData.forEach(function(m, idx) {
         var catVal = m.mapped_category || getDefaultCategory(m.major_name);
+        var subcatVal = m.mapped_subcategory || '';
         html += '<tr class="border-b border-slate-100 hover:bg-slate-50/50 mapping-row" data-major="' + m.major_name + '" data-mapped="' + catVal + '">';
         html += '<td class="px-3 py-2 font-mono text-gray-500">' + (m.material_code.replace(/^0+/, '') || m.material_code) + '</td>';
         html += '<td class="px-3 py-2 text-gray-700">' + m.material_name + '</td>';
@@ -6003,6 +6005,9 @@ export function mainPage(): string {
         html += '<option value="원"' + (catVal === '원' ? ' selected' : '') + '>원재료</option>';
         html += '<option value="부"' + (catVal === '부' ? ' selected' : '') + '>부재료</option>';
         html += '</select>';
+        html += '</td>';
+        html += '<td class="px-3 py-2 text-center">';
+        html += '<input type="text" data-idx="' + idx + '" onchange="onSubcatChange(this)" class="w-24 border border-gray-200 rounded-lg px-2 py-1 text-xs text-center focus:ring-1 focus:ring-indigo-200" value="' + subcatVal + '" placeholder="분류명">';
         html += '</td>';
         html += '</tr>';
       });
@@ -6029,6 +6034,13 @@ export function mainPage(): string {
         // row 속성 업데이트
         var row = sel.closest('tr');
         if (row) row.setAttribute('data-mapped', sel.value);
+      }
+    }
+
+    function onSubcatChange(inp) {
+      var idx = parseInt(inp.getAttribute('data-idx'));
+      if (mappingData[idx]) {
+        mappingData[idx].mapped_subcategory = inp.value.trim();
       }
     }
 
@@ -6074,7 +6086,8 @@ export function mainPage(): string {
       var mappings = mappingData.map(function(m) {
         return {
           material_code: m.material_code,
-          mapped_category: m.mapped_category || getDefaultCategory(m.major_name)
+          mapped_category: m.mapped_category || getDefaultCategory(m.major_name),
+          mapped_subcategory: m.mapped_subcategory || ''
         };
       });
       try {

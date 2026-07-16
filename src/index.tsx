@@ -4417,6 +4417,7 @@ async function ensureMappingTable(db: D1Database) {
       division TEXT NOT NULL DEFAULT 'PS',
       material_code TEXT NOT NULL,
       mapped_category TEXT NOT NULL DEFAULT '원',
+      mapped_subcategory TEXT DEFAULT NULL,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(division, material_code)
     )
@@ -4437,7 +4438,8 @@ app.get('/api/mapping/materials', async (c) => {
       r.material_name,
       r.material_group_major_name as major_name,
       r.material_group_name as group_name,
-      m.mapped_category
+      m.mapped_category,
+      m.mapped_subcategory
     FROM raw_records r
     LEFT JOIN material_category_mapping m 
       ON m.material_code = r.material_code AND m.division = ?
@@ -4452,7 +4454,7 @@ app.get('/api/mapping/materials', async (c) => {
 /** 매핑 저장 (일괄 upsert) */
 app.post('/api/mapping/materials', async (c) => {
   const db = c.env.DB
-  const { division, mappings } = await c.req.json() as { division: string; mappings: { material_code: string; mapped_category: string }[] }
+  const { division, mappings } = await c.req.json() as { division: string; mappings: { material_code: string; mapped_category: string; mapped_subcategory?: string }[] }
   
   await ensureMappingTable(db)
   
@@ -4462,14 +4464,15 @@ app.post('/api/mapping/materials', async (c) => {
   
   // batch upsert
   const stmt = db.prepare(`
-    INSERT INTO material_category_mapping (division, material_code, mapped_category, updated_at)
-    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    INSERT INTO material_category_mapping (division, material_code, mapped_category, mapped_subcategory, updated_at)
+    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
     ON CONFLICT(division, material_code) DO UPDATE SET
       mapped_category = excluded.mapped_category,
+      mapped_subcategory = excluded.mapped_subcategory,
       updated_at = CURRENT_TIMESTAMP
   `)
   
-  const batch = mappings.map(m => stmt.bind(division || 'PS', m.material_code, m.mapped_category))
+  const batch = mappings.map(m => stmt.bind(division || 'PS', m.material_code, m.mapped_category, m.mapped_subcategory || null))
   await db.batch(batch)
   
   return c.json({ success: true, count: mappings.length })
