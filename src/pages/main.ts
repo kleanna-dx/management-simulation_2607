@@ -2035,6 +2035,11 @@ export function mainPage(): string {
             <select id="fc-product-filter" class="border border-gray-200 rounded-lg px-2 py-1 text-[10px] focus:ring-1 focus:ring-emerald-200" onchange="filterFcByProduct()">
               <option value="">전체 자재</option>
             </select>
+            <select id="fc-category-filter" class="border border-gray-200 rounded-lg px-2 py-1 text-[10px] focus:ring-1 focus:ring-emerald-200" onchange="filterFcByProduct()">
+              <option value="">전체</option>
+              <option value="원">원재료 (고지/펄프)</option>
+              <option value="부">부재료 (약품)</option>
+            </select>
           </div>
           <div class="flex items-center gap-2">
             <button onclick="downloadFcExcel()" class="text-[10px] px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors"><i class="fas fa-download mr-1"></i>엑셀 다운로드</button>
@@ -6100,9 +6105,11 @@ export function mainPage(): string {
     function filterFcByProduct() {
       var sel = document.getElementById('fc-product-filter');
       var filterType = sel ? sel.value : '';
+      var catSel = document.getElementById('fc-category-filter');
+      var catFilter = catSel ? catSel.value : '';
       if (!fcCurData || !fcCurData.rows) return;
 
-      // 필터 대상 자재코드 목록 구하기
+      // 필터 대상 자재코드 목록 구하기 (제품종류 필터)
       var allowedCodes = null;
       if (filterType && fcUnitByProduct && fcUnitByProduct.unitMap) {
         allowedCodes = {};
@@ -6122,18 +6129,23 @@ export function mainPage(): string {
       var currentGroupVisible = false;
       trs.forEach(function(tr) {
         if (tr.classList.contains('bg-slate-50') && tr.querySelector('td[colspan]')) {
-          // 그룹 헤더행 — 다음 데이터 행들이 보이는지에 따라 나중에 처리
+          // 그룹 헤더행 — 카테고리 필터로 그룹 자체를 숨길 수 있음
           tr._isGroupHeader = true;
           tr._groupHasVisible = false;
           tr.style.display = 'none'; // 일단 숨김
         } else if (tr.classList.contains('bg-slate-100/70')) {
-          // 그룹 소계행
-          tr.style.display = (allowedCodes === null || currentGroupVisible) ? '' : 'none';
-          // 이전 그룹 헤더도 업데이트
+          // 그룹 소계행 — 카테고리 필터 적용
+          var subtotalCat = tr.getAttribute('data-cat');
+          var catOk = !catFilter || subtotalCat === catFilter;
+          tr.style.display = (catOk && (allowedCodes === null || currentGroupVisible)) ? '' : 'none';
         } else {
-          // 자재 데이터행 (data-mat 속성으로 판별)
+          // 자재 데이터행 (data-mat, data-cat 속성으로 판별)
           var matCode = tr.getAttribute('data-mat');
-          if (allowedCodes === null) {
+          var rowCat = tr.getAttribute('data-cat');
+          var catMatch = !catFilter || rowCat === catFilter;
+          if (!catMatch) {
+            tr.style.display = 'none';
+          } else if (allowedCodes === null) {
             tr.style.display = '';
             currentGroupVisible = true;
           } else {
@@ -6198,8 +6210,12 @@ export function mainPage(): string {
         var items = grouped[gk];
         var gUsage = 0, gCost = 0;
 
+        // 그룹의 카테고리 판별: 고지/펄프 → 원, 약품 → 부
+        var groupMajor = items[0] ? items[0].material_group_major_name : '';
+        var groupCat = (groupMajor === '고지' || groupMajor === '펄프') ? '원' : '부';
+
         // 그룹 헤더
-        html += '<tr class="bg-slate-50 border-t border-slate-200">';
+        html += '<tr class="bg-slate-50 border-t border-slate-200" data-cat="' + groupCat + '">';
         html += '<td colspan="2" class="px-2 py-1 text-xs font-semibold text-gray-700 border-r border-slate-300">' + gk + '</td>';
         html += '<td colspan="5" class="border-r border-slate-300"></td>';
         html += '<td colspan="7" class="border-r border-slate-300"></td>';
@@ -6233,7 +6249,8 @@ export function mainPage(): string {
           }
 
           var rid = 'fc-r-' + rowIdx;
-          html += '<tr class="hover:bg-blue-50/30 border-b border-slate-50" data-mat="' + r.material_code + '">';
+          var rowCat = (r.material_group_major_name === '고지' || r.material_group_major_name === '펄프') ? '원' : '부';
+          html += '<tr class="hover:bg-blue-50/30 border-b border-slate-50" data-mat="' + r.material_code + '" data-cat="' + rowCat + '">';
           // 구분/자재
           html += '<td class="px-1.5 py-0.5 text-[10px] font-mono text-gray-400 border-r border-slate-100">' + shortCode + '</td>';
           html += '<td class="px-1.5 py-0.5 text-xs border-r border-slate-300">' + r.material_name + '</td>';
@@ -6280,7 +6297,7 @@ export function mainPage(): string {
         });
 
         // 그룹 소계
-        html += '<tr class="bg-slate-100/70 border-t border-slate-200 font-semibold">';
+        html += '<tr class="bg-slate-100/70 border-t border-slate-200 font-semibold" data-cat="' + groupCat + '">';
         html += '<td colspan="2" class="px-2 py-1 text-[10px] text-gray-600 border-r border-slate-300">' + gk + ' 소계</td>';
         html += '<td class="px-1.5 py-1 text-right font-mono text-[10px] border-l border-slate-200">' + Math.round(gUsage).toLocaleString() + '</td>';
         html += '<td class="px-1.5 py-1 text-right text-[10px]">-</td>';
