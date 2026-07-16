@@ -4407,4 +4407,91 @@ app.post('/api/prodplan/generate', async (c) => {
   }
 })
 
+// ============ 자재 카테고리 매핑 API ============
+
+/** 매핑 테이블 자동 생성 */
+async function ensureMappingTable(db: D1Database) {
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS material_category_mapping (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      division TEXT NOT NULL DEFAULT 'PS',
+      material_code TEXT NOT NULL,
+      mapped_category TEXT NOT NULL DEFAULT '원',
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(division, material_code)
+    )
+  `).run()
+}
+
+/** 매핑 대상 자재 목록 조회 (raw_records에서 고유 자재 + 기존 매핑 조인) */
+app.get('/api/mapping/materials', async (c) => {
+  const db = c.env.DB
+  const div = c.req.query('division') || 'PS'
+  
+  await ensureMappingTable(db)
+  
+  // raw_records에서 고유 자재 목록 추출
+  const sql = `
+    SELECT DISTINCT
+      r.material_code,
+      r.material_name,
+      r.material_group_major_name as major_name,
+      r.material_group_name as group_name,
+      m.mapped_category
+    FROM raw_records r
+    LEFT JOIN material_category_mapping m 
+      ON m.material_code = r.material_code AND m.division = ?
+    WHERE r.division = ? AND r.calendar_ym != 'CALMONTH'
+    ORDER BY r.material_group_major_name, r.material_group_name, r.material_code
+  `
+  
+  const result = await db.prepare(sql).bind(div, div).all()
+  return c.json(result.results || [])
+})
+
+/** 매핑 저장 (일괄 upsert) */
+app.post('/api/mapping/materials', async (c) => {
+  const db = c.env.DB
+  const { division, mappings } = await c.req.json() as { division: string; mappings: { material_code: string; mapped_category: string }[] }
+  
+  await ensureMappingTable(db)
+  
+  if (!mappings || !mappings.length) {
+    return c.json({ success: false, error: 'No mappings provided' })
+  }
+  
+  // batch upsert
+  const stmt = db.prepare(`
+    INSERT INTO material_category_mapping (division, material_code, mapped_category, updated_at)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(division, material_code) DO UPDATE SET
+      mapped_category = excluded.mapped_category,
+      updated_at = CURRENT_TIMESTAMP
+  `)
+  
+  const batch = mappings.map(m => stmt.bind(division || 'PS', m.material_code, m.mapped_category))
+  await db.batch(batch)
+  
+  return c.json({ success: true, count: mappings.length })
+})
+
+/** 특정 사업부의 매핑 조회 (fc-detail에서 사용) */
+app.get('/api/mapping/category-map', async (c) => {
+  const db = c.env.DB
+  const div = c.req.query('division') || 'PS'
+  
+  await ensureMappingTable(db)
+  
+  const result = await db.prepare(`
+    SELECT material_code, mapped_category FROM material_category_mapping WHERE division = ?
+  `).bind(div).all()
+  
+  // { material_code: mapped_category } 형태로 반환
+  const map: Record<string, string> = {}
+  for (const r of result.results as any[]) {
+    map[r.material_code] = r.mapped_category
+  }
+  return c.json(map)
+})
+
 export default app

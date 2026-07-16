@@ -148,6 +148,9 @@ export function mainPage(): string {
           <button onclick="switchTab('master')" id="tab-master" class="nav-item w-full">
             <i class="fas fa-cog w-4 text-center"></i><span>기준정보</span>
           </button>
+          <button onclick="switchTab('mapping')" id="tab-mapping" class="nav-item w-full">
+            <i class="fas fa-exchange-alt w-4 text-center"></i><span>자재 카테고리 매핑</span>
+          </button>
         </div>
       </nav>
 
@@ -1841,6 +1844,82 @@ export function mainPage(): string {
         </div>
       </div>
     </div>
+
+    <!-- 자재 카테고리 매핑 관리 Tab -->
+    <div id="content-mapping" class="hidden fade-in w-full space-y-5">
+      <div class="card p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-exchange-alt text-indigo-500 mr-1.5"></i>자재 카테고리 매핑</h3>
+            <p class="text-xs text-gray-400 mt-1">엑셀 원본의 대분류(고지/펄프/약품)를 원재료/부재료로 재매핑합니다. 여기서 설정한 매핑이 예상 손익 분석 필터에 적용됩니다.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="loadMappingData()" class="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-slate-200 transition">
+              <i class="fas fa-sync-alt mr-1"></i>새로고침
+            </button>
+            <button onclick="saveMappingData()" class="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-medium hover:bg-emerald-600 transition">
+              <i class="fas fa-save mr-1"></i>매핑 저장
+            </button>
+          </div>
+        </div>
+
+        <!-- 필터 -->
+        <div class="flex items-center gap-3 mb-4 p-3 bg-slate-50 rounded-lg">
+          <label class="text-xs font-medium text-gray-500">필터:</label>
+          <select id="mapping-cat-filter" onchange="filterMappingTable()" class="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-indigo-200">
+            <option value="">전체</option>
+            <option value="원">원재료로 매핑된 항목</option>
+            <option value="부">부재료로 매핑된 항목</option>
+          </select>
+          <label class="text-xs font-medium text-gray-500 ml-3">원본 대분류:</label>
+          <select id="mapping-major-filter" onchange="filterMappingTable()" class="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-indigo-200">
+            <option value="">전체</option>
+            <option value="고지">고지</option>
+            <option value="펄프">펄프</option>
+            <option value="약품">약품</option>
+          </select>
+          <span class="ml-auto text-[10px] text-gray-400" id="mapping-count-label">-</span>
+        </div>
+
+        <!-- 일괄 변경 -->
+        <div class="flex items-center gap-3 mb-4 p-3 bg-amber-50 border border-amber-100 rounded-lg">
+          <label class="text-xs font-medium text-amber-700">일괄 변경:</label>
+          <span class="text-xs text-gray-500">선택된 원본 대분류의 모든 자재를</span>
+          <select id="mapping-bulk-source" class="border border-amber-200 rounded-lg px-2 py-1 text-xs">
+            <option value="고지">고지</option>
+            <option value="펄프">펄프</option>
+            <option value="약품">약품</option>
+          </select>
+          <span class="text-xs text-gray-500">→</span>
+          <select id="mapping-bulk-target" class="border border-amber-200 rounded-lg px-2 py-1 text-xs">
+            <option value="원">원재료</option>
+            <option value="부">부재료</option>
+          </select>
+          <button onclick="applyBulkMapping()" class="px-3 py-1 bg-amber-500 text-white rounded-lg text-xs font-medium hover:bg-amber-600 transition">
+            <i class="fas fa-check mr-1"></i>적용
+          </button>
+        </div>
+
+        <!-- 매핑 테이블 -->
+        <div class="overflow-auto max-h-[600px] border border-slate-200 rounded-lg">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-100 sticky top-0 z-10">
+              <tr>
+                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200">자재코드</th>
+                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200">자재명</th>
+                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200">원본 대분류</th>
+                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200">원본 소분류</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-40">매핑 카테고리</th>
+              </tr>
+            </thead>
+            <tbody id="mapping-table-body">
+              <tr><td colspan="5" class="text-center text-gray-400 py-8">로딩 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div id="content-simulation" class="hidden fade-in space-y-5">
       <!-- Header & Controls -->
       <div class="card p-6">
@@ -3286,7 +3365,7 @@ export function mainPage(): string {
         if (match) return match[1];
       }
       // fallback: 숨겨지지 않은 content 패널 찾기
-      var panels = ['pldashboard','dashboard','forecast','costforecast','simflow','optime','prodplan','scenario','datainput','master'];
+      var panels = ['pldashboard','dashboard','forecast','costforecast','simflow','optime','prodplan','scenario','datainput','master','mapping'];
       for (var i = 0; i < panels.length; i++) {
         var el = document.getElementById('content-' + panels[i]);
         if (el && !el.classList.contains('hidden')) return panels[i];
@@ -3313,6 +3392,9 @@ export function mainPage(): string {
         case 'master':
           if (typeof loadUnitsList === 'function') loadUnitsList();
           if (typeof loadMaterialsList === 'function') loadMaterialsList();
+          break;
+        case 'mapping':
+          if (typeof loadMappingData === 'function') loadMappingData();
           break;
         default: loadAnalysis(); break;
       }
@@ -3514,7 +3596,7 @@ export function mainPage(): string {
     });
 
     function switchTab(tab) {
-      ['pldashboard','dashboard','detail','upload','dataview','master','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime','costforecast','prodplan','scenario'].forEach(t => {
+      ['pldashboard','dashboard','detail','upload','dataview','master','mapping','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime','costforecast','prodplan','scenario'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.remove('nav-item-active'); el.classList.add('pill-tab-inactive'); }
@@ -3524,7 +3606,7 @@ export function mainPage(): string {
       const sidebarBtn = document.getElementById('tab-' + tab);
       if (sidebarBtn) sidebarBtn.classList.add('nav-item-active');
       // 페이지 제목 업데이트
-      const titles = { pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'원부재료 전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측', prodplan:'생산량 이동계획', scenario:'시나리오 분석' };
+      const titles = { pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'원부재료 전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', mapping:'자재 카테고리 매핑', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측', prodplan:'생산량 이동계획', scenario:'시나리오 분석' };
       const titleEl = document.getElementById('page-title');
       if (titleEl) titleEl.textContent = titles[tab] || tab;
       if (tab === 'pldashboard') {
@@ -3557,6 +3639,9 @@ export function mainPage(): string {
       } else if (tab === 'scenario') {
         document.getElementById('content-scenario')?.classList.remove('hidden');
         loadScenarioAnalysis();
+      } else if (tab === 'mapping') {
+        document.getElementById('content-mapping')?.classList.remove('hidden');
+        loadMappingData();
       } else {
         document.getElementById('content-' + tab)?.classList.remove('hidden');
       }
@@ -5882,6 +5967,134 @@ export function mainPage(): string {
       fetch('/api/materials/' + id, { method: 'DELETE' }).then(function() { loadMaterialsList(); });
     }
 
+    // ======== 자재 카테고리 매핑 관리 ========
+    var mappingData = []; // { material_code, material_name, major_name, group_name, mapped_category }
+
+    async function loadMappingData() {
+      var div = document.getElementById('division-select') ? document.getElementById('division-select').value : 'PS';
+      try {
+        var res = await fetch('/api/mapping/materials?division=' + div);
+        mappingData = await res.json();
+        renderMappingTable();
+      } catch(e) {
+        console.error('매핑 데이터 로딩 실패:', e);
+        document.getElementById('mapping-table-body').innerHTML = '<tr><td colspan="5" class="text-center text-red-400 py-8">데이터 로딩 실패</td></tr>';
+      }
+    }
+
+    function renderMappingTable() {
+      var tbody = document.getElementById('mapping-table-body');
+      if (!tbody) return;
+      if (!mappingData || !mappingData.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-400 py-8">매핑 대상 자재가 없습니다. 먼저 데이터를 업로드해주세요.</td></tr>';
+        updateMappingCount();
+        return;
+      }
+      var html = '';
+      mappingData.forEach(function(m, idx) {
+        var catVal = m.mapped_category || getDefaultCategory(m.major_name);
+        html += '<tr class="border-b border-slate-100 hover:bg-slate-50/50 mapping-row" data-major="' + m.major_name + '" data-mapped="' + catVal + '">';
+        html += '<td class="px-3 py-2 font-mono text-gray-500">' + (m.material_code.replace(/^0+/, '') || m.material_code) + '</td>';
+        html += '<td class="px-3 py-2 text-gray-700">' + m.material_name + '</td>';
+        html += '<td class="px-3 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-medium ' + getMajorBadge(m.major_name) + '">' + m.major_name + '</span></td>';
+        html += '<td class="px-3 py-2 text-gray-500">' + (m.group_name || '-') + '</td>';
+        html += '<td class="px-3 py-2 text-center">';
+        html += '<select data-idx="' + idx + '" onchange="onMappingChange(this)" class="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-indigo-200 mapping-select">';
+        html += '<option value="원"' + (catVal === '원' ? ' selected' : '') + '>원재료</option>';
+        html += '<option value="부"' + (catVal === '부' ? ' selected' : '') + '>부재료</option>';
+        html += '</select>';
+        html += '</td>';
+        html += '</tr>';
+      });
+      tbody.innerHTML = html;
+      updateMappingCount();
+    }
+
+    function getDefaultCategory(majorName) {
+      // 기본 매핑: 고지/펄프 → 원, 약품 → 부
+      return (majorName === '고지' || majorName === '펄프') ? '원' : '부';
+    }
+
+    function getMajorBadge(major) {
+      if (major === '고지') return 'bg-green-100 text-green-700';
+      if (major === '펄프') return 'bg-blue-100 text-blue-700';
+      if (major === '약품') return 'bg-orange-100 text-orange-700';
+      return 'bg-gray-100 text-gray-600';
+    }
+
+    function onMappingChange(sel) {
+      var idx = parseInt(sel.getAttribute('data-idx'));
+      if (mappingData[idx]) {
+        mappingData[idx].mapped_category = sel.value;
+        // row 속성 업데이트
+        var row = sel.closest('tr');
+        if (row) row.setAttribute('data-mapped', sel.value);
+      }
+    }
+
+    function filterMappingTable() {
+      var catFilter = document.getElementById('mapping-cat-filter').value;
+      var majorFilter = document.getElementById('mapping-major-filter').value;
+      var rows = document.querySelectorAll('#mapping-table-body .mapping-row');
+      var shown = 0;
+      rows.forEach(function(tr) {
+        var major = tr.getAttribute('data-major');
+        var mapped = tr.getAttribute('data-mapped');
+        var catOk = !catFilter || mapped === catFilter;
+        var majorOk = !majorFilter || major === majorFilter;
+        tr.style.display = (catOk && majorOk) ? '' : 'none';
+        if (catOk && majorOk) shown++;
+      });
+      document.getElementById('mapping-count-label').textContent = shown + '/' + mappingData.length + '건 표시';
+    }
+
+    function updateMappingCount() {
+      var label = document.getElementById('mapping-count-label');
+      if (label) label.textContent = '총 ' + mappingData.length + '건';
+    }
+
+    function applyBulkMapping() {
+      var source = document.getElementById('mapping-bulk-source').value;
+      var target = document.getElementById('mapping-bulk-target').value;
+      var count = 0;
+      mappingData.forEach(function(m, idx) {
+        if (m.major_name === source) {
+          m.mapped_category = target;
+          count++;
+        }
+      });
+      renderMappingTable();
+      filterMappingTable();
+      alert(source + ' → ' + (target === '원' ? '원재료' : '부재료') + ': ' + count + '건 적용');
+    }
+
+    async function saveMappingData() {
+      var div = document.getElementById('division-select') ? document.getElementById('division-select').value : 'PS';
+      // 매핑 데이터 수집
+      var mappings = mappingData.map(function(m) {
+        return {
+          material_code: m.material_code,
+          mapped_category: m.mapped_category || getDefaultCategory(m.major_name)
+        };
+      });
+      try {
+        var res = await fetch('/api/mapping/materials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ division: div, mappings: mappings })
+        });
+        var result = await res.json();
+        if (result.success) {
+          alert('매핑이 저장되었습니다. (' + mappings.length + '건)');
+        } else {
+          alert('저장 실패: ' + (result.error || ''));
+        }
+      } catch(e) {
+        alert('저장 중 오류 발생: ' + e.message);
+      }
+    }
+    // ======== END 자재 카테고리 매핑 ========
+
     // Utilities
     function getCC(c) { 
       // 공통코드(CC) 객체에서 칩 컬러 조회 — 하드코딩 제거
@@ -5919,6 +6132,7 @@ export function mainPage(): string {
     let fcNextInputs = {}; // 차월 사용자 입력값 저장
     let fcSavedManual = null;  // 수기입력 저장 데이터 (연동)
     let fcManualFlags = {}; // { idx: { usage: true, uc: true } } - 사용자가 직접 수정한 행 추적
+    let fcCategoryMap = {}; // { material_code: '원'|'부' } - DB 매핑
 
     function setFcMachineFilter(mc) {
       fcMachineFilter = mc;
@@ -5959,17 +6173,20 @@ export function mainPage(): string {
 
       var mcParam = '&machine=' + fcMachineFilter;
       var prevYm = String(prevYear) + String(prevMonth).padStart(2, '0');
+      var divParam = document.getElementById('division-select') ? '&division=' + document.getElementById('division-select').value : '';
       try {
         var results = await Promise.all([
           fetch('/api/forecast/production?ym=' + prevYm).then(function(r){return r.json();}),
-          fetch('/api/forecast/material-detail?ym=' + prevYm + mcParam).then(function(r){return r.json();}),
-          fetch('/api/forecast/unit-by-product?ym=' + prevYm + mcParam).then(function(r){return r.json();}),
-          fetch('/api/manual-input/saved?ym=' + ym + '&machine=' + fcMachineFilter).then(function(r){return r.json();})
+          fetch('/api/forecast/material-detail?ym=' + prevYm + mcParam + divParam).then(function(r){return r.json();}),
+          fetch('/api/forecast/unit-by-product?ym=' + prevYm + mcParam + divParam).then(function(r){return r.json();}),
+          fetch('/api/manual-input/saved?ym=' + ym + '&machine=' + fcMachineFilter).then(function(r){return r.json();}),
+          fetch('/api/mapping/category-map?' + divParam.replace('&','')).then(function(r){return r.json();})
         ]);
         fcCurProd = results[0];
         fcCurData = results[1];
         fcUnitByProduct = results[2];
         fcSavedManual = (results[3] && results[3].data) ? results[3].data : null;
+        fcCategoryMap = results[4] || {};
         // 수기입력 연동 상태 표시
         var badge = document.getElementById('fc-manual-badge');
         if (badge) {
@@ -6210,9 +6427,13 @@ export function mainPage(): string {
         var items = grouped[gk];
         var gUsage = 0, gCost = 0;
 
-        // 그룹의 카테고리 판별: 고지/펄프 → 원, 약품 → 부
+        // 그룹의 카테고리 판별: DB 매핑 우선, 없으면 기본값 (고지/펄프 → 원, 약품 → 부)
         var groupMajor = items[0] ? items[0].material_group_major_name : '';
-        var groupCat = (groupMajor === '고지' || groupMajor === '펄프') ? '원' : '부';
+        var groupCat = getDefaultCategory(groupMajor);
+        // 그룹 내 첫 항목의 DB 매핑이 있으면 그걸 그룹 카테고리로 사용
+        if (items[0] && fcCategoryMap[items[0].material_code]) {
+          groupCat = fcCategoryMap[items[0].material_code];
+        }
 
         // 그룹 헤더
         html += '<tr class="bg-slate-50 border-t border-slate-200" data-cat="' + groupCat + '">';
@@ -6249,7 +6470,7 @@ export function mainPage(): string {
           }
 
           var rid = 'fc-r-' + rowIdx;
-          var rowCat = (r.material_group_major_name === '고지' || r.material_group_major_name === '펄프') ? '원' : '부';
+          var rowCat = fcCategoryMap[r.material_code] || getDefaultCategory(r.material_group_major_name);
           html += '<tr class="hover:bg-blue-50/30 border-b border-slate-50" data-mat="' + r.material_code + '" data-cat="' + rowCat + '">';
           // 구분/자재
           html += '<td class="px-1.5 py-0.5 text-[10px] font-mono text-gray-400 border-r border-slate-100">' + shortCode + '</td>';
