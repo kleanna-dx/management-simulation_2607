@@ -1967,6 +1967,10 @@ export function mainPage(): string {
         </div>
 
         <!-- 선속 테이블 -->
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-xs font-semibold text-gray-600" id="ls-current-label">-</p>
+          <p class="text-[10px] text-gray-400" id="ls-row-count">-</p>
+        </div>
         <div class="overflow-auto max-h-[550px] border border-slate-200 rounded-lg">
           <table class="w-full text-xs">
             <thead class="bg-slate-100 sticky top-0 z-10">
@@ -6231,6 +6235,17 @@ export function mainPage(): string {
     function renderLineSpeedTable() {
       var tbody = document.getElementById('ls-table-body');
       if (!tbody) return;
+
+      // 현재 연도/호기 라벨 표시
+      var yearSel = document.getElementById('ls-year-select');
+      var machineSel = document.getElementById('ls-machine-select');
+      var labelEl = document.getElementById('ls-current-label');
+      var countEl = document.getElementById('ls-row-count');
+      var yr = yearSel ? yearSel.value : '-';
+      var mc = machineSel ? machineSel.value : '-';
+      if (labelEl) labelEl.textContent = yr + '년 기준 | ' + mc + ' 호기';
+      if (countEl) countEl.textContent = (lineSpeedData ? lineSpeedData.length : 0) + '개 지종 등록';
+
       if (!lineSpeedData || !lineSpeedData.length) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-8">등록된 선속 데이터가 없습니다. "지종 추가" 버튼으로 추가하세요.</td></tr>';
         return;
