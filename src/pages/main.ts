@@ -1994,7 +1994,7 @@ export function mainPage(): string {
         <!-- 참고사항 -->
         <div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
           <p class="text-[10px] text-blue-600 font-medium mb-1"><i class="fas fa-info-circle mr-1"></i>이론 생산량 계산식</p>
-          <p class="text-[10px] text-blue-500">일 생산량(톤) = 선속(m/min) × 60 × 24 × 지폭(m) × 평량(g/m²) ÷ 1,000,000</p>
+          <p class="text-[10px] text-blue-500">이론 생산량(톤/일) = 평량(g/m²) × 0.001 × 0.001 × 지폭(mm) × 0.001 × 선속(m/min) × 1440</p>
           <p class="text-[10px] text-gray-400 mt-1">※ 연도별로 마스터 관리됩니다. '전년도 복사' 버튼으로 이전 연도 데이터를 복사 후 수정할 수 있습니다.</p>
         </div>
       </div>
@@ -6275,9 +6275,9 @@ export function mainPage(): string {
     }
 
     function calcDailyProduction(speed, basisWeight, trimWidth) {
-      // 일 생산량(톤) = 선속(m/min) × 60 × 24 × 지폭(m) × 평량(g/m²) ÷ 1,000,000
+      // 이론 생산량(톤/일) = 평량 × 0.001 × 0.001 × 지폭 × 0.001 × 선속 × 1440
       if (!speed || !basisWeight || !trimWidth) return 0;
-      return speed * 60 * 24 * (trimWidth / 1000) * basisWeight / 1000000;
+      return basisWeight * 0.001 * 0.001 * trimWidth * 0.001 * speed * 1440;
     }
 
     function onLsFieldChange(inp) {
