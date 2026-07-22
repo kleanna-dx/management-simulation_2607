@@ -1930,7 +1930,7 @@ export function mainPage(): string {
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-tachometer-alt text-blue-500 mr-1.5"></i>제지 생산 선속 관리</h3>
-            <p class="text-xs text-gray-400 mt-1">호기별/지종별 초지기 선속(m/min)을 관리합니다. 생산량 예측 및 가동시간 계산에 활용됩니다.</p>
+            <p class="text-xs text-gray-400 mt-1">호기별/지종별 초지기 선속(m/min), 평량(g/m²), 지폭(mm)을 연도별 마스터로 관리합니다.</p>
           </div>
           <div class="flex items-center gap-2">
             <button onclick="loadLineSpeedData()" class="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-slate-200 transition">
@@ -1942,13 +1942,27 @@ export function mainPage(): string {
           </div>
         </div>
 
-        <!-- 호기 선택 -->
-        <div class="flex items-center gap-3 mb-4 p-3 bg-slate-50 rounded-lg">
-          <label class="text-xs font-medium text-gray-500">호기:</label>
-          <select id="ls-machine-select" onchange="loadLineSpeedData()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-blue-200">
-          </select>
+        <!-- 호기 + 연도 선택 -->
+        <div class="flex items-center gap-4 mb-4 p-3 bg-slate-50 rounded-lg">
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-medium text-gray-500">연도:</label>
+            <select id="ls-year-select" onchange="loadLineSpeedData()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-mono focus:ring-1 focus:ring-blue-200">
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-medium text-gray-500">호기:</label>
+            <select id="ls-machine-select" onchange="loadLineSpeedData()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-blue-200">
+            </select>
+          </div>
           <button onclick="addLineSpeedRow()" class="ml-auto px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition">
             <i class="fas fa-plus mr-1"></i>지종 추가
+          </button>
+          <button onclick="copyFromPrevYear()" class="px-3 py-1.5 bg-amber-100 border border-amber-200 text-amber-700 rounded-lg text-xs font-medium hover:bg-amber-200 transition">
+            <i class="fas fa-copy mr-1"></i>전년도 복사
           </button>
         </div>
 
@@ -1959,9 +1973,9 @@ export function mainPage(): string {
               <tr>
                 <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 w-10">#</th>
                 <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200">지종 (Product Type)</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-32">선속 (m/min)</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">평량 (g/m²)</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">지폭 (mm)</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">선속 (m/min)</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-36">이론 생산량 (톤/일)</th>
                 <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200">비고</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-16">삭제</th>
@@ -1977,6 +1991,7 @@ export function mainPage(): string {
         <div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
           <p class="text-[10px] text-blue-600 font-medium mb-1"><i class="fas fa-info-circle mr-1"></i>이론 생산량 계산식</p>
           <p class="text-[10px] text-blue-500">일 생산량(톤) = 선속(m/min) × 60 × 24 × 지폭(m) × 평량(g/m²) ÷ 1,000,000</p>
+          <p class="text-[10px] text-gray-400 mt-1">※ 연도별로 마스터 관리됩니다. '전년도 복사' 버튼으로 이전 연도 데이터를 복사 후 수정할 수 있습니다.</p>
         </div>
       </div>
     </div>
@@ -6176,7 +6191,7 @@ export function mainPage(): string {
     // ======== END 자재 카테고리 매핑 ========
 
     // ======== 제지 생산 선속 관리 ========
-    var lineSpeedData = []; // { id, machine_code, product_type, speed, basis_weight, trim_width, note }
+    var lineSpeedData = []; // { id, machine_code, product_type, basis_weight, trim_width, speed, note }
 
     function initLineSpeedMachineSelect() {
       var sel = document.getElementById('ls-machine-select');
@@ -6192,13 +6207,19 @@ export function mainPage(): string {
       sel.innerHTML = html;
     }
 
+    function getLsYear() {
+      var sel = document.getElementById('ls-year-select');
+      return sel ? parseInt(sel.value) || 2026 : 2026;
+    }
+
     async function loadLineSpeedData() {
       var sel = document.getElementById('ls-machine-select');
       var machine = sel ? sel.value : '';
       if (!machine) return;
       var div = document.getElementById('division-select') ? document.getElementById('division-select').value : 'PS';
+      var year = getLsYear();
       try {
-        var res = await fetch('/api/linespeed?machine=' + machine + '&division=' + div);
+        var res = await fetch('/api/linespeed?machine=' + machine + '&division=' + div + '&year=' + year);
         lineSpeedData = await res.json();
         renderLineSpeedTable();
       } catch(e) {
@@ -6219,12 +6240,19 @@ export function mainPage(): string {
         var dailyTon = calcDailyProduction(r.speed, r.basis_weight, r.trim_width);
         html += '<tr class="border-b border-slate-100 hover:bg-blue-50/30">';
         html += '<td class="px-3 py-2 text-gray-400 font-mono">' + (idx + 1) + '</td>';
+        // 지종
         html += '<td class="px-3 py-2"><input type="text" data-idx="' + idx + '" data-field="product_type" value="' + (r.product_type || '') + '" class="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-200" placeholder="지종명 입력" onchange="onLsFieldChange(this)"></td>';
-        html += '<td class="px-3 py-2 text-center"><input type="number" step="1" data-idx="' + idx + '" data-field="speed" value="' + (r.speed || '') + '" class="w-20 text-center border border-gray-200 rounded px-2 py-1 text-xs font-mono focus:ring-1 focus:ring-blue-200" placeholder="0" onchange="onLsFieldChange(this)"></td>';
-        html += '<td class="px-3 py-2 text-center"><input type="number" step="0.1" data-idx="' + idx + '" data-field="basis_weight" value="' + (r.basis_weight || '') + '" class="w-20 text-center border border-gray-200 rounded px-2 py-1 text-xs font-mono focus:ring-1 focus:ring-blue-200" placeholder="0" onchange="onLsFieldChange(this)"></td>';
-        html += '<td class="px-3 py-2 text-center"><input type="number" step="1" data-idx="' + idx + '" data-field="trim_width" value="' + (r.trim_width || '') + '" class="w-20 text-center border border-gray-200 rounded px-2 py-1 text-xs font-mono focus:ring-1 focus:ring-blue-200" placeholder="0" onchange="onLsFieldChange(this)"></td>';
+        // 평량
+        html += '<td class="px-3 py-2 text-center"><input type="number" step="0.1" data-idx="' + idx + '" data-field="basis_weight" value="' + (r.basis_weight || '') + '" class="w-20 text-center border border-gray-200 rounded px-2 py-1 text-xs font-mono focus:ring-1 focus:ring-blue-200" placeholder="g/m²" onchange="onLsFieldChange(this)"></td>';
+        // 지폭
+        html += '<td class="px-3 py-2 text-center"><input type="number" step="1" data-idx="' + idx + '" data-field="trim_width" value="' + (r.trim_width || '') + '" class="w-20 text-center border border-gray-200 rounded px-2 py-1 text-xs font-mono focus:ring-1 focus:ring-blue-200" placeholder="mm" onchange="onLsFieldChange(this)"></td>';
+        // 선속
+        html += '<td class="px-3 py-2 text-center"><input type="number" step="1" data-idx="' + idx + '" data-field="speed" value="' + (r.speed || '') + '" class="w-20 text-center border border-gray-200 rounded px-2 py-1 text-xs font-mono focus:ring-1 focus:ring-blue-200" placeholder="m/min" onchange="onLsFieldChange(this)"></td>';
+        // 이론 생산량
         html += '<td class="px-3 py-2 text-center font-mono text-xs font-semibold ' + (dailyTon > 0 ? 'text-blue-600' : 'text-gray-400') + '">' + (dailyTon > 0 ? dailyTon.toFixed(1) : '-') + '</td>';
+        // 비고
         html += '<td class="px-3 py-2"><input type="text" data-idx="' + idx + '" data-field="note" value="' + (r.note || '') + '" class="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-200" placeholder="" onchange="onLsFieldChange(this)"></td>';
+        // 삭제
         html += '<td class="px-3 py-2 text-center"><button onclick="removeLineSpeedRow(' + idx + ')" class="text-red-400 hover:text-red-600 px-2 py-1"><i class="fas fa-trash-alt text-[10px]"></i></button></td>';
         html += '</tr>';
       });
@@ -6246,7 +6274,7 @@ export function mainPage(): string {
         } else {
           lineSpeedData[idx][field] = inp.value;
         }
-        // 이론 생산량 셀 실시간 업데이트
+        // 이론 생산량 실시간 업데이트
         renderLineSpeedTable();
       }
     }
@@ -6258,9 +6286,9 @@ export function mainPage(): string {
         id: null,
         machine_code: machine,
         product_type: '',
-        speed: 0,
         basis_weight: 0,
         trim_width: 0,
+        speed: 0,
         note: ''
       });
       renderLineSpeedTable();
@@ -6272,10 +6300,37 @@ export function mainPage(): string {
       renderLineSpeedTable();
     }
 
+    async function copyFromPrevYear() {
+      var sel = document.getElementById('ls-machine-select');
+      var machine = sel ? sel.value : '';
+      var div = document.getElementById('division-select') ? document.getElementById('division-select').value : 'PS';
+      var year = getLsYear();
+      var prevYear = year - 1;
+
+      if (!confirm(prevYear + '년 데이터를 ' + year + '년으로 복사하시겠습니까?\\n(현재 입력 중인 데이터는 대체됩니다)')) return;
+
+      try {
+        var res = await fetch('/api/linespeed?machine=' + machine + '&division=' + div + '&year=' + prevYear);
+        var prevData = await res.json();
+        if (!prevData || !prevData.length) {
+          alert(prevYear + '년 데이터가 없습니다.');
+          return;
+        }
+        lineSpeedData = prevData.map(function(r) {
+          return { id: null, machine_code: machine, product_type: r.product_type, basis_weight: r.basis_weight, trim_width: r.trim_width, speed: r.speed, note: r.note };
+        });
+        renderLineSpeedTable();
+        alert(prevYear + '년 → ' + year + '년 복사 완료 (' + lineSpeedData.length + '건). 수정 후 저장해주세요.');
+      } catch(e) {
+        alert('전년도 데이터 로딩 실패: ' + e.message);
+      }
+    }
+
     async function saveLineSpeedData() {
       var sel = document.getElementById('ls-machine-select');
       var machine = sel ? sel.value : '';
       var div = document.getElementById('division-select') ? document.getElementById('division-select').value : 'PS';
+      var year = getLsYear();
       if (!machine) { alert('호기를 선택하세요.'); return; }
 
       // 빈 행 제거
@@ -6284,11 +6339,11 @@ export function mainPage(): string {
         var res = await fetch('/api/linespeed', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ division: div, machine_code: machine, rows: rows })
+          body: JSON.stringify({ division: div, machine_code: machine, year: year, rows: rows })
         });
         var result = await res.json();
         if (result.success) {
-          alert('선속 데이터가 저장되었습니다. (' + rows.length + '건)');
+          alert(year + '년 ' + machine + ' 선속 데이터가 저장되었습니다. (' + rows.length + '건)');
           loadLineSpeedData();
         } else {
           alert('저장 실패: ' + (result.error || ''));

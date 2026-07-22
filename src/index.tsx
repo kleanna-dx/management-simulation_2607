@@ -4505,61 +4505,67 @@ async function ensureLineSpeedTable(db: D1Database) {
     CREATE TABLE IF NOT EXISTS line_speed (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       division TEXT NOT NULL DEFAULT 'PS',
+      year INTEGER NOT NULL DEFAULT 2026,
       machine_code TEXT NOT NULL,
       product_type TEXT NOT NULL,
-      speed REAL DEFAULT 0,
       basis_weight REAL DEFAULT 0,
       trim_width REAL DEFAULT 0,
+      speed REAL DEFAULT 0,
       note TEXT DEFAULT '',
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `).run()
 }
 
-/** 호기별 선속 데이터 조회 */
+/** 호기별/연도별 선속 데이터 조회 */
 app.get('/api/linespeed', async (c) => {
   const db = c.env.DB
   const machine = c.req.query('machine') || ''
   const div = c.req.query('division') || 'PS'
+  const year = parseInt(c.req.query('year') || '2026') || 2026
   
   await ensureLineSpeedTable(db)
   
   const result = await db.prepare(`
-    SELECT id, machine_code, product_type, speed, basis_weight, trim_width, note
+    SELECT id, machine_code, product_type, basis_weight, trim_width, speed, note
     FROM line_speed
-    WHERE division = ? AND machine_code = ?
+    WHERE division = ? AND machine_code = ? AND year = ?
     ORDER BY product_type
-  `).bind(div, machine).all()
+  `).bind(div, machine, year).all()
   
   return c.json(result.results || [])
 })
 
-/** 호기별 선속 데이터 저장 (전체 교체 방식) */
+/** 호기별/연도별 선속 데이터 저장 (전체 교체 방식) */
 app.post('/api/linespeed', async (c) => {
   const db = c.env.DB
-  const { division, machine_code, rows } = await c.req.json() as {
+  const { division, machine_code, year, rows } = await c.req.json() as {
     division: string
     machine_code: string
-    rows: { product_type: string; speed: number; basis_weight: number; trim_width: number; note?: string }[]
+    year: number
+    rows: { product_type: string; basis_weight: number; trim_width: number; speed: number; note?: string }[]
   }
   
   await ensureLineSpeedTable(db)
   
+  const yr = year || 2026
+  
   // 기존 데이터 삭제 후 재삽입
-  await db.prepare(`DELETE FROM line_speed WHERE division = ? AND machine_code = ?`).bind(division || 'PS', machine_code).run()
+  await db.prepare(`DELETE FROM line_speed WHERE division = ? AND machine_code = ? AND year = ?`).bind(division || 'PS', machine_code, yr).run()
   
   if (rows && rows.length) {
     const stmt = db.prepare(`
-      INSERT INTO line_speed (division, machine_code, product_type, speed, basis_weight, trim_width, note, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO line_speed (division, year, machine_code, product_type, basis_weight, trim_width, speed, note, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `)
     const batch = rows.map(r => stmt.bind(
       division || 'PS',
+      yr,
       machine_code,
       r.product_type,
-      r.speed || 0,
       r.basis_weight || 0,
       r.trim_width || 0,
+      r.speed || 0,
       r.note || ''
     ))
     await db.batch(batch)
