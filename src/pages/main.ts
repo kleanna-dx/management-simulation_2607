@@ -151,6 +151,9 @@ export function mainPage(): string {
           <button onclick="switchTab('mapping')" id="tab-mapping" class="nav-item w-full">
             <i class="fas fa-exchange-alt w-4 text-center"></i><span>자재 카테고리 매핑</span>
           </button>
+          <button onclick="switchTab('linespeed')" id="tab-linespeed" class="nav-item w-full">
+            <i class="fas fa-tachometer-alt w-4 text-center"></i><span>제지 생산 선속</span>
+          </button>
         </div>
       </nav>
 
@@ -1921,6 +1924,63 @@ export function mainPage(): string {
       </div>
     </div>
 
+    <!-- 제지 생산 선속 관리 Tab -->
+    <div id="content-linespeed" class="hidden fade-in w-full space-y-5">
+      <div class="card p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-tachometer-alt text-blue-500 mr-1.5"></i>제지 생산 선속 관리</h3>
+            <p class="text-xs text-gray-400 mt-1">호기별/지종별 초지기 선속(m/min)을 관리합니다. 생산량 예측 및 가동시간 계산에 활용됩니다.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="loadLineSpeedData()" class="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-slate-200 transition">
+              <i class="fas fa-sync-alt mr-1"></i>새로고침
+            </button>
+            <button onclick="saveLineSpeedData()" class="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-medium hover:bg-emerald-600 transition">
+              <i class="fas fa-save mr-1"></i>저장
+            </button>
+          </div>
+        </div>
+
+        <!-- 호기 선택 -->
+        <div class="flex items-center gap-3 mb-4 p-3 bg-slate-50 rounded-lg">
+          <label class="text-xs font-medium text-gray-500">호기:</label>
+          <select id="ls-machine-select" onchange="loadLineSpeedData()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-blue-200">
+          </select>
+          <button onclick="addLineSpeedRow()" class="ml-auto px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition">
+            <i class="fas fa-plus mr-1"></i>지종 추가
+          </button>
+        </div>
+
+        <!-- 선속 테이블 -->
+        <div class="overflow-auto max-h-[550px] border border-slate-200 rounded-lg">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-100 sticky top-0 z-10">
+              <tr>
+                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 w-10">#</th>
+                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200">지종 (Product Type)</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-32">선속 (m/min)</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">평량 (g/m²)</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">지폭 (mm)</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-36">이론 생산량 (톤/일)</th>
+                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200">비고</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-16">삭제</th>
+              </tr>
+            </thead>
+            <tbody id="ls-table-body">
+              <tr><td colspan="8" class="text-center text-gray-400 py-8">호기를 선택하면 데이터가 표시됩니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 참고사항 -->
+        <div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+          <p class="text-[10px] text-blue-600 font-medium mb-1"><i class="fas fa-info-circle mr-1"></i>이론 생산량 계산식</p>
+          <p class="text-[10px] text-blue-500">일 생산량(톤) = 선속(m/min) × 60 × 24 × 지폭(m) × 평량(g/m²) ÷ 1,000,000</p>
+        </div>
+      </div>
+    </div>
+
     <div id="content-simulation" class="hidden fade-in space-y-5">
       <!-- Header & Controls -->
       <div class="card p-6">
@@ -3366,7 +3426,7 @@ export function mainPage(): string {
         if (match) return match[1];
       }
       // fallback: 숨겨지지 않은 content 패널 찾기
-      var panels = ['pldashboard','dashboard','forecast','costforecast','simflow','optime','prodplan','scenario','datainput','master','mapping'];
+      var panels = ['pldashboard','dashboard','forecast','costforecast','simflow','optime','prodplan','scenario','datainput','master','mapping','linespeed'];
       for (var i = 0; i < panels.length; i++) {
         var el = document.getElementById('content-' + panels[i]);
         if (el && !el.classList.contains('hidden')) return panels[i];
@@ -3396,6 +3456,9 @@ export function mainPage(): string {
           break;
         case 'mapping':
           if (typeof loadMappingData === 'function') loadMappingData();
+          break;
+        case 'linespeed':
+          if (typeof loadLineSpeedData === 'function') loadLineSpeedData();
           break;
         default: loadAnalysis(); break;
       }
@@ -3597,7 +3660,7 @@ export function mainPage(): string {
     });
 
     function switchTab(tab) {
-      ['pldashboard','dashboard','detail','upload','dataview','master','mapping','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime','costforecast','prodplan','scenario'].forEach(t => {
+      ['pldashboard','dashboard','detail','upload','dataview','master','mapping','linespeed','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime','costforecast','prodplan','scenario'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.remove('nav-item-active'); el.classList.add('pill-tab-inactive'); }
@@ -3607,7 +3670,7 @@ export function mainPage(): string {
       const sidebarBtn = document.getElementById('tab-' + tab);
       if (sidebarBtn) sidebarBtn.classList.add('nav-item-active');
       // 페이지 제목 업데이트
-      const titles = { pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'원부재료 전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', mapping:'자재 카테고리 매핑', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측', prodplan:'생산량 이동계획', scenario:'시나리오 분석' };
+      const titles = { pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'원부재료 전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', mapping:'자재 카테고리 매핑', linespeed:'제지 생산 선속', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측', prodplan:'생산량 이동계획', scenario:'시나리오 분석' };
       const titleEl = document.getElementById('page-title');
       if (titleEl) titleEl.textContent = titles[tab] || tab;
       if (tab === 'pldashboard') {
@@ -3643,6 +3706,10 @@ export function mainPage(): string {
       } else if (tab === 'mapping') {
         document.getElementById('content-mapping')?.classList.remove('hidden');
         loadMappingData();
+      } else if (tab === 'linespeed') {
+        document.getElementById('content-linespeed')?.classList.remove('hidden');
+        initLineSpeedMachineSelect();
+        loadLineSpeedData();
       } else {
         document.getElementById('content-' + tab)?.classList.remove('hidden');
       }
@@ -6107,6 +6174,130 @@ export function mainPage(): string {
       }
     }
     // ======== END 자재 카테고리 매핑 ========
+
+    // ======== 제지 생산 선속 관리 ========
+    var lineSpeedData = []; // { id, machine_code, product_type, speed, basis_weight, trim_width, note }
+
+    function initLineSpeedMachineSelect() {
+      var sel = document.getElementById('ls-machine-select');
+      if (!sel) return;
+      var machines = divisionMachines || [];
+      if (!machines.length) machines = (CC.machines || []);
+      var html = '';
+      machines.forEach(function(m) {
+        var code = m.code || m;
+        var name = m.name || code;
+        html += '<option value="' + code + '">' + code + ' (' + name + ')</option>';
+      });
+      sel.innerHTML = html;
+    }
+
+    async function loadLineSpeedData() {
+      var sel = document.getElementById('ls-machine-select');
+      var machine = sel ? sel.value : '';
+      if (!machine) return;
+      var div = document.getElementById('division-select') ? document.getElementById('division-select').value : 'PS';
+      try {
+        var res = await fetch('/api/linespeed?machine=' + machine + '&division=' + div);
+        lineSpeedData = await res.json();
+        renderLineSpeedTable();
+      } catch(e) {
+        console.error('선속 데이터 로딩 실패:', e);
+        document.getElementById('ls-table-body').innerHTML = '<tr><td colspan="8" class="text-center text-red-400 py-8">로딩 실패</td></tr>';
+      }
+    }
+
+    function renderLineSpeedTable() {
+      var tbody = document.getElementById('ls-table-body');
+      if (!tbody) return;
+      if (!lineSpeedData || !lineSpeedData.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-8">등록된 선속 데이터가 없습니다. "지종 추가" 버튼으로 추가하세요.</td></tr>';
+        return;
+      }
+      var html = '';
+      lineSpeedData.forEach(function(r, idx) {
+        var dailyTon = calcDailyProduction(r.speed, r.basis_weight, r.trim_width);
+        html += '<tr class="border-b border-slate-100 hover:bg-blue-50/30">';
+        html += '<td class="px-3 py-2 text-gray-400 font-mono">' + (idx + 1) + '</td>';
+        html += '<td class="px-3 py-2"><input type="text" data-idx="' + idx + '" data-field="product_type" value="' + (r.product_type || '') + '" class="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-200" placeholder="지종명 입력" onchange="onLsFieldChange(this)"></td>';
+        html += '<td class="px-3 py-2 text-center"><input type="number" step="1" data-idx="' + idx + '" data-field="speed" value="' + (r.speed || '') + '" class="w-20 text-center border border-gray-200 rounded px-2 py-1 text-xs font-mono focus:ring-1 focus:ring-blue-200" placeholder="0" onchange="onLsFieldChange(this)"></td>';
+        html += '<td class="px-3 py-2 text-center"><input type="number" step="0.1" data-idx="' + idx + '" data-field="basis_weight" value="' + (r.basis_weight || '') + '" class="w-20 text-center border border-gray-200 rounded px-2 py-1 text-xs font-mono focus:ring-1 focus:ring-blue-200" placeholder="0" onchange="onLsFieldChange(this)"></td>';
+        html += '<td class="px-3 py-2 text-center"><input type="number" step="1" data-idx="' + idx + '" data-field="trim_width" value="' + (r.trim_width || '') + '" class="w-20 text-center border border-gray-200 rounded px-2 py-1 text-xs font-mono focus:ring-1 focus:ring-blue-200" placeholder="0" onchange="onLsFieldChange(this)"></td>';
+        html += '<td class="px-3 py-2 text-center font-mono text-xs font-semibold ' + (dailyTon > 0 ? 'text-blue-600' : 'text-gray-400') + '">' + (dailyTon > 0 ? dailyTon.toFixed(1) : '-') + '</td>';
+        html += '<td class="px-3 py-2"><input type="text" data-idx="' + idx + '" data-field="note" value="' + (r.note || '') + '" class="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-200" placeholder="" onchange="onLsFieldChange(this)"></td>';
+        html += '<td class="px-3 py-2 text-center"><button onclick="removeLineSpeedRow(' + idx + ')" class="text-red-400 hover:text-red-600 px-2 py-1"><i class="fas fa-trash-alt text-[10px]"></i></button></td>';
+        html += '</tr>';
+      });
+      tbody.innerHTML = html;
+    }
+
+    function calcDailyProduction(speed, basisWeight, trimWidth) {
+      // 일 생산량(톤) = 선속(m/min) × 60 × 24 × 지폭(m) × 평량(g/m²) ÷ 1,000,000
+      if (!speed || !basisWeight || !trimWidth) return 0;
+      return speed * 60 * 24 * (trimWidth / 1000) * basisWeight / 1000000;
+    }
+
+    function onLsFieldChange(inp) {
+      var idx = parseInt(inp.getAttribute('data-idx'));
+      var field = inp.getAttribute('data-field');
+      if (lineSpeedData[idx]) {
+        if (field === 'speed' || field === 'basis_weight' || field === 'trim_width') {
+          lineSpeedData[idx][field] = parseFloat(inp.value) || 0;
+        } else {
+          lineSpeedData[idx][field] = inp.value;
+        }
+        // 이론 생산량 셀 실시간 업데이트
+        renderLineSpeedTable();
+      }
+    }
+
+    function addLineSpeedRow() {
+      var sel = document.getElementById('ls-machine-select');
+      var machine = sel ? sel.value : '';
+      lineSpeedData.push({
+        id: null,
+        machine_code: machine,
+        product_type: '',
+        speed: 0,
+        basis_weight: 0,
+        trim_width: 0,
+        note: ''
+      });
+      renderLineSpeedTable();
+    }
+
+    function removeLineSpeedRow(idx) {
+      if (!confirm('이 항목을 삭제하시겠습니까?')) return;
+      lineSpeedData.splice(idx, 1);
+      renderLineSpeedTable();
+    }
+
+    async function saveLineSpeedData() {
+      var sel = document.getElementById('ls-machine-select');
+      var machine = sel ? sel.value : '';
+      var div = document.getElementById('division-select') ? document.getElementById('division-select').value : 'PS';
+      if (!machine) { alert('호기를 선택하세요.'); return; }
+
+      // 빈 행 제거
+      var rows = lineSpeedData.filter(function(r) { return r.product_type && r.product_type.trim(); });
+      try {
+        var res = await fetch('/api/linespeed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ division: div, machine_code: machine, rows: rows })
+        });
+        var result = await res.json();
+        if (result.success) {
+          alert('선속 데이터가 저장되었습니다. (' + rows.length + '건)');
+          loadLineSpeedData();
+        } else {
+          alert('저장 실패: ' + (result.error || ''));
+        }
+      } catch(e) {
+        alert('저장 중 오류 발생: ' + e.message);
+      }
+    }
+    // ======== END 제지 생산 선속 ========
 
     // Utilities
     function getCC(c) { 
