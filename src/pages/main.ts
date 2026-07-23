@@ -1964,6 +1964,13 @@ export function mainPage(): string {
           <button onclick="copyFromPrevYear()" class="px-3 py-1.5 bg-amber-100 border border-amber-200 text-amber-700 rounded-lg text-xs font-medium hover:bg-amber-200 transition">
             <i class="fas fa-copy mr-1"></i>전년도 복사
           </button>
+          <button onclick="downloadLsTemplate()" class="px-3 py-1.5 bg-slate-100 border border-slate-200 text-gray-600 rounded-lg text-xs font-medium hover:bg-slate-200 transition">
+            <i class="fas fa-download mr-1"></i>양식 다운
+          </button>
+          <label class="px-3 py-1.5 bg-green-100 border border-green-200 text-green-700 rounded-lg text-xs font-medium hover:bg-green-200 transition cursor-pointer">
+            <i class="fas fa-file-excel mr-1"></i>엑셀 업로드
+            <input type="file" accept=".xlsx,.xls" class="hidden" onchange="uploadLsExcel(event)">
+          </label>
         </div>
 
         <!-- 선속 테이블 -->
@@ -6366,6 +6373,88 @@ export function mainPage(): string {
       } catch(e) {
         alert('저장 중 오류 발생: ' + e.message);
       }
+    }
+
+    function downloadLsTemplate() {
+      var machineSel = document.getElementById('ls-machine-select');
+      var machine = machineSel ? machineSel.value : 'PM2';
+      var year = getLsYear();
+
+      // 기존 데이터가 있으면 그것을 내보내기, 없으면 빈 양식
+      var templateRows = [];
+      if (lineSpeedData && lineSpeedData.length) {
+        lineSpeedData.forEach(function(r) {
+          templateRows.push({
+            '지종': r.product_type || '',
+            '평량(g/m²)': r.basis_weight || '',
+            '지폭(mm)': r.trim_width || '',
+            '선속(m/min)': r.speed || '',
+            '비고': r.note || ''
+          });
+        });
+      } else {
+        // 빈 양식 (예시 행 포함)
+        templateRows.push({ '지종': '(예시) CCKB 120g', '평량(g/m²)': 120, '지폭(mm)': 4300, '선속(m/min)': 650, '비고': '' });
+        templateRows.push({ '지종': '', '평량(g/m²)': '', '지폭(mm)': '', '선속(m/min)': '', '비고': '' });
+      }
+
+      var ws = XLSX.utils.json_to_sheet(templateRows);
+      // 컬럼 너비 설정
+      ws['!cols'] = [{ wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 20 }];
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '선속데이터');
+      XLSX.writeFile(wb, '제지선속_' + machine + '_' + year + '.xlsx');
+    }
+
+    function uploadLsExcel(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          var data = new Uint8Array(e.target.result);
+          var workbook = XLSX.read(data, { type: 'array' });
+          var ws = workbook.Sheets[workbook.SheetNames[0]];
+          var rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+          if (!rows.length) { alert('데이터가 없습니다.'); return; }
+
+          var machineSel = document.getElementById('ls-machine-select');
+          var machine = machineSel ? machineSel.value : 'PM2';
+
+          // 컬럼명 매핑 (유연하게)
+          var parsed = [];
+          rows.forEach(function(r) {
+            var productType = r['지종'] || r['product_type'] || r['Product Type'] || '';
+            var basisWeight = parseFloat(r['평량(g/m²)'] || r['평량'] || r['basis_weight'] || r['Basis Weight'] || 0);
+            var trimWidth = parseFloat(r['지폭(mm)'] || r['지폭'] || r['trim_width'] || r['Trim Width'] || 0);
+            var speed = parseFloat(r['선속(m/min)'] || r['선속'] || r['speed'] || r['Speed'] || 0);
+            var note = r['비고'] || r['note'] || r['Note'] || '';
+
+            if (productType && productType.trim() && !productType.startsWith('(예시)')) {
+              parsed.push({
+                id: null,
+                machine_code: machine,
+                product_type: productType.trim(),
+                basis_weight: basisWeight,
+                trim_width: trimWidth,
+                speed: speed,
+                note: note
+              });
+            }
+          });
+
+          if (!parsed.length) { alert('유효한 데이터가 없습니다. 컬럼명을 확인하세요: 지종, 평량(g/m²), 지폭(mm), 선속(m/min)'); return; }
+
+          lineSpeedData = parsed;
+          renderLineSpeedTable();
+          alert('엑셀 업로드 완료: ' + parsed.length + '건. 확인 후 저장 버튼을 눌러주세요.');
+        } catch(err) {
+          alert('엑셀 파싱 오류: ' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      event.target.value = '';
     }
     // ======== END 제지 생산 선속 ========
 
