@@ -6807,7 +6807,7 @@ export function mainPage(): string {
         // 2) 선속 마스터 가져오기
         var lsRes = await fetch('/api/linespeed?year=' + year + '&machine=' + machine + '&division=' + division);
         var lsJson = await lsRes.json();
-        capaLineSpeedRef = lsJson.data || [];
+        capaLineSpeedRef = Array.isArray(lsJson) ? lsJson : (lsJson.data || []);
 
         // 3) 생산계획 가져오기
         var cpRes = await fetch('/api/capa-plan?year=' + year + '&month=' + month + '&machine=' + machine + '&division=' + division);
