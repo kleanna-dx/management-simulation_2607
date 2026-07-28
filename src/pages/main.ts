@@ -131,6 +131,9 @@ export function mainPage(): string {
         <!-- 생산 최적화 섹션 -->
         <div class="mb-4">
           <p class="px-3 mb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">생산 최적화</p>
+          <button onclick="switchTab('capa')" id="tab-capa" class="nav-item w-full">
+            <i class="fas fa-chart-bar w-4 text-center"></i><span>생산 CAPA 분석</span>
+          </button>
           <button onclick="switchTab('prodplan')" id="tab-prodplan" class="nav-item w-full">
             <i class="fas fa-route w-4 text-center"></i><span>생산량 이동계획</span>
           </button>
@@ -153,6 +156,9 @@ export function mainPage(): string {
           </button>
           <button onclick="switchTab('linespeed')" id="tab-linespeed" class="nav-item w-full">
             <i class="fas fa-tachometer-alt w-4 text-center"></i><span>제지 생산 선속</span>
+          </button>
+          <button onclick="switchTab('opdays')" id="tab-opdays" class="nav-item w-full">
+            <i class="fas fa-calendar-check w-4 text-center"></i><span>가동일수</span>
           </button>
         </div>
       </nav>
@@ -2007,6 +2013,202 @@ export function mainPage(): string {
       </div>
     </div>
 
+    <!-- 가동일수 관리 -->
+    <div id="content-opdays" class="hidden fade-in w-full space-y-5">
+      <div class="card p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-calendar-check text-indigo-500 mr-1.5"></i>월별 가동일수 관리</h3>
+            <p class="text-xs text-gray-400 mt-1">호기별/연도별 월간 가동일수를 설정합니다. 생산 CAPA 분석에 활용됩니다.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="loadOpDaysData()" class="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-slate-200 transition">
+              <i class="fas fa-sync-alt mr-1"></i>새로고침
+            </button>
+            <button onclick="saveOpDaysData()" class="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-medium hover:bg-emerald-600 transition">
+              <i class="fas fa-save mr-1"></i>저장
+            </button>
+          </div>
+        </div>
+
+        <!-- 연도 + 호기 선택 -->
+        <div class="flex items-center gap-4 mb-4 p-3 bg-slate-50 rounded-lg">
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-medium text-gray-500">연도:</label>
+            <select id="od-year-select" onchange="loadOpDaysData()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-mono focus:ring-1 focus:ring-blue-200">
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-medium text-gray-500">호기:</label>
+            <select id="od-machine-select" onchange="loadOpDaysData()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-blue-200">
+            </select>
+          </div>
+          <button onclick="fillDefaultOpDays()" class="ml-auto px-3 py-1.5 bg-amber-100 border border-amber-200 text-amber-700 rounded-lg text-xs font-medium hover:bg-amber-200 transition">
+            <i class="fas fa-magic mr-1"></i>기본값 채우기 (30일)
+          </button>
+        </div>
+
+        <!-- 가동일수 테이블 (월별) -->
+        <div class="overflow-auto border border-slate-200 rounded-lg">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-100 sticky top-0 z-10">
+              <tr>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">1월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">2월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">3월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">4월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">5월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">6월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">7월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">8월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">9월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">10월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">11월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">12월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 bg-emerald-50" style="min-width:70px">합계</th>
+              </tr>
+            </thead>
+            <tbody id="od-table-body">
+              <tr><td colspan="13" class="text-center text-gray-400 py-8">호기를 선택하면 데이터가 표시됩니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 참고사항 -->
+        <div class="mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
+          <p class="text-[10px] text-indigo-600 font-medium mb-1"><i class="fas fa-info-circle mr-1"></i>가동일수 설명</p>
+          <p class="text-[10px] text-indigo-500">월별 실제 초지기 가동 예정일수를 입력합니다. 정기 보전(PM), 휴무일 등을 제외한 순 가동일수입니다.</p>
+          <p class="text-[10px] text-gray-400 mt-1">※ 이 값은 '생산 CAPA 분석' 탭에서 월 최대 생산가능량 계산에 사용됩니다.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 생산 CAPA 분석 -->
+    <div id="content-capa" class="hidden fade-in w-full space-y-5">
+      <div class="card p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-chart-bar text-orange-500 mr-1.5"></i>생산 CAPA 분석</h3>
+            <p class="text-xs text-gray-400 mt-1">지종/평량별 예상 생산량과 이론 생산 CAPA를 비교하여 과부족을 분석합니다.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="loadCapaAnalysis()" class="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-slate-200 transition">
+              <i class="fas fa-sync-alt mr-1"></i>새로고침
+            </button>
+            <button onclick="saveCapaPlan()" class="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-medium hover:bg-emerald-600 transition">
+              <i class="fas fa-save mr-1"></i>저장
+            </button>
+          </div>
+        </div>
+
+        <!-- 연도 + 월 + 호기 선택 -->
+        <div class="flex items-center gap-4 mb-4 p-3 bg-slate-50 rounded-lg">
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-medium text-gray-500">연도:</label>
+            <select id="capa-year-select" onchange="loadCapaAnalysis()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-mono focus:ring-1 focus:ring-blue-200">
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-medium text-gray-500">월:</label>
+            <select id="capa-month-select" onchange="loadCapaAnalysis()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-blue-200">
+              <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
+              <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
+              <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
+              <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-medium text-gray-500">호기:</label>
+            <select id="capa-machine-select" onchange="loadCapaAnalysis()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-blue-200">
+            </select>
+          </div>
+          <button onclick="addCapaRow()" class="ml-auto px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition">
+            <i class="fas fa-plus mr-1"></i>품목 추가
+          </button>
+          <button onclick="downloadCapaExcel()" class="px-3 py-1.5 bg-slate-100 border border-slate-200 text-gray-600 rounded-lg text-xs font-medium hover:bg-slate-200 transition">
+            <i class="fas fa-download mr-1"></i>엑셀 다운
+          </button>
+        </div>
+
+        <!-- 요약 카드 -->
+        <div class="grid grid-cols-4 gap-3 mb-4">
+          <div class="bg-blue-50 border border-blue-100 rounded-lg p-3 text-center">
+            <p class="text-[10px] text-blue-500 mb-1">가동일수</p>
+            <p class="text-lg font-bold text-blue-700" id="capa-opdays-label">-</p>
+            <p class="text-[10px] text-blue-400">일</p>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-center">
+            <p class="text-[10px] text-emerald-500 mb-1">총 예상생산량</p>
+            <p class="text-lg font-bold text-emerald-700" id="capa-total-plan">-</p>
+            <p class="text-[10px] text-emerald-400">톤</p>
+          </div>
+          <div class="bg-purple-50 border border-purple-100 rounded-lg p-3 text-center">
+            <p class="text-[10px] text-purple-500 mb-1">총 최대CAPA</p>
+            <p class="text-lg font-bold text-purple-700" id="capa-total-max">-</p>
+            <p class="text-[10px] text-purple-400">톤</p>
+          </div>
+          <div class="bg-orange-50 border border-orange-100 rounded-lg p-3 text-center">
+            <p class="text-[10px] text-orange-500 mb-1">필요 가동일 합계</p>
+            <p class="text-lg font-bold text-orange-700" id="capa-total-days">-</p>
+            <p class="text-[10px] text-orange-400">일 (가용 대비)</p>
+          </div>
+        </div>
+
+        <!-- CAPA 분석 테이블 -->
+        <div class="overflow-auto max-h-[450px] border border-slate-200 rounded-lg">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-100 sticky top-0 z-10">
+              <tr>
+                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 w-10">#</th>
+                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200">지종</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-24">평량(g/m²)</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">이론생산(톤/일)</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28 bg-blue-50">예상생산량(톤)</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-24">필요일수</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">최대CAPA(톤)</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-24">과부족(톤)</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-20">판정</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-16">삭제</th>
+              </tr>
+            </thead>
+            <tbody id="capa-table-body">
+              <tr><td colspan="10" class="text-center text-gray-400 py-8">호기와 월을 선택한 후 품목을 추가하세요.</td></tr>
+            </tbody>
+            <tfoot class="bg-slate-50 border-t-2 border-slate-300">
+              <tr id="capa-table-footer">
+                <td colspan="4" class="px-3 py-2 text-right font-bold text-gray-600">합계</td>
+                <td class="px-3 py-2 text-center font-bold text-gray-700" id="capa-foot-plan">-</td>
+                <td class="px-3 py-2 text-center font-bold text-gray-700" id="capa-foot-days">-</td>
+                <td class="px-3 py-2 text-center font-bold text-gray-700" id="capa-foot-max">-</td>
+                <td class="px-3 py-2 text-center font-bold" id="capa-foot-gap">-</td>
+                <td class="px-3 py-2 text-center font-bold" id="capa-foot-judge">-</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- 참고사항 -->
+        <div class="mt-4 p-3 bg-orange-50 border border-orange-100 rounded-lg">
+          <p class="text-[10px] text-orange-600 font-medium mb-1"><i class="fas fa-info-circle mr-1"></i>CAPA 분석 로직</p>
+          <p class="text-[10px] text-orange-500">이론생산(톤/일) = 평량 × 0.001 × 0.001 × 지폭 × 0.001 × 선속 × 1440</p>
+          <p class="text-[10px] text-orange-500">최대CAPA(톤) = 이론생산(톤/일) × 가동일수</p>
+          <p class="text-[10px] text-orange-500">필요일수 = 예상생산량 ÷ 이론생산(톤/일)</p>
+          <p class="text-[10px] text-orange-500">과부족 = 최대CAPA − 예상생산량 (양수=여유, 음수=초과)</p>
+          <p class="text-[10px] text-gray-400 mt-1">※ 선속 데이터는 '제지 생산 선속' 탭의 마스터 데이터를 참조합니다.</p>
+          <p class="text-[10px] text-gray-400">※ 필요일수 합계가 가동일수를 초과하면 해당 월 생산 불가로 판정됩니다.</p>
+        </div>
+      </div>
+    </div>
+
     <div id="content-simulation" class="hidden fade-in space-y-5">
       <!-- Header & Controls -->
       <div class="card p-6">
@@ -3452,7 +3654,7 @@ export function mainPage(): string {
         if (match) return match[1];
       }
       // fallback: 숨겨지지 않은 content 패널 찾기
-      var panels = ['pldashboard','dashboard','forecast','costforecast','simflow','optime','prodplan','scenario','datainput','master','mapping','linespeed'];
+      var panels = ['pldashboard','dashboard','forecast','costforecast','simflow','optime','prodplan','scenario','datainput','master','mapping','linespeed','opdays','capa'];
       for (var i = 0; i < panels.length; i++) {
         var el = document.getElementById('content-' + panels[i]);
         if (el && !el.classList.contains('hidden')) return panels[i];
@@ -3686,7 +3888,7 @@ export function mainPage(): string {
     });
 
     function switchTab(tab) {
-      ['pldashboard','dashboard','detail','upload','dataview','master','mapping','linespeed','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime','costforecast','prodplan','scenario'].forEach(t => {
+      ['pldashboard','dashboard','detail','upload','dataview','master','mapping','linespeed','opdays','capa','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime','costforecast','prodplan','scenario'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.remove('nav-item-active'); el.classList.add('pill-tab-inactive'); }
@@ -3696,7 +3898,7 @@ export function mainPage(): string {
       const sidebarBtn = document.getElementById('tab-' + tab);
       if (sidebarBtn) sidebarBtn.classList.add('nav-item-active');
       // 페이지 제목 업데이트
-      const titles = { pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'원부재료 전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', mapping:'자재 카테고리 매핑', linespeed:'제지 생산 선속', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측', prodplan:'생산량 이동계획', scenario:'시나리오 분석' };
+      const titles = { pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'원부재료 전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', mapping:'자재 카테고리 매핑', linespeed:'제지 생산 선속', opdays:'가동일수', capa:'생산 CAPA 분석', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측', prodplan:'생산량 이동계획', scenario:'시나리오 분석' };
       const titleEl = document.getElementById('page-title');
       if (titleEl) titleEl.textContent = titles[tab] || tab;
       if (tab === 'pldashboard') {
@@ -3736,6 +3938,15 @@ export function mainPage(): string {
         document.getElementById('content-linespeed')?.classList.remove('hidden');
         initLineSpeedMachineSelect();
         loadLineSpeedData();
+      } else if (tab === 'opdays') {
+        document.getElementById('content-opdays')?.classList.remove('hidden');
+        initOpDaysMachineSelect();
+        loadOpDaysData();
+      } else if (tab === 'capa') {
+        document.getElementById('content-capa')?.classList.remove('hidden');
+        initCapaMachineSelect();
+        initCapaMonth();
+        loadCapaAnalysis();
       } else {
         document.getElementById('content-' + tab)?.classList.remove('hidden');
       }
@@ -6457,6 +6668,418 @@ export function mainPage(): string {
       event.target.value = '';
     }
     // ======== END 제지 생산 선속 ========
+
+    // ======== 가동일수 관리 ========
+    var opDaysData = [0,0,0,0,0,0,0,0,0,0,0,0]; // 1~12월
+
+    function initOpDaysMachineSelect() {
+      var sel = document.getElementById('od-machine-select');
+      if (!sel || sel.options.length > 0) return;
+      var currentDiv = typeof CC !== 'undefined' && CC.currentDivision ? CC.currentDivision : 'PS';
+      var machines = currentDiv === 'HL' ? ['TM5','PD1'] : ['PM2','PM3'];
+      machines.forEach(function(m) {
+        var opt = document.createElement('option');
+        opt.value = m; opt.textContent = m;
+        sel.appendChild(opt);
+      });
+    }
+
+    function getOdYear() {
+      var sel = document.getElementById('od-year-select');
+      return sel ? parseInt(sel.value) : 2026;
+    }
+    function getOdMachine() {
+      var sel = document.getElementById('od-machine-select');
+      return sel ? sel.value : 'PM2';
+    }
+
+    async function loadOpDaysData() {
+      var year = getOdYear();
+      var machine = getOdMachine();
+      var division = typeof CC !== 'undefined' && CC.currentDivision ? CC.currentDivision : 'PS';
+      try {
+        var res = await fetch('/api/opdays?year=' + year + '&machine=' + machine + '&division=' + division);
+        var json = await res.json();
+        if (json.data && json.data.length === 12) {
+          opDaysData = json.data;
+        } else {
+          opDaysData = [0,0,0,0,0,0,0,0,0,0,0,0];
+        }
+      } catch(e) {
+        opDaysData = [0,0,0,0,0,0,0,0,0,0,0,0];
+      }
+      renderOpDaysTable();
+    }
+
+    function renderOpDaysTable() {
+      var tbody = document.getElementById('od-table-body');
+      if (!tbody) return;
+      var total = opDaysData.reduce(function(s,v){return s+v;}, 0);
+      var html = '<tr>';
+      for (var i = 0; i < 12; i++) {
+        html += '<td class="px-2 py-2 text-center border-b border-slate-100">';
+        html += '<input type="number" min="0" max="31" step="1" value="' + (opDaysData[i]||'') + '" ';
+        html += 'onchange="onOdChange(this,' + i + ')" ';
+        html += 'class="w-14 text-center border border-gray-200 rounded px-1 py-1 text-xs focus:ring-1 focus:ring-indigo-200 focus:border-indigo-300">';
+        html += '</td>';
+      }
+      html += '<td class="px-2 py-2 text-center border-b border-slate-100 bg-emerald-50 font-bold text-emerald-700">' + total + '</td>';
+      html += '</tr>';
+      tbody.innerHTML = html;
+    }
+
+    function onOdChange(inp, idx) {
+      opDaysData[idx] = parseInt(inp.value) || 0;
+      renderOpDaysTable();
+    }
+
+    function fillDefaultOpDays() {
+      opDaysData = [30,28,30,30,30,30,30,30,30,30,30,30];
+      renderOpDaysTable();
+    }
+
+    async function saveOpDaysData() {
+      var year = getOdYear();
+      var machine = getOdMachine();
+      var division = typeof CC !== 'undefined' && CC.currentDivision ? CC.currentDivision : 'PS';
+      try {
+        var res = await fetch('/api/opdays', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ year: year, machine: machine, division: division, data: opDaysData })
+        });
+        var json = await res.json();
+        if (json.success) {
+          alert('가동일수 저장 완료');
+        } else {
+          alert('저장 실패: ' + (json.error || ''));
+        }
+      } catch(e) {
+        alert('저장 오류: ' + e.message);
+      }
+    }
+    // ======== END 가동일수 ========
+
+    // ======== 생산 CAPA 분석 ========
+    var capaData = []; // [{product_type, basis_weight, planned_qty, ...}]
+    var capaOpDays = 0;
+    var capaLineSpeedRef = []; // 선속 마스터 참조
+
+    function initCapaMachineSelect() {
+      var sel = document.getElementById('capa-machine-select');
+      if (!sel || sel.options.length > 0) return;
+      var currentDiv = typeof CC !== 'undefined' && CC.currentDivision ? CC.currentDivision : 'PS';
+      var machines = currentDiv === 'HL' ? ['TM5','PD1'] : ['PM2','PM3'];
+      machines.forEach(function(m) {
+        var opt = document.createElement('option');
+        opt.value = m; opt.textContent = m;
+        sel.appendChild(opt);
+      });
+    }
+
+    function initCapaMonth() {
+      var sel = document.getElementById('capa-month-select');
+      if (!sel) return;
+      var now = new Date();
+      sel.value = String(now.getMonth() + 1);
+    }
+
+    function getCapaYear() { var s = document.getElementById('capa-year-select'); return s ? parseInt(s.value) : 2026; }
+    function getCapaMonth() { var s = document.getElementById('capa-month-select'); return s ? parseInt(s.value) : 1; }
+    function getCapaMachine() { var s = document.getElementById('capa-machine-select'); return s ? s.value : 'PM2'; }
+
+    async function loadCapaAnalysis() {
+      var year = getCapaYear();
+      var month = getCapaMonth();
+      var machine = getCapaMachine();
+      var division = typeof CC !== 'undefined' && CC.currentDivision ? CC.currentDivision : 'PS';
+
+      try {
+        // 1) 가동일수 가져오기
+        var odRes = await fetch('/api/opdays?year=' + year + '&machine=' + machine + '&division=' + division);
+        var odJson = await odRes.json();
+        if (odJson.data && odJson.data.length === 12) {
+          capaOpDays = odJson.data[month - 1] || 0;
+        } else {
+          capaOpDays = 0;
+        }
+
+        // 2) 선속 마스터 가져오기
+        var lsRes = await fetch('/api/linespeed?year=' + year + '&machine=' + machine + '&division=' + division);
+        var lsJson = await lsRes.json();
+        capaLineSpeedRef = lsJson.data || [];
+
+        // 3) 생산계획 가져오기
+        var cpRes = await fetch('/api/capa-plan?year=' + year + '&month=' + month + '&machine=' + machine + '&division=' + division);
+        var cpJson = await cpRes.json();
+        capaData = cpJson.data || [];
+
+      } catch(e) {
+        console.error('loadCapaAnalysis error:', e);
+        capaOpDays = 0;
+        capaLineSpeedRef = [];
+        capaData = [];
+      }
+      renderCapaTable();
+    }
+
+    function getLineSpeedInfo(productType, basisWeight) {
+      // 선속 마스터에서 지종+평량에 해당하는 선속/지폭 찾기
+      var match = null;
+      capaLineSpeedRef.forEach(function(ls) {
+        if (ls.product_type === productType && ls.basis_weight === basisWeight) {
+          match = ls;
+        }
+      });
+      return match; // { speed, trim_width, ... } or null
+    }
+
+    function calcDailyTon(basisWeight, trimWidth, speed) {
+      // 이론생산(톤/일) = 평량×0.001×0.001×지폭×0.001×선속×1440
+      return basisWeight * 0.001 * 0.001 * trimWidth * 0.001 * speed * 1440;
+    }
+
+    function renderCapaTable() {
+      var tbody = document.getElementById('capa-table-body');
+      if (!tbody) return;
+
+      // 가동일수 표시
+      var odLabel = document.getElementById('capa-opdays-label');
+      if (odLabel) odLabel.textContent = capaOpDays || '-';
+
+      if (capaData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-gray-400 py-8">품목을 추가하세요. 선속 마스터에 등록된 지종/평량 조합이 자동 참조됩니다.</td></tr>';
+        updateCapaSummary();
+        return;
+      }
+
+      var html = '';
+      capaData.forEach(function(row, idx) {
+        var lsInfo = getLineSpeedInfo(row.product_type, row.basis_weight);
+        var dailyTon = 0;
+        var maxCapa = 0;
+        var needDays = 0;
+        var gap = 0;
+        var judge = '-';
+        var judgeClass = 'text-gray-400';
+        var gapClass = 'text-gray-600';
+
+        if (lsInfo && lsInfo.speed > 0) {
+          dailyTon = calcDailyTon(row.basis_weight, lsInfo.trim_width, lsInfo.speed);
+          maxCapa = dailyTon * capaOpDays;
+          needDays = dailyTon > 0 ? (row.planned_qty || 0) / dailyTon : 0;
+          gap = maxCapa - (row.planned_qty || 0);
+          if (gap >= 0) { judge = '✅ 가능'; judgeClass = 'text-emerald-600'; gapClass = 'text-emerald-600'; }
+          else { judge = '⚠️ 초과'; judgeClass = 'text-red-600'; gapClass = 'text-red-600 font-bold'; }
+        }
+
+        // 지종 드롭다운 옵션 구성 (선속 마스터에서 distinct product_type)
+        var productTypes = [];
+        capaLineSpeedRef.forEach(function(ls) {
+          if (productTypes.indexOf(ls.product_type) === -1) productTypes.push(ls.product_type);
+        });
+
+        // 해당 지종의 평량 목록
+        var basisWeights = [];
+        capaLineSpeedRef.forEach(function(ls) {
+          if (ls.product_type === row.product_type && basisWeights.indexOf(ls.basis_weight) === -1) {
+            basisWeights.push(ls.basis_weight);
+          }
+        });
+        basisWeights.sort(function(a,b){return a-b;});
+
+        html += '<tr class="hover:bg-slate-50 border-b border-slate-100">';
+        html += '<td class="px-3 py-2 text-center text-gray-400">' + (idx+1) + '</td>';
+
+        // 지종 select
+        html += '<td class="px-2 py-1"><select onchange="onCapaProductChange(this,'+idx+')" class="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-200">';
+        html += '<option value="">선택</option>';
+        productTypes.forEach(function(pt) {
+          html += '<option value="'+pt+'"'+(pt===row.product_type?' selected':'')+'>'+pt+'</option>';
+        });
+        html += '</select></td>';
+
+        // 평량 select
+        html += '<td class="px-2 py-1 text-center"><select onchange="onCapaBwChange(this,'+idx+')" class="w-20 text-center border border-gray-200 rounded px-1 py-1 text-xs focus:ring-1 focus:ring-blue-200">';
+        html += '<option value="">-</option>';
+        basisWeights.forEach(function(bw) {
+          html += '<option value="'+bw+'"'+(bw===row.basis_weight?' selected':'')+'>'+bw+'</option>';
+        });
+        html += '</select></td>';
+
+        // 이론생산(톤/일)
+        html += '<td class="px-3 py-2 text-center font-mono text-gray-700">' + (dailyTon > 0 ? dailyTon.toFixed(1) : '-') + '</td>';
+
+        // 예상생산량 입력
+        html += '<td class="px-2 py-1 text-center bg-blue-50">';
+        html += '<input type="number" min="0" step="1" value="' + (row.planned_qty || '') + '" ';
+        html += 'onchange="onCapaQtyChange(this,'+idx+')" ';
+        html += 'class="w-24 text-center border border-blue-200 rounded px-1 py-1 text-xs font-bold focus:ring-1 focus:ring-blue-300 bg-white">';
+        html += '</td>';
+
+        // 필요일수
+        html += '<td class="px-3 py-2 text-center font-mono text-gray-600">' + (needDays > 0 ? needDays.toFixed(1) : '-') + '</td>';
+
+        // 최대CAPA
+        html += '<td class="px-3 py-2 text-center font-mono text-gray-700">' + (maxCapa > 0 ? Math.round(maxCapa).toLocaleString() : '-') + '</td>';
+
+        // 과부족
+        html += '<td class="px-3 py-2 text-center font-mono ' + gapClass + '">' + (dailyTon > 0 ? (gap>=0?'+':'') + Math.round(gap).toLocaleString() : '-') + '</td>';
+
+        // 판정
+        html += '<td class="px-3 py-2 text-center text-xs font-medium ' + judgeClass + '">' + judge + '</td>';
+
+        // 삭제
+        html += '<td class="px-3 py-2 text-center"><button onclick="removeCapaRow('+idx+')" class="text-red-400 hover:text-red-600"><i class="fas fa-trash-alt"></i></button></td>';
+        html += '</tr>';
+      });
+
+      tbody.innerHTML = html;
+      updateCapaSummary();
+    }
+
+    function updateCapaSummary() {
+      var totalPlan = 0, totalMax = 0, totalDays = 0;
+      capaData.forEach(function(row) {
+        var lsInfo = getLineSpeedInfo(row.product_type, row.basis_weight);
+        if (lsInfo && lsInfo.speed > 0) {
+          var dailyTon = calcDailyTon(row.basis_weight, lsInfo.trim_width, lsInfo.speed);
+          totalPlan += (row.planned_qty || 0);
+          totalMax += dailyTon * capaOpDays;
+          totalDays += dailyTon > 0 ? (row.planned_qty || 0) / dailyTon : 0;
+        } else {
+          totalPlan += (row.planned_qty || 0);
+        }
+      });
+
+      var totalGap = totalMax - totalPlan;
+      var overDays = totalDays > capaOpDays;
+
+      // 요약 카드
+      document.getElementById('capa-total-plan').textContent = totalPlan > 0 ? Math.round(totalPlan).toLocaleString() : '-';
+      document.getElementById('capa-total-max').textContent = totalMax > 0 ? Math.round(totalMax).toLocaleString() : '-';
+      document.getElementById('capa-total-days').textContent = totalDays > 0 ? totalDays.toFixed(1) + ' / ' + capaOpDays : '-';
+
+      // footer
+      document.getElementById('capa-foot-plan').textContent = totalPlan > 0 ? Math.round(totalPlan).toLocaleString() : '-';
+      document.getElementById('capa-foot-days').textContent = totalDays > 0 ? totalDays.toFixed(1) : '-';
+      document.getElementById('capa-foot-max').textContent = totalMax > 0 ? Math.round(totalMax).toLocaleString() : '-';
+
+      var footGap = document.getElementById('capa-foot-gap');
+      var footJudge = document.getElementById('capa-foot-judge');
+      if (footGap) {
+        if (totalMax > 0) {
+          footGap.textContent = (totalGap>=0?'+':'') + Math.round(totalGap).toLocaleString();
+          footGap.className = 'px-3 py-2 text-center font-bold ' + (totalGap >= 0 ? 'text-emerald-600' : 'text-red-600');
+        } else {
+          footGap.textContent = '-'; footGap.className = 'px-3 py-2 text-center font-bold text-gray-400';
+        }
+      }
+      if (footJudge) {
+        if (overDays) {
+          footJudge.textContent = '⚠️ 일수초과';
+          footJudge.className = 'px-3 py-2 text-center font-bold text-red-600';
+        } else if (totalDays > 0) {
+          footJudge.textContent = '✅ 가능';
+          footJudge.className = 'px-3 py-2 text-center font-bold text-emerald-600';
+        } else {
+          footJudge.textContent = '-';
+          footJudge.className = 'px-3 py-2 text-center font-bold text-gray-400';
+        }
+      }
+
+      // 가동일수 카드 색상 업데이트
+      var odEl = document.getElementById('capa-total-days');
+      if (odEl && overDays) {
+        odEl.parentElement.classList.remove('bg-orange-50','border-orange-100');
+        odEl.parentElement.classList.add('bg-red-50','border-red-200');
+      }
+    }
+
+    function onCapaProductChange(sel, idx) {
+      capaData[idx].product_type = sel.value;
+      capaData[idx].basis_weight = 0;
+      renderCapaTable();
+    }
+
+    function onCapaBwChange(sel, idx) {
+      capaData[idx].basis_weight = parseFloat(sel.value) || 0;
+      renderCapaTable();
+    }
+
+    function onCapaQtyChange(inp, idx) {
+      capaData[idx].planned_qty = parseFloat(inp.value) || 0;
+      updateCapaSummary();
+    }
+
+    function addCapaRow() {
+      capaData.push({ product_type: '', basis_weight: 0, planned_qty: 0 });
+      renderCapaTable();
+    }
+
+    function removeCapaRow(idx) {
+      capaData.splice(idx, 1);
+      renderCapaTable();
+    }
+
+    async function saveCapaPlan() {
+      var year = getCapaYear();
+      var month = getCapaMonth();
+      var machine = getCapaMachine();
+      var division = typeof CC !== 'undefined' && CC.currentDivision ? CC.currentDivision : 'PS';
+
+      // 유효한 행만 저장
+      var validData = capaData.filter(function(r) { return r.product_type && r.basis_weight > 0; });
+      try {
+        var res = await fetch('/api/capa-plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ year: year, month: month, machine: machine, division: division, data: validData })
+        });
+        var json = await res.json();
+        if (json.success) {
+          alert('생산계획 저장 완료 (' + validData.length + '건)');
+        } else {
+          alert('저장 실패: ' + (json.error || ''));
+        }
+      } catch(e) {
+        alert('저장 오류: ' + e.message);
+      }
+    }
+
+    function downloadCapaExcel() {
+      var year = getCapaYear();
+      var month = getCapaMonth();
+      var machine = getCapaMachine();
+      var rows = [];
+      capaData.forEach(function(row) {
+        var lsInfo = getLineSpeedInfo(row.product_type, row.basis_weight);
+        var dailyTon = 0, maxCapa = 0, needDays = 0, gap = 0, judge = '';
+        if (lsInfo && lsInfo.speed > 0) {
+          dailyTon = calcDailyTon(row.basis_weight, lsInfo.trim_width, lsInfo.speed);
+          maxCapa = dailyTon * capaOpDays;
+          needDays = dailyTon > 0 ? (row.planned_qty||0)/dailyTon : 0;
+          gap = maxCapa - (row.planned_qty||0);
+          judge = gap >= 0 ? '가능' : '초과';
+        }
+        rows.push({
+          '지종': row.product_type,
+          '평량(g/m²)': row.basis_weight,
+          '이론생산(톤/일)': dailyTon > 0 ? +dailyTon.toFixed(1) : '',
+          '예상생산량(톤)': row.planned_qty || 0,
+          '필요일수': needDays > 0 ? +needDays.toFixed(1) : '',
+          '최대CAPA(톤)': maxCapa > 0 ? Math.round(maxCapa) : '',
+          '과부족(톤)': dailyTon > 0 ? Math.round(gap) : '',
+          '판정': judge
+        });
+      });
+      if (!rows.length) { alert('다운로드할 데이터가 없습니다.'); return; }
+      var ws = XLSX.utils.json_to_sheet(rows);
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'CAPA분석');
+      XLSX.writeFile(wb, 'CAPA분석_' + machine + '_' + year + '년' + month + '월.xlsx');
+    }
+    // ======== END 생산 CAPA 분석 ========
 
     // Utilities
     function getCC(c) { 

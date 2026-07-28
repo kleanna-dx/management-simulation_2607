@@ -4574,4 +4574,129 @@ app.post('/api/linespeed', async (c) => {
   return c.json({ success: true, count: rows ? rows.length : 0 })
 })
 
+// ======== 가동일수 API ========
+async function ensureOpDaysTable(db: any) {
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS operating_days (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      division TEXT NOT NULL DEFAULT 'PS',
+      year INTEGER NOT NULL,
+      machine_code TEXT NOT NULL,
+      month1 INTEGER DEFAULT 0, month2 INTEGER DEFAULT 0, month3 INTEGER DEFAULT 0,
+      month4 INTEGER DEFAULT 0, month5 INTEGER DEFAULT 0, month6 INTEGER DEFAULT 0,
+      month7 INTEGER DEFAULT 0, month8 INTEGER DEFAULT 0, month9 INTEGER DEFAULT 0,
+      month10 INTEGER DEFAULT 0, month11 INTEGER DEFAULT 0, month12 INTEGER DEFAULT 0,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(division, year, machine_code)
+    )
+  `).run()
+}
+
+app.get('/api/opdays', async (c) => {
+  const db = c.env.DB
+  await ensureOpDaysTable(db)
+  const year = parseInt(c.req.query('year') || '2026')
+  const machine = c.req.query('machine') || 'PM2'
+  const division = c.req.query('division') || 'PS'
+
+  const row = await db.prepare(
+    `SELECT month1,month2,month3,month4,month5,month6,month7,month8,month9,month10,month11,month12
+     FROM operating_days WHERE division=? AND year=? AND machine_code=?`
+  ).bind(division, year, machine).first()
+
+  if (row) {
+    const data = [row.month1,row.month2,row.month3,row.month4,row.month5,row.month6,
+                  row.month7,row.month8,row.month9,row.month10,row.month11,row.month12]
+    return c.json({ data })
+  }
+  return c.json({ data: [0,0,0,0,0,0,0,0,0,0,0,0] })
+})
+
+app.post('/api/opdays', async (c) => {
+  const db = c.env.DB
+  await ensureOpDaysTable(db)
+  const { year, machine, division, data } = await c.req.json() as {
+    year: number; machine: string; division: string; data: number[]
+  }
+
+  if (!data || data.length !== 12) {
+    return c.json({ success: false, error: '12개월 데이터가 필요합니다' }, 400)
+  }
+
+  await db.prepare(`
+    INSERT INTO operating_days (division, year, machine_code, month1,month2,month3,month4,month5,month6,month7,month8,month9,month10,month11,month12, updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+    ON CONFLICT(division, year, machine_code)
+    DO UPDATE SET month1=?,month2=?,month3=?,month4=?,month5=?,month6=?,month7=?,month8=?,month9=?,month10=?,month11=?,month12=?, updated_at=CURRENT_TIMESTAMP
+  `).bind(
+    division || 'PS', year, machine,
+    data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8],data[9],data[10],data[11],
+    data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8],data[9],data[10],data[11]
+  ).run()
+
+  return c.json({ success: true })
+})
+
+// ======== 생산 CAPA 계획 API ========
+async function ensureCapaPlanTable(db: any) {
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS capa_plan (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      division TEXT NOT NULL DEFAULT 'PS',
+      year INTEGER NOT NULL,
+      month INTEGER NOT NULL,
+      machine_code TEXT NOT NULL,
+      product_type TEXT NOT NULL,
+      basis_weight REAL NOT NULL DEFAULT 0,
+      planned_qty REAL NOT NULL DEFAULT 0,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run()
+}
+
+app.get('/api/capa-plan', async (c) => {
+  const db = c.env.DB
+  await ensureCapaPlanTable(db)
+  const year = parseInt(c.req.query('year') || '2026')
+  const month = parseInt(c.req.query('month') || '1')
+  const machine = c.req.query('machine') || 'PM2'
+  const division = c.req.query('division') || 'PS'
+
+  const { results } = await db.prepare(
+    `SELECT product_type, basis_weight, planned_qty FROM capa_plan
+     WHERE division=? AND year=? AND month=? AND machine_code=?
+     ORDER BY product_type, basis_weight`
+  ).bind(division, year, month, machine).all()
+
+  return c.json({ data: results || [] })
+})
+
+app.post('/api/capa-plan', async (c) => {
+  const db = c.env.DB
+  await ensureCapaPlanTable(db)
+  const { year, month, machine, division, data } = await c.req.json() as {
+    year: number; month: number; machine: string; division: string;
+    data: { product_type: string; basis_weight: number; planned_qty: number }[]
+  }
+
+  // 기존 데이터 삭제 후 재삽입
+  await db.prepare(
+    `DELETE FROM capa_plan WHERE division=? AND year=? AND month=? AND machine_code=?`
+  ).bind(division || 'PS', year, month, machine).run()
+
+  if (data && data.length > 0) {
+    const stmt = db.prepare(`
+      INSERT INTO capa_plan (division, year, month, machine_code, product_type, basis_weight, planned_qty, updated_at)
+      VALUES (?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+    `)
+    const batch = data.map(r => stmt.bind(
+      division || 'PS', year, month, machine,
+      r.product_type, r.basis_weight || 0, r.planned_qty || 0
+    ))
+    await db.batch(batch)
+  }
+
+  return c.json({ success: true, count: data ? data.length : 0 })
+})
+
 export default app
