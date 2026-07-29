@@ -6740,7 +6740,7 @@ export function mainPage(): string {
           html += 'class="w-12 text-center border border-gray-200 rounded px-1 py-1 text-xs focus:ring-1 focus:ring-indigo-200 focus:border-indigo-300">';
           html += '</td>';
         }
-        html += '<td class="px-3 py-2 text-center font-bold ' + row.color + ' bg-slate-50">' + (total || '-') + '</td>';
+        html += '<td class="px-3 py-2 text-center font-bold ' + row.color + ' bg-slate-50">' + (total ? parseFloat(total.toFixed(1)) : '-') + '</td>';
         html += '</tr>';
       });
 
@@ -6748,10 +6748,11 @@ export function mainPage(): string {
       var totalRow = [];
       var grandTotal = 0;
       for (var i = 0; i < 12; i++) {
-        var v = (odShutdown[i]||0) + (odOperating[i]||0) + (odNonOperating[i]||0);
+        var v = parseFloat(((odShutdown[i]||0) + (odOperating[i]||0) + (odNonOperating[i]||0)).toFixed(1));
         totalRow.push(v);
         grandTotal += v;
       }
+      grandTotal = parseFloat(grandTotal.toFixed(1));
       html += '<tr class="border-t-2 border-emerald-300 bg-emerald-50">';
       html += '<td class="px-3 py-2 text-left font-bold text-emerald-700 sticky left-0 z-10 bg-emerald-50 border-r border-slate-200"><i class="fas fa-calculator mr-1"></i>조업 Total</td>';
       for (var i = 0; i < 12; i++) {
