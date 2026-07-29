@@ -2142,6 +2142,10 @@ export function mainPage(): string {
           <button onclick="downloadCapaExcel()" class="px-3 py-1.5 bg-slate-100 border border-slate-200 text-gray-600 rounded-lg text-xs font-medium hover:bg-slate-200 transition">
             <i class="fas fa-download mr-1"></i>엑셀 다운
           </button>
+          <label class="px-3 py-1.5 bg-green-100 border border-green-200 text-green-700 rounded-lg text-xs font-medium hover:bg-green-200 transition cursor-pointer">
+            <i class="fas fa-file-excel mr-1"></i>엑셀 업로드
+            <input type="file" accept=".xlsx,.xls" class="hidden" onchange="uploadCapaExcel(event)">
+          </label>
         </div>
 
         <!-- 요약 카드 -->
@@ -7126,6 +7130,47 @@ export function mainPage(): string {
       var wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'CAPA분석');
       XLSX.writeFile(wb, 'CAPA분석_' + machine + '_' + year + '년' + month + '월.xlsx');
+    }
+
+    function uploadCapaExcel(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          var data = new Uint8Array(e.target.result);
+          var workbook = XLSX.read(data, { type: 'array' });
+          var ws = workbook.Sheets[workbook.SheetNames[0]];
+          var rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+          if (!rows.length) { alert('데이터가 없습니다.'); return; }
+
+          var parsed = [];
+          rows.forEach(function(r) {
+            var productType = r['지종'] || r['product_type'] || '';
+            var basisWeight = parseFloat(r['평량(g/m²)'] || r['평량'] || r['basis_weight'] || 0);
+            var plannedQty = parseFloat(r['예상생산량(톤)'] || r['예상생산량'] || r['planned_qty'] || 0);
+
+            if (productType && productType.trim()) {
+              parsed.push({
+                product_type: productType.trim(),
+                basis_weight: basisWeight,
+                planned_qty: plannedQty
+              });
+            }
+          });
+
+          if (!parsed.length) { alert('유효한 데이터가 없습니다. 컬럼명을 확인하세요: 지종, 평량(g/m²), 예상생산량(톤)'); return; }
+
+          capaData = parsed;
+          renderCapaTable();
+          alert('엑셀 업로드 완료: ' + parsed.length + '건. 확인 후 저장 버튼을 눌러주세요.');
+        } catch(err) {
+          alert('엑셀 파싱 오류: ' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      event.target.value = '';
     }
     // ======== END 생산 CAPA 분석 ========
 
