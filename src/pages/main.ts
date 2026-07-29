@@ -2085,7 +2085,7 @@ export function mainPage(): string {
           <p class="text-[10px] text-indigo-500">• <b>계획운휴</b>: 정기보전(PM), 개조, 설비 점검 등 계획된 정지일수</p>
           <p class="text-[10px] text-indigo-500">• <b>가동일수</b>: 실제 초지기 가동 예정일수 (생산 CAPA 계산 기준)</p>
           <p class="text-[10px] text-indigo-500">• <b>비가동일수</b>: 휴일, 비수기 정지 등 비가동일</p>
-          <p class="text-[10px] text-emerald-600 mt-1">• <b>조업 Total</b> = 가동일수 + 비가동일수 (자동 계산)</p>
+          <p class="text-[10px] text-emerald-600 mt-1">• <b>조업 Total</b> = 계획운휴 + 가동일수 + 비가동일수 (자동 계산)</p>
           <p class="text-[10px] text-gray-400 mt-1">※ '가동일수'가 '생산 CAPA 분석' 탭에서 월 최대 생산가능량 계산에 사용됩니다.</p>
         </div>
       </div>
@@ -6744,11 +6744,11 @@ export function mainPage(): string {
         html += '</tr>';
       });
 
-      // 조업 Total 행 (가동일수 + 비가동일수)
+      // 조업 Total 행 (계획운휴 + 가동일수 + 비가동일수)
       var totalRow = [];
       var grandTotal = 0;
       for (var i = 0; i < 12; i++) {
-        var v = (odOperating[i]||0) + (odNonOperating[i]||0);
+        var v = (odShutdown[i]||0) + (odOperating[i]||0) + (odNonOperating[i]||0);
         totalRow.push(v);
         grandTotal += v;
       }
