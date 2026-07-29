@@ -2081,11 +2081,21 @@ export function mainPage(): string {
 
         <!-- 참고사항 -->
         <div class="mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
-          <p class="text-[10px] text-indigo-600 font-medium mb-1"><i class="fas fa-info-circle mr-1"></i>가동일수 설명</p>
-          <p class="text-[10px] text-indigo-500">• <b>계획운휴</b>: 정기보전(PM), 개조, 설비 점검 등 계획된 정지일수</p>
-          <p class="text-[10px] text-indigo-500">• <b>가동일수</b>: 실제 초지기 가동 예정일수 (생산 CAPA 계산 기준)</p>
-          <p class="text-[10px] text-indigo-500">• <b>비가동일수</b>: 휴일, 비수기 정지 등 비가동일</p>
-          <p class="text-[10px] text-emerald-600 mt-1">• <b>조업 Total</b> = 계획운휴 + 가동일수 + 비가동일수 (자동 계산)</p>
+          <p class="text-[10px] text-indigo-600 font-medium mb-2"><i class="fas fa-info-circle mr-1"></i>가동일수 구성 항목</p>
+          <table class="text-[10px] text-indigo-700 w-full max-w-md">
+            <tr><td class="font-bold align-top pr-3 py-0.5 text-orange-600">계획운휴</td><td class="py-0.5 text-gray-500"></td></tr>
+            <tr><td class="font-bold align-top pr-3 py-0.5 text-blue-700" rowspan="6">가동일수</td><td class="py-0.5">정상</td></tr>
+            <tr><td class="py-0.5">폐품</td></tr>
+            <tr><td class="py-0.5">비계획생산</td></tr>
+            <tr><td class="py-0.5">초출</td></tr>
+            <tr><td class="py-0.5">절지</td></tr>
+            <tr><td class="py-0.5 font-semibold">소계</td></tr>
+            <tr><td class="font-bold align-top pr-3 py-0.5 text-gray-600" rowspan="4">비가동일수</td><td class="py-0.5">지교</td></tr>
+            <tr><td class="py-0.5">세척</td></tr>
+            <tr><td class="py-0.5">사고 등</td></tr>
+            <tr><td class="py-0.5 font-semibold">소계</td></tr>
+          </table>
+          <p class="text-[10px] text-emerald-600 mt-2">• <b>조업 Total</b> = 계획운휴 + 가동일수 + 비가동일수 (자동 계산)</p>
           <p class="text-[10px] text-gray-400 mt-1">※ '가동일수'가 '생산 CAPA 분석' 탭에서 월 최대 생산가능량 계산에 사용됩니다.</p>
         </div>
       </div>
