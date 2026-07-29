@@ -2082,19 +2082,11 @@ export function mainPage(): string {
         <!-- 참고사항 -->
         <div class="mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
           <p class="text-[10px] text-indigo-600 font-medium mb-2"><i class="fas fa-info-circle mr-1"></i>가동일수 구성 항목</p>
-          <table class="text-[10px] text-indigo-700 w-full max-w-md">
-            <tr><td class="font-bold align-top pr-3 py-0.5 text-orange-600">계획운휴</td><td class="py-0.5 text-gray-500"></td></tr>
-            <tr><td class="font-bold align-top pr-3 py-0.5 text-blue-700" rowspan="6">가동일수</td><td class="py-0.5">정상</td></tr>
-            <tr><td class="py-0.5">폐품</td></tr>
-            <tr><td class="py-0.5">비계획생산</td></tr>
-            <tr><td class="py-0.5">초출</td></tr>
-            <tr><td class="py-0.5">절지</td></tr>
-            <tr><td class="py-0.5 font-semibold">소계</td></tr>
-            <tr><td class="font-bold align-top pr-3 py-0.5 text-gray-600" rowspan="4">비가동일수</td><td class="py-0.5">지교</td></tr>
-            <tr><td class="py-0.5">세척</td></tr>
-            <tr><td class="py-0.5">사고 등</td></tr>
-            <tr><td class="py-0.5 font-semibold">소계</td></tr>
-          </table>
+          <div class="text-[10px] leading-relaxed text-indigo-700 space-y-0.5">
+            <p><b class="text-orange-600">계획운휴</b></p>
+            <p><b class="text-blue-700">가동일수</b> — 정상 / 폐품 / 비계획생산 / 초출 / 절지 / 소계</p>
+            <p><b class="text-gray-600">비가동일수</b> — 지교 / 세척 / 사고 등 / 소계</p>
+          </div>
           <p class="text-[10px] text-emerald-600 mt-2">• <b>조업 Total</b> = 계획운휴 + 가동일수 + 비가동일수 (자동 계산)</p>
           <p class="text-[10px] text-gray-400 mt-1">※ '가동일수'가 '생산 CAPA 분석' 탭에서 월 최대 생산가능량 계산에 사용됩니다.</p>
         </div>
