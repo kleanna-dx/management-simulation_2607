@@ -2057,7 +2057,7 @@ export function mainPage(): string {
           <table class="w-full text-xs">
             <thead class="bg-slate-100 sticky top-0 z-10">
               <tr>
-                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 bg-slate-50 sticky left-0 z-20" style="min-width:100px">구분</th>
+                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 bg-slate-50 sticky left-0 z-20" style="min-width:100px">구분 <span class="font-normal text-gray-400">(단위: 일)</span></th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">1월</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">2월</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">3월</th>
