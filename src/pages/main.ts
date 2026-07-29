@@ -6736,7 +6736,7 @@ export function mainPage(): string {
         for (var i = 0; i < 12; i++) {
           html += '<td class="px-1 py-1.5 text-center">';
           html += '<input type="number" min="0" max="31" step="0.5" value="' + (row.data[i] || '') + '" ';
-          html += 'onchange="onOdChange(this,\'' + row.key + '\',' + i + ')" ';
+          html += 'data-odkey="' + row.key + '" data-odidx="' + i + '" onchange="onOdChange(this)" ';
           html += 'class="w-12 text-center border border-gray-200 rounded px-1 py-1 text-xs focus:ring-1 focus:ring-indigo-200 focus:border-indigo-300">';
           html += '</td>';
         }
@@ -6763,7 +6763,9 @@ export function mainPage(): string {
       tbody.innerHTML = html;
     }
 
-    function onOdChange(inp, key, idx) {
+    function onOdChange(inp) {
+      var key = inp.getAttribute('data-odkey');
+      var idx = parseInt(inp.getAttribute('data-odidx'));
       var val = parseFloat(inp.value) || 0;
       if (key === 'shutdown') odShutdown[idx] = val;
       else if (key === 'operating') odOperating[idx] = val;
