@@ -2057,23 +2057,24 @@ export function mainPage(): string {
           <table class="w-full text-xs">
             <thead class="bg-slate-100 sticky top-0 z-10">
               <tr>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">1월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">2월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">3월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">4월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">5월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">6월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">7월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">8월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">9월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">10월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">11월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:60px">12월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 bg-emerald-50" style="min-width:70px">합계</th>
+                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 bg-slate-50 sticky left-0 z-20" style="min-width:100px">구분</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">1월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">2월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">3월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">4월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">5월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">6월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">7월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">8월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">9월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">10월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">11월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">12월</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 bg-emerald-50" style="min-width:64px">합계</th>
               </tr>
             </thead>
             <tbody id="od-table-body">
-              <tr><td colspan="13" class="text-center text-gray-400 py-8">호기를 선택하면 데이터가 표시됩니다.</td></tr>
+              <tr><td colspan="14" class="text-center text-gray-400 py-8">호기를 선택하면 데이터가 표시됩니다.</td></tr>
             </tbody>
           </table>
         </div>
@@ -2081,8 +2082,11 @@ export function mainPage(): string {
         <!-- 참고사항 -->
         <div class="mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
           <p class="text-[10px] text-indigo-600 font-medium mb-1"><i class="fas fa-info-circle mr-1"></i>가동일수 설명</p>
-          <p class="text-[10px] text-indigo-500">월별 실제 초지기 가동 예정일수를 입력합니다. 정기 보전(PM), 휴무일 등을 제외한 순 가동일수입니다.</p>
-          <p class="text-[10px] text-gray-400 mt-1">※ 이 값은 '생산 CAPA 분석' 탭에서 월 최대 생산가능량 계산에 사용됩니다.</p>
+          <p class="text-[10px] text-indigo-500">• <b>계획운휴</b>: 정기보전(PM), 개조, 설비 점검 등 계획된 정지일수</p>
+          <p class="text-[10px] text-indigo-500">• <b>가동일수</b>: 실제 초지기 가동 예정일수 (생산 CAPA 계산 기준)</p>
+          <p class="text-[10px] text-indigo-500">• <b>비가동일수</b>: 휴일, 비수기 정지 등 비가동일</p>
+          <p class="text-[10px] text-emerald-600 mt-1">• <b>조업 Total</b> = 가동일수 + 비가동일수 (자동 계산)</p>
+          <p class="text-[10px] text-gray-400 mt-1">※ '가동일수'가 '생산 CAPA 분석' 탭에서 월 최대 생산가능량 계산에 사용됩니다.</p>
         </div>
       </div>
     </div>
@@ -6670,7 +6674,9 @@ export function mainPage(): string {
     // ======== END 제지 생산 선속 ========
 
     // ======== 가동일수 관리 ========
-    var opDaysData = [0,0,0,0,0,0,0,0,0,0,0,0]; // 1~12월
+    var odShutdown = [0,0,0,0,0,0,0,0,0,0,0,0];
+    var odOperating = [0,0,0,0,0,0,0,0,0,0,0,0];
+    var odNonOperating = [0,0,0,0,0,0,0,0,0,0,0,0];
 
     function initOpDaysMachineSelect() {
       var sel = document.getElementById('od-machine-select');
@@ -6700,13 +6706,13 @@ export function mainPage(): string {
       try {
         var res = await fetch('/api/opdays?year=' + year + '&machine=' + machine + '&division=' + division);
         var json = await res.json();
-        if (json.data && json.data.length === 12) {
-          opDaysData = json.data;
-        } else {
-          opDaysData = [0,0,0,0,0,0,0,0,0,0,0,0];
-        }
+        odShutdown = json.shutdown || [0,0,0,0,0,0,0,0,0,0,0,0];
+        odOperating = json.operating || json.data || [0,0,0,0,0,0,0,0,0,0,0,0];
+        odNonOperating = json.non_operating || [0,0,0,0,0,0,0,0,0,0,0,0];
       } catch(e) {
-        opDaysData = [0,0,0,0,0,0,0,0,0,0,0,0];
+        odShutdown = [0,0,0,0,0,0,0,0,0,0,0,0];
+        odOperating = [0,0,0,0,0,0,0,0,0,0,0,0];
+        odNonOperating = [0,0,0,0,0,0,0,0,0,0,0,0];
       }
       renderOpDaysTable();
     }
@@ -6714,27 +6720,61 @@ export function mainPage(): string {
     function renderOpDaysTable() {
       var tbody = document.getElementById('od-table-body');
       if (!tbody) return;
-      var total = opDaysData.reduce(function(s,v){return s+v;}, 0);
-      var html = '<tr>';
+
+      var rows = [
+        { label: '계획운휴', key: 'shutdown', data: odShutdown, color: 'text-orange-600', bg: 'bg-orange-50' },
+        { label: '가동일수', key: 'operating', data: odOperating, color: 'text-blue-700', bg: 'bg-blue-50' },
+        { label: '비가동일수', key: 'non_operating', data: odNonOperating, color: 'text-gray-600', bg: 'bg-gray-50' }
+      ];
+
+      var html = '';
+
+      rows.forEach(function(row) {
+        var total = row.data.reduce(function(s,v){return s+(v||0);}, 0);
+        html += '<tr class="border-b border-slate-100">';
+        html += '<td class="px-3 py-2 text-left font-semibold ' + row.color + ' ' + row.bg + ' sticky left-0 z-10 border-r border-slate-200">' + row.label + '</td>';
+        for (var i = 0; i < 12; i++) {
+          html += '<td class="px-1 py-1.5 text-center">';
+          html += '<input type="number" min="0" max="31" step="0.5" value="' + (row.data[i] || '') + '" ';
+          html += 'onchange="onOdChange(this,\'' + row.key + '\',' + i + ')" ';
+          html += 'class="w-12 text-center border border-gray-200 rounded px-1 py-1 text-xs focus:ring-1 focus:ring-indigo-200 focus:border-indigo-300">';
+          html += '</td>';
+        }
+        html += '<td class="px-3 py-2 text-center font-bold ' + row.color + ' bg-slate-50">' + (total || '-') + '</td>';
+        html += '</tr>';
+      });
+
+      // 조업 Total 행 (가동일수 + 비가동일수)
+      var totalRow = [];
+      var grandTotal = 0;
       for (var i = 0; i < 12; i++) {
-        html += '<td class="px-2 py-2 text-center border-b border-slate-100">';
-        html += '<input type="number" min="0" max="31" step="1" value="' + (opDaysData[i]||'') + '" ';
-        html += 'onchange="onOdChange(this,' + i + ')" ';
-        html += 'class="w-14 text-center border border-gray-200 rounded px-1 py-1 text-xs focus:ring-1 focus:ring-indigo-200 focus:border-indigo-300">';
-        html += '</td>';
+        var v = (odOperating[i]||0) + (odNonOperating[i]||0);
+        totalRow.push(v);
+        grandTotal += v;
       }
-      html += '<td class="px-2 py-2 text-center border-b border-slate-100 bg-emerald-50 font-bold text-emerald-700">' + total + '</td>';
+      html += '<tr class="border-t-2 border-emerald-300 bg-emerald-50">';
+      html += '<td class="px-3 py-2 text-left font-bold text-emerald-700 sticky left-0 z-10 bg-emerald-50 border-r border-slate-200"><i class="fas fa-calculator mr-1"></i>조업 Total</td>';
+      for (var i = 0; i < 12; i++) {
+        html += '<td class="px-3 py-2 text-center font-bold text-emerald-700">' + (totalRow[i] || '-') + '</td>';
+      }
+      html += '<td class="px-3 py-2 text-center font-bold text-emerald-800 bg-emerald-100">' + grandTotal + '</td>';
       html += '</tr>';
+
       tbody.innerHTML = html;
     }
 
-    function onOdChange(inp, idx) {
-      opDaysData[idx] = parseInt(inp.value) || 0;
+    function onOdChange(inp, key, idx) {
+      var val = parseFloat(inp.value) || 0;
+      if (key === 'shutdown') odShutdown[idx] = val;
+      else if (key === 'operating') odOperating[idx] = val;
+      else if (key === 'non_operating') odNonOperating[idx] = val;
       renderOpDaysTable();
     }
 
     function fillDefaultOpDays() {
-      opDaysData = [30,28,30,30,30,30,30,30,30,30,30,30];
+      odShutdown = [0,0,0,0,0,0,0,0,0,0,0,0];
+      odOperating = [30,28,30,30,30,30,30,30,30,30,30,30];
+      odNonOperating = [1,0,1,0,1,0,1,1,0,1,0,1];
       renderOpDaysTable();
     }
 
@@ -6746,7 +6786,10 @@ export function mainPage(): string {
         var res = await fetch('/api/opdays', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ year: year, machine: machine, division: division, data: opDaysData })
+          body: JSON.stringify({
+            year: year, machine: machine, division: division,
+            shutdown: odShutdown, operating: odOperating, non_operating: odNonOperating
+          })
         });
         var json = await res.json();
         if (json.success) {

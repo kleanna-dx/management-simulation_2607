@@ -4577,17 +4577,18 @@ app.post('/api/linespeed', async (c) => {
 // ======== 가동일수 API ========
 async function ensureOpDaysTable(db: any) {
   await db.prepare(`
-    CREATE TABLE IF NOT EXISTS operating_days (
+    CREATE TABLE IF NOT EXISTS operating_days_v2 (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       division TEXT NOT NULL DEFAULT 'PS',
       year INTEGER NOT NULL,
       machine_code TEXT NOT NULL,
-      month1 INTEGER DEFAULT 0, month2 INTEGER DEFAULT 0, month3 INTEGER DEFAULT 0,
-      month4 INTEGER DEFAULT 0, month5 INTEGER DEFAULT 0, month6 INTEGER DEFAULT 0,
-      month7 INTEGER DEFAULT 0, month8 INTEGER DEFAULT 0, month9 INTEGER DEFAULT 0,
-      month10 INTEGER DEFAULT 0, month11 INTEGER DEFAULT 0, month12 INTEGER DEFAULT 0,
+      row_type TEXT NOT NULL DEFAULT 'operating',
+      month1 REAL DEFAULT 0, month2 REAL DEFAULT 0, month3 REAL DEFAULT 0,
+      month4 REAL DEFAULT 0, month5 REAL DEFAULT 0, month6 REAL DEFAULT 0,
+      month7 REAL DEFAULT 0, month8 REAL DEFAULT 0, month9 REAL DEFAULT 0,
+      month10 REAL DEFAULT 0, month11 REAL DEFAULT 0, month12 REAL DEFAULT 0,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(division, year, machine_code)
+      UNIQUE(division, year, machine_code, row_type)
     )
   `).run()
 }
@@ -4599,40 +4600,55 @@ app.get('/api/opdays', async (c) => {
   const machine = c.req.query('machine') || 'PM2'
   const division = c.req.query('division') || 'PS'
 
-  const row = await db.prepare(
-    `SELECT month1,month2,month3,month4,month5,month6,month7,month8,month9,month10,month11,month12
-     FROM operating_days WHERE division=? AND year=? AND machine_code=?`
-  ).bind(division, year, machine).first()
+  const { results } = await db.prepare(
+    `SELECT row_type, month1,month2,month3,month4,month5,month6,month7,month8,month9,month10,month11,month12
+     FROM operating_days_v2 WHERE division=? AND year=? AND machine_code=?`
+  ).bind(division, year, machine).all()
 
-  if (row) {
-    const data = [row.month1,row.month2,row.month3,row.month4,row.month5,row.month6,
-                  row.month7,row.month8,row.month9,row.month10,row.month11,row.month12]
-    return c.json({ data })
+  const rows: any = { shutdown: [0,0,0,0,0,0,0,0,0,0,0,0], operating: [0,0,0,0,0,0,0,0,0,0,0,0], non_operating: [0,0,0,0,0,0,0,0,0,0,0,0] }
+  if (results) {
+    for (const r of results as any[]) {
+      const arr = [r.month1,r.month2,r.month3,r.month4,r.month5,r.month6,r.month7,r.month8,r.month9,r.month10,r.month11,r.month12]
+      if (rows[r.row_type]) rows[r.row_type] = arr
+    }
   }
-  return c.json({ data: [0,0,0,0,0,0,0,0,0,0,0,0] })
+  // data 필드는 하위호환 (CAPA 분석에서 가동일수 참조용)
+  return c.json({ shutdown: rows.shutdown, operating: rows.operating, non_operating: rows.non_operating, data: rows.operating })
 })
 
 app.post('/api/opdays', async (c) => {
   const db = c.env.DB
   await ensureOpDaysTable(db)
-  const { year, machine, division, data } = await c.req.json() as {
-    year: number; machine: string; division: string; data: number[]
+  const { year, machine, division, shutdown, operating, non_operating } = await c.req.json() as {
+    year: number; machine: string; division: string;
+    shutdown: number[]; operating: number[]; non_operating: number[];
   }
 
-  if (!data || data.length !== 12) {
+  if (!operating || operating.length !== 12) {
     return c.json({ success: false, error: '12개월 데이터가 필요합니다' }, 400)
   }
 
-  await db.prepare(`
-    INSERT INTO operating_days (division, year, machine_code, month1,month2,month3,month4,month5,month6,month7,month8,month9,month10,month11,month12, updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
-    ON CONFLICT(division, year, machine_code)
+  const upsertSql = `
+    INSERT INTO operating_days_v2 (division, year, machine_code, row_type, month1,month2,month3,month4,month5,month6,month7,month8,month9,month10,month11,month12, updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+    ON CONFLICT(division, year, machine_code, row_type)
     DO UPDATE SET month1=?,month2=?,month3=?,month4=?,month5=?,month6=?,month7=?,month8=?,month9=?,month10=?,month11=?,month12=?, updated_at=CURRENT_TIMESTAMP
-  `).bind(
-    division || 'PS', year, machine,
-    data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8],data[9],data[10],data[11],
-    data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8],data[9],data[10],data[11]
-  ).run()
+  `
+
+  const rowTypes = [
+    { type: 'shutdown', arr: shutdown || [0,0,0,0,0,0,0,0,0,0,0,0] },
+    { type: 'operating', arr: operating },
+    { type: 'non_operating', arr: non_operating || [0,0,0,0,0,0,0,0,0,0,0,0] }
+  ]
+
+  const batch = rowTypes.map(({ type, arr }) =>
+    db.prepare(upsertSql).bind(
+      division || 'PS', year, machine, type,
+      arr[0],arr[1],arr[2],arr[3],arr[4],arr[5],arr[6],arr[7],arr[8],arr[9],arr[10],arr[11],
+      arr[0],arr[1],arr[2],arr[3],arr[4],arr[5],arr[6],arr[7],arr[8],arr[9],arr[10],arr[11]
+    )
+  )
+  await db.batch(batch)
 
   return c.json({ success: true })
 })
