@@ -4665,9 +4665,14 @@ async function ensureCapaPlanTable(db: any) {
       product_type TEXT NOT NULL,
       basis_weight REAL NOT NULL DEFAULT 0,
       planned_qty REAL NOT NULL DEFAULT 0,
+      waste_rate REAL NOT NULL DEFAULT 0,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `).run()
+  // Add waste_rate column if missing (for existing tables)
+  try {
+    await db.prepare(`ALTER TABLE capa_plan ADD COLUMN waste_rate REAL NOT NULL DEFAULT 0`).run()
+  } catch(e) { /* column already exists */ }
 }
 
 app.get('/api/capa-plan', async (c) => {
@@ -4679,7 +4684,7 @@ app.get('/api/capa-plan', async (c) => {
   const division = c.req.query('division') || 'PS'
 
   const { results } = await db.prepare(
-    `SELECT product_type, basis_weight, planned_qty FROM capa_plan
+    `SELECT product_type, basis_weight, planned_qty, waste_rate FROM capa_plan
      WHERE division=? AND year=? AND month=? AND machine_code=?
      ORDER BY product_type, basis_weight`
   ).bind(division, year, month, machine).all()
@@ -4692,7 +4697,7 @@ app.post('/api/capa-plan', async (c) => {
   await ensureCapaPlanTable(db)
   const { year, month, machine, division, data } = await c.req.json() as {
     year: number; month: number; machine: string; division: string;
-    data: { product_type: string; basis_weight: number; planned_qty: number }[]
+    data: { product_type: string; basis_weight: number; planned_qty: number; waste_rate?: number }[]
   }
 
   // 기존 데이터 삭제 후 재삽입
@@ -4702,12 +4707,12 @@ app.post('/api/capa-plan', async (c) => {
 
   if (data && data.length > 0) {
     const stmt = db.prepare(`
-      INSERT INTO capa_plan (division, year, month, machine_code, product_type, basis_weight, planned_qty, updated_at)
-      VALUES (?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+      INSERT INTO capa_plan (division, year, month, machine_code, product_type, basis_weight, planned_qty, waste_rate, updated_at)
+      VALUES (?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
     `)
     const batch = data.map(r => stmt.bind(
       division || 'PS', year, month, machine,
-      r.product_type, r.basis_weight || 0, r.planned_qty || 0
+      r.product_type, r.basis_weight || 0, r.planned_qty || 0, r.waste_rate || 0
     ))
     await db.batch(batch)
   }

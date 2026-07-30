@@ -2136,7 +2136,12 @@ export function mainPage(): string {
             <select id="capa-machine-select" onchange="loadCapaAnalysis()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-blue-200">
             </select>
           </div>
-          <button onclick="addCapaRow()" class="ml-auto px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition">
+          <div class="flex items-center gap-2 ml-auto">
+            <label class="text-xs font-medium text-gray-500">폐품률(%):</label>
+            <input type="number" id="capa-waste-rate" min="0" max="50" step="0.1" value="3" onchange="applyCapaWasteRate()" class="w-16 text-center border border-orange-200 rounded-lg px-2 py-1.5 text-xs font-bold text-orange-700 bg-orange-50 focus:ring-1 focus:ring-orange-300">
+            <button onclick="applyCapaWasteRate()" class="px-2 py-1.5 bg-orange-100 border border-orange-200 text-orange-700 rounded-lg text-[10px] font-medium hover:bg-orange-200 transition">일괄적용</button>
+          </div>
+          <button onclick="addCapaRow()" class="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition">
             <i class="fas fa-plus mr-1"></i>품목 추가
           </button>
           <button onclick="downloadCapaExcel()" class="px-3 py-1.5 bg-slate-100 border border-slate-200 text-gray-600 rounded-lg text-xs font-medium hover:bg-slate-200 transition">
@@ -2181,6 +2186,8 @@ export function mainPage(): string {
                 <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200">지종</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-24">평량(g/m²)</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">이론생산(톤/일)</th>
+                <th class="px-3 py-2 text-center font-semibold text-orange-600 border-b border-slate-200 w-20 bg-orange-50">폐품률(%)</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">실생산(톤/일)</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28 bg-blue-50">예상생산량(톤)</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-24">필요일수</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">최대CAPA(톤)</th>
@@ -2190,11 +2197,11 @@ export function mainPage(): string {
               </tr>
             </thead>
             <tbody id="capa-table-body">
-              <tr><td colspan="10" class="text-center text-gray-400 py-8">호기와 월을 선택한 후 품목을 추가하세요.</td></tr>
+              <tr><td colspan="12" class="text-center text-gray-400 py-8">호기와 월을 선택한 후 품목을 추가하세요.</td></tr>
             </tbody>
             <tfoot class="bg-slate-50 border-t-2 border-slate-300">
               <tr id="capa-table-footer">
-                <td colspan="4" class="px-3 py-2 text-right font-bold text-gray-600">합계</td>
+                <td colspan="6" class="px-3 py-2 text-right font-bold text-gray-600">합계</td>
                 <td class="px-3 py-2 text-center font-bold text-gray-700" id="capa-foot-plan">-</td>
                 <td class="px-3 py-2 text-center font-bold text-gray-700" id="capa-foot-days">-</td>
                 <td class="px-3 py-2 text-center font-bold text-gray-700" id="capa-foot-max">-</td>
@@ -6891,6 +6898,24 @@ export function mainPage(): string {
       return basisWeight * 0.001 * 0.001 * trimWidth * 0.001 * speed * 1440;
     }
 
+    function getDefaultWasteRate() {
+      var el = document.getElementById('capa-waste-rate');
+      return el ? (parseFloat(el.value) || 0) : 0;
+    }
+
+    function applyCapaWasteRate() {
+      var rate = getDefaultWasteRate();
+      capaData.forEach(function(row) {
+        row.waste_rate = rate;
+      });
+      renderCapaTable();
+    }
+
+    function onCapaWasteChange(inp, idx) {
+      capaData[idx].waste_rate = parseFloat(inp.value) || 0;
+      renderCapaTable();
+    }
+
     function renderCapaTable() {
       var tbody = document.getElementById('capa-table-body');
       if (!tbody) return;
@@ -6900,7 +6925,7 @@ export function mainPage(): string {
       if (odLabel) odLabel.textContent = capaOpDays || '-';
 
       if (capaData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-gray-400 py-8">품목을 추가하세요. 선속 마스터에 등록된 지종/평량 조합이 자동 참조됩니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center text-gray-400 py-8">품목을 추가하세요. 선속 마스터에 등록된 지종/평량 조합이 자동 참조됩니다.</td></tr>';
         updateCapaSummary();
         return;
       }
@@ -6909,6 +6934,8 @@ export function mainPage(): string {
       capaData.forEach(function(row, idx) {
         var lsInfo = getLineSpeedInfo(row.product_type, row.basis_weight);
         var dailyTon = 0;
+        var wasteRate = row.waste_rate != null ? row.waste_rate : getDefaultWasteRate();
+        var netDaily = 0;
         var maxCapa = 0;
         var needDays = 0;
         var gap = 0;
@@ -6918,8 +6945,9 @@ export function mainPage(): string {
 
         if (lsInfo && lsInfo.speed > 0) {
           dailyTon = calcDailyTon(row.basis_weight, lsInfo.trim_width, lsInfo.speed);
-          maxCapa = dailyTon * capaOpDays;
-          needDays = dailyTon > 0 ? (row.planned_qty || 0) / dailyTon : 0;
+          netDaily = dailyTon * (1 - wasteRate / 100);
+          maxCapa = netDaily * capaOpDays;
+          needDays = netDaily > 0 ? (row.planned_qty || 0) / netDaily : 0;
           gap = maxCapa - (row.planned_qty || 0);
           if (gap >= 0) { judge = '✅ 가능'; judgeClass = 'text-emerald-600'; gapClass = 'text-emerald-600'; }
           else { judge = '⚠️ 초과'; judgeClass = 'text-red-600'; gapClass = 'text-red-600 font-bold'; }
@@ -6962,6 +6990,16 @@ export function mainPage(): string {
         // 이론생산(톤/일)
         html += '<td class="px-3 py-2 text-center font-mono text-gray-700">' + (dailyTon > 0 ? dailyTon.toFixed(1) : '-') + '</td>';
 
+        // 폐품률(%) 입력
+        html += '<td class="px-1 py-1 text-center bg-orange-50">';
+        html += '<input type="number" min="0" max="50" step="0.1" value="' + wasteRate + '" ';
+        html += 'onchange="onCapaWasteChange(this,'+idx+')" ';
+        html += 'class="w-14 text-center border border-orange-200 rounded px-1 py-1 text-xs text-orange-700 focus:ring-1 focus:ring-orange-300 bg-white">';
+        html += '</td>';
+
+        // 실생산(톤/일)
+        html += '<td class="px-3 py-2 text-center font-mono text-gray-700 font-bold">' + (netDaily > 0 ? netDaily.toFixed(1) : '-') + '</td>';
+
         // 예상생산량 입력
         html += '<td class="px-2 py-1 text-center bg-blue-50">';
         html += '<input type="number" min="0" step="1" value="' + (row.planned_qty || '') + '" ';
@@ -6976,7 +7014,7 @@ export function mainPage(): string {
         html += '<td class="px-3 py-2 text-center font-mono text-gray-700">' + (maxCapa > 0 ? Math.round(maxCapa).toLocaleString() : '-') + '</td>';
 
         // 과부족
-        html += '<td class="px-3 py-2 text-center font-mono ' + gapClass + '">' + (dailyTon > 0 ? (gap>=0?'+':'') + Math.round(gap).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-3 py-2 text-center font-mono ' + gapClass + '">' + (netDaily > 0 ? (gap>=0?'+':'') + Math.round(gap).toLocaleString() : '-') + '</td>';
 
         // 판정
         html += '<td class="px-3 py-2 text-center text-xs font-medium ' + judgeClass + '">' + judge + '</td>';
@@ -6996,9 +7034,11 @@ export function mainPage(): string {
         var lsInfo = getLineSpeedInfo(row.product_type, row.basis_weight);
         if (lsInfo && lsInfo.speed > 0) {
           var dailyTon = calcDailyTon(row.basis_weight, lsInfo.trim_width, lsInfo.speed);
+          var wasteRate = row.waste_rate != null ? row.waste_rate : getDefaultWasteRate();
+          var netDaily = dailyTon * (1 - wasteRate / 100);
           totalPlan += (row.planned_qty || 0);
-          totalMax += dailyTon * capaOpDays;
-          totalDays += dailyTon > 0 ? (row.planned_qty || 0) / dailyTon : 0;
+          totalMax += netDaily * capaOpDays;
+          totalDays += netDaily > 0 ? (row.planned_qty || 0) / netDaily : 0;
         } else {
           totalPlan += (row.planned_qty || 0);
         }
@@ -7065,7 +7105,7 @@ export function mainPage(): string {
     }
 
     function addCapaRow() {
-      capaData.push({ product_type: '', basis_weight: 0, planned_qty: 0 });
+      capaData.push({ product_type: '', basis_weight: 0, planned_qty: 0, waste_rate: getDefaultWasteRate() });
       renderCapaTable();
     }
 
@@ -7106,30 +7146,34 @@ export function mainPage(): string {
       var rows = [];
       capaData.forEach(function(row) {
         var lsInfo = getLineSpeedInfo(row.product_type, row.basis_weight);
-        var dailyTon = 0, maxCapa = 0, needDays = 0, gap = 0, judge = '';
+        var dailyTon = 0, netDaily = 0, maxCapa = 0, needDays = 0, gap = 0, judge = '';
+        var wasteRate = row.waste_rate != null ? row.waste_rate : getDefaultWasteRate();
         if (lsInfo && lsInfo.speed > 0) {
           dailyTon = calcDailyTon(row.basis_weight, lsInfo.trim_width, lsInfo.speed);
-          maxCapa = dailyTon * capaOpDays;
-          needDays = dailyTon > 0 ? (row.planned_qty||0)/dailyTon : 0;
+          netDaily = dailyTon * (1 - wasteRate / 100);
+          maxCapa = netDaily * capaOpDays;
+          needDays = netDaily > 0 ? (row.planned_qty||0)/netDaily : 0;
           gap = maxCapa - (row.planned_qty||0);
           judge = gap >= 0 ? '가능' : '초과';
         }
         rows.push({
           '지종': row.product_type,
           '평량(g/m²)': row.basis_weight,
-          '예상생산량(톤)': row.planned_qty || 0,
           '이론생산(톤/일)': dailyTon > 0 ? +dailyTon.toFixed(1) : '',
+          '폐품률(%)': wasteRate,
+          '실생산(톤/일)': netDaily > 0 ? +netDaily.toFixed(1) : '',
+          '예상생산량(톤)': row.planned_qty || 0,
           '필요일수': needDays > 0 ? +needDays.toFixed(1) : '',
           '최대CAPA(톤)': maxCapa > 0 ? Math.round(maxCapa) : '',
-          '과부족(톤)': dailyTon > 0 ? Math.round(gap) : '',
+          '과부족(톤)': netDaily > 0 ? Math.round(gap) : '',
           '판정': judge
         });
       });
       // 데이터가 없으면 빈 양식 제공
       if (!rows.length) {
-        rows.push({ '지종': '(예시)SC', '평량(g/m²)': 180, '예상생산량(톤)': 500 });
-        rows.push({ '지종': '(예시)KB', '평량(g/m²)': 240, '예상생산량(톤)': 300 });
-        rows.push({ '지종': '', '평량(g/m²)': '', '예상생산량(톤)': '' });
+        rows.push({ '지종': '(예시)SC', '평량(g/m²)': 180, '폐품률(%)': 3, '예상생산량(톤)': 500 });
+        rows.push({ '지종': '(예시)KB', '평량(g/m²)': 240, '폐품률(%)': 3, '예상생산량(톤)': 300 });
+        rows.push({ '지종': '', '평량(g/m²)': '', '폐품률(%)': '', '예상생산량(톤)': '' });
       }
       var ws = XLSX.utils.json_to_sheet(rows);
       var wb = XLSX.utils.book_new();
@@ -7155,12 +7199,14 @@ export function mainPage(): string {
             var productType = r['지종'] || r['product_type'] || '';
             var basisWeight = parseFloat(r['평량(g/m²)'] || r['평량'] || r['basis_weight'] || 0);
             var plannedQty = parseFloat(r['예상생산량(톤)'] || r['예상생산량'] || r['planned_qty'] || 0);
+            var wasteRate = parseFloat(r['폐품률(%)'] || r['폐품률'] || r['waste_rate'] || 0);
 
             if (productType && productType.trim()) {
               parsed.push({
                 product_type: productType.trim(),
                 basis_weight: basisWeight,
-                planned_qty: plannedQty
+                planned_qty: plannedQty,
+                waste_rate: wasteRate || getDefaultWasteRate()
               });
             }
           });
