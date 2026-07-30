@@ -2382,18 +2382,18 @@ export function mainPage(): string {
           <table class="w-full text-xs">
             <thead class="bg-slate-100 sticky top-0 z-10">
               <tr>
-                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 w-10">#</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-10">#</th>
                 <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 w-24">지종</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-24">평량(g/m²)</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">이론생산(톤/일)</th>
-                <th class="px-3 py-2 text-center font-semibold text-orange-600 border-b border-slate-200 w-16 bg-orange-50">폐품률(%)</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">실생산(톤/일)</th>
-                <th class="px-3 py-2 text-center font-semibold text-blue-600 border-b border-slate-200 w-28 bg-indigo-50 border-l-2 border-l-indigo-300">예상 양품량(톤)</th>
-                <th class="px-3 py-2 text-center font-semibold text-orange-600 border-b border-slate-200 w-24 bg-indigo-50">예상 폐품량(톤)</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-700 border-b border-slate-200 w-28 bg-indigo-50 border-r-2 border-r-indigo-300">예상 총중량(톤)</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-24">필요일수</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">최대CAPA(톤)</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-24">과부족(톤)</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-28">이론생산(톤/일)</th>
+                <th class="px-3 py-2 text-right font-semibold text-orange-600 border-b border-slate-200 w-16 bg-orange-50">폐품률(%)</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-28">실생산(톤/일)</th>
+                <th class="px-3 py-2 text-right font-semibold text-blue-600 border-b border-slate-200 w-28 bg-indigo-50 border-l-2 border-l-indigo-300">예상 양품량(톤)</th>
+                <th class="px-3 py-2 text-right font-semibold text-orange-600 border-b border-slate-200 w-24 bg-indigo-50">예상 폐품량(톤)</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-700 border-b border-slate-200 w-28 bg-indigo-50 border-r-2 border-r-indigo-300">예상 총중량(톤)</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-24">필요일수</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-28">최대CAPA(톤)</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-24">과부족(톤)</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-20">판정</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-12">삭제</th>
               </tr>
@@ -2404,12 +2404,12 @@ export function mainPage(): string {
             <tfoot class="bg-slate-50 border-t-2 border-slate-300 sticky bottom-0 z-10">
               <tr id="capa-table-footer">
                 <td colspan="6" class="px-3 py-2 text-right font-bold text-gray-600">합계</td>
-                <td class="px-3 py-2 text-center font-bold text-blue-700" id="capa-foot-good">-</td>
-                <td class="px-3 py-2 text-center font-bold text-orange-700" id="capa-foot-waste">-</td>
-                <td class="px-3 py-2 text-center font-bold text-gray-700" id="capa-foot-total">-</td>
-                <td class="px-3 py-2 text-center font-bold text-gray-700" id="capa-foot-days">-</td>
-                <td class="px-3 py-2 text-center font-bold text-gray-700" id="capa-foot-max">-</td>
-                <td class="px-3 py-2 text-center font-bold" id="capa-foot-gap">-</td>
+                <td class="px-3 py-2 text-right font-bold text-blue-700" id="capa-foot-good">-</td>
+                <td class="px-3 py-2 text-right font-bold text-orange-700" id="capa-foot-waste">-</td>
+                <td class="px-3 py-2 text-right font-bold text-gray-700" id="capa-foot-total">-</td>
+                <td class="px-3 py-2 text-right font-bold text-gray-700" id="capa-foot-days">-</td>
+                <td class="px-3 py-2 text-right font-bold text-gray-700" id="capa-foot-max">-</td>
+                <td class="px-3 py-2 text-right font-bold" id="capa-foot-gap">-</td>
                 <td class="px-3 py-2 text-center font-bold" id="capa-foot-judge">-</td>
                 <td></td>
               </tr>
@@ -7247,38 +7247,38 @@ export function mainPage(): string {
         html += '</select></td>';
 
         // 이론생산(톤/일)
-        html += '<td class="px-3 py-2 text-center font-mono text-gray-700">' + (dailyTon > 0 ? dailyTon.toFixed(1) : '-') + '</td>';
+        html += '<td class="px-3 py-2 text-right font-mono text-gray-700">' + (dailyTon > 0 ? dailyTon.toFixed(1) : '-') + '</td>';
 
         // 폐품률(%) - readonly 표시만
-        html += '<td class="px-2 py-2 text-center bg-orange-50 text-xs text-orange-700 font-mono">' + wasteRate + '</td>';
+        html += '<td class="px-2 py-2 text-right bg-orange-50 text-xs text-orange-700 font-mono">' + wasteRate + '</td>';
 
         // 실생산(톤/일)
-        html += '<td class="px-3 py-2 text-center font-mono text-gray-700 font-bold">' + (netDaily > 0 ? netDaily.toFixed(1) : '-') + '</td>';
+        html += '<td class="px-3 py-2 text-right font-mono text-gray-700 font-bold">' + (netDaily > 0 ? netDaily.toFixed(1) : '-') + '</td>';
 
         // 예상 양품량 입력
-        html += '<td class="px-2 py-1 text-center bg-indigo-50/50 border-l-2 border-l-indigo-300">';
+        html += '<td class="px-2 py-1 text-right bg-indigo-50/50 border-l-2 border-l-indigo-300">';
         html += '<input type="number" min="0" step="0.01" value="' + (row.planned_qty ? parseFloat(row.planned_qty.toFixed(2)) : '') + '" ';
         html += 'onchange="onCapaQtyChange(this,'+idx+')" ';
-        html += 'class="w-24 text-center border border-blue-200 rounded px-1 py-1 text-xs font-bold focus:ring-1 focus:ring-blue-300 bg-white">';
+        html += 'class="w-24 text-right border border-blue-200 rounded px-1 py-1 text-xs font-bold focus:ring-1 focus:ring-blue-300 bg-white">';
         html += '</td>';
 
         // 예상 폐품량 (계산: 양품량 × 폐품률 / (100 - 폐품률))
         var goodQty = row.planned_qty || 0;
         var totalWeight = wasteRate < 100 ? goodQty / (1 - wasteRate / 100) : 0;
         var wasteQty = totalWeight - goodQty;
-        html += '<td class="px-3 py-2 text-center font-mono text-orange-600 text-xs bg-indigo-50/50">' + (wasteQty > 0 ? parseFloat(wasteQty.toFixed(2)).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-3 py-2 text-right font-mono text-orange-600 text-xs bg-indigo-50/50">' + (wasteQty > 0 ? parseFloat(wasteQty.toFixed(2)).toLocaleString() : '-') + '</td>';
 
         // 예상 총중량 (양품량 + 폐품량)
-        html += '<td class="px-3 py-2 text-center font-mono text-gray-700 text-xs font-bold bg-indigo-50/50 border-r-2 border-r-indigo-300">' + (totalWeight > 0 ? parseFloat(totalWeight.toFixed(2)).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-3 py-2 text-right font-mono text-gray-700 text-xs font-bold bg-indigo-50/50 border-r-2 border-r-indigo-300">' + (totalWeight > 0 ? parseFloat(totalWeight.toFixed(2)).toLocaleString() : '-') + '</td>';
 
         // 필요일수
-        html += '<td class="px-3 py-2 text-center font-mono text-gray-600">' + (needDays > 0 ? needDays.toFixed(1) : '-') + '</td>';
+        html += '<td class="px-3 py-2 text-right font-mono text-gray-600">' + (needDays > 0 ? needDays.toFixed(1) : '-') + '</td>';
 
         // 최대CAPA
-        html += '<td class="px-3 py-2 text-center font-mono text-gray-700">' + (maxCapa > 0 ? Math.round(maxCapa).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-3 py-2 text-right font-mono text-gray-700">' + (maxCapa > 0 ? Math.round(maxCapa).toLocaleString() : '-') + '</td>';
 
         // 과부족
-        html += '<td class="px-3 py-2 text-center font-mono ' + gapClass + '">' + (netDaily > 0 ? (gap>=0?'+':'') + Math.round(gap).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-3 py-2 text-right font-mono ' + gapClass + '">' + (netDaily > 0 ? (gap>=0?'+':'') + Math.round(gap).toLocaleString() : '-') + '</td>';
 
         // 판정
         html += '<td class="px-3 py-2 text-center text-xs font-medium ' + judgeClass + '">' + judge + '</td>';
@@ -7337,9 +7337,9 @@ export function mainPage(): string {
       if (footGap) {
         if (totalMax > 0) {
           footGap.textContent = (totalGap>=0?'+':'') + Math.round(totalGap).toLocaleString();
-          footGap.className = 'px-3 py-2 text-center font-bold ' + (totalGap >= 0 ? 'text-emerald-600' : 'text-red-600');
+          footGap.className = 'px-3 py-2 text-right font-bold ' + (totalGap >= 0 ? 'text-emerald-600' : 'text-red-600');
         } else {
-          footGap.textContent = '-'; footGap.className = 'px-3 py-2 text-center font-bold text-gray-400';
+          footGap.textContent = '-'; footGap.className = 'px-3 py-2 text-right font-bold text-gray-400';
         }
       }
       if (footJudge) {
