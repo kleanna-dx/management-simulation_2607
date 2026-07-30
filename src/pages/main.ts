@@ -2199,7 +2199,7 @@ export function mainPage(): string {
             <tbody id="capa-table-body">
               <tr><td colspan="12" class="text-center text-gray-400 py-8">호기와 월을 선택한 후 품목을 추가하세요.</td></tr>
             </tbody>
-            <tfoot class="bg-slate-50 border-t-2 border-slate-300">
+            <tfoot class="bg-slate-50 border-t-2 border-slate-300 sticky bottom-0 z-10">
               <tr id="capa-table-footer">
                 <td colspan="6" class="px-3 py-2 text-right font-bold text-gray-600">합계</td>
                 <td class="px-3 py-2 text-center font-bold text-gray-700" id="capa-foot-plan">-</td>
@@ -2217,8 +2217,9 @@ export function mainPage(): string {
         <div class="mt-4 p-3 bg-orange-50 border border-orange-100 rounded-lg">
           <p class="text-[10px] text-orange-600 font-medium mb-1"><i class="fas fa-info-circle mr-1"></i>CAPA 분석 로직</p>
           <p class="text-[10px] text-orange-500">이론생산(톤/일) = 평량 × 0.001 × 0.001 × 지폭 × 0.001 × 선속 × 1440</p>
-          <p class="text-[10px] text-orange-500">최대CAPA(톤) = 이론생산(톤/일) × 가동일수</p>
-          <p class="text-[10px] text-orange-500">필요일수 = 예상생산량 ÷ 이론생산(톤/일)</p>
+          <p class="text-[10px] text-orange-500">실생산(톤/일) = 이론생산(톤/일) × (1 − 폐품률/100)</p>
+          <p class="text-[10px] text-orange-500">최대CAPA(톤) = 실생산(톤/일) × 가동일수</p>
+          <p class="text-[10px] text-orange-500">필요일수 = 예상생산량 ÷ 실생산(톤/일)</p>
           <p class="text-[10px] text-orange-500">과부족 = 최대CAPA − 예상생산량 (양수=여유, 음수=초과)</p>
           <p class="text-[10px] text-gray-400 mt-1">※ 선속 데이터는 '제지 생산 선속' 탭의 마스터 데이터를 참조합니다.</p>
           <p class="text-[10px] text-gray-400">※ 필요일수 합계가 가동일수를 초과하면 해당 월 생산 불가로 판정됩니다.</p>
