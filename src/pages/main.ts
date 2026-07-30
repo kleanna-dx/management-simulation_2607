@@ -247,6 +247,11 @@ export function mainPage(): string {
         </div>
       </header>
 
+      <!-- 열린 탭 히스토리 바 -->
+      <div id="open-tabs-bar" class="flex-shrink-0 bg-white border-b border-slate-200 px-2 py-0 overflow-x-auto flex items-center gap-0 min-h-[32px]" style="scrollbar-width:thin;">
+        <!-- 동적으로 탭 렌더링 -->
+      </div>
+
       <!-- 스크롤 콘텐츠 -->
       <main class="flex-1 overflow-y-auto px-6 py-6">
 
@@ -4104,6 +4109,58 @@ export function mainPage(): string {
       el.value = Math.round(n).toLocaleString('ko-KR');
     });
 
+    // ========== 열린 탭 히스토리 관리 ==========
+    var openTabs = []; // [{id:'pldashboard', title:'손익 대시보드'}, ...]
+    var activeTabId = 'pldashboard';
+    var TAB_TITLES = { workflow:'업무 플로우', pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', mapping:'카테고리 매핑', linespeed:'생산 선속', opdays:'가동일수', capa:'CAPA 분석', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 예측', prodplan:'이동계획', scenario:'시나리오 분석' };
+
+    function addOpenTab(tabId) {
+      // 이미 있으면 활성만 변경
+      var exists = openTabs.find(function(t) { return t.id === tabId; });
+      if (!exists) {
+        if (openTabs.length >= 10) openTabs.shift(); // 10개 초과 시 가장 오래된 것 제거
+        openTabs.push({ id: tabId, title: TAB_TITLES[tabId] || tabId });
+      }
+      activeTabId = tabId;
+      renderOpenTabs();
+    }
+
+    function closeOpenTab(tabId, evt) {
+      if (evt) { evt.stopPropagation(); evt.preventDefault(); }
+      openTabs = openTabs.filter(function(t) { return t.id !== tabId; });
+      // 닫은 탭이 현재 활성 탭이면 마지막 탭으로 이동
+      if (activeTabId === tabId) {
+        if (openTabs.length > 0) {
+          switchTab(openTabs[openTabs.length - 1].id);
+        } else {
+          switchTab('pldashboard');
+        }
+        return;
+      }
+      renderOpenTabs();
+    }
+
+    function clickOpenTab(tabId) {
+      switchTab(tabId);
+    }
+
+    function renderOpenTabs() {
+      var bar = document.getElementById('open-tabs-bar');
+      if (!bar) return;
+      if (openTabs.length === 0) { bar.innerHTML = ''; return; }
+      var html = '';
+      openTabs.forEach(function(tab) {
+        var isActive = tab.id === activeTabId;
+        html += '<div data-tabid="'+tab.id+'" onclick="clickOpenTab(this.dataset.tabid)" class="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium cursor-pointer whitespace-nowrap border-r border-slate-100 select-none transition ';
+        html += isActive ? 'bg-emerald-50 text-emerald-700 border-b-2 border-b-emerald-500' : 'text-gray-500 hover:bg-slate-50 hover:text-gray-700 border-b-2 border-b-transparent';
+        html += '">';
+        html += '<span>' + tab.title + '</span>';
+        html += '<button data-tabid="'+tab.id+'" onclick="closeOpenTab(this.dataset.tabid, event)" class="ml-1 w-4 h-4 flex items-center justify-center rounded hover:bg-red-100 hover:text-red-600 text-gray-400 text-[10px] transition"><i class="fas fa-times"></i></button>';
+        html += '</div>';
+      });
+      bar.innerHTML = html;
+    }
+
     function switchTab(tab) {
       ['workflow','pldashboard','dashboard','detail','upload','dataview','master','mapping','linespeed','opdays','capa','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime','costforecast','prodplan','scenario'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
@@ -4114,6 +4171,8 @@ export function mainPage(): string {
       document.querySelectorAll('#app-sidebar .nav-item').forEach(el => el.classList.remove('nav-item-active'));
       const sidebarBtn = document.getElementById('tab-' + tab);
       if (sidebarBtn) sidebarBtn.classList.add('nav-item-active');
+      // 열린 탭 히스토리에 추가
+      addOpenTab(tab);
       // 페이지 제목 업데이트
       const titles = { workflow:'업무 플로우', pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'원부재료 전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', mapping:'자재 카테고리 매핑', linespeed:'제지 생산 선속', opdays:'가동일수', capa:'생산 CAPA 분석', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측', prodplan:'생산량 이동계획', scenario:'시나리오 분석' };
       const titleEl = document.getElementById('page-title');
@@ -13321,6 +13380,7 @@ export function mainPage(): string {
 
     // 초기 로드 시 손익 대시보드 표시
     document.addEventListener('DOMContentLoaded', function() {
+      addOpenTab('pldashboard');
       setTimeout(function() { loadPLDashboard(); }, 500);
     });
 
