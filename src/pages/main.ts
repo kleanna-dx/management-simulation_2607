@@ -2422,7 +2422,7 @@ export function mainPage(): string {
           <p class="text-[10px] text-orange-600 font-medium mb-1"><i class="fas fa-info-circle mr-1"></i>CAPA 분석 로직</p>
           <p class="text-[10px] text-orange-500">이론생산(톤/일) = 평량 × 0.001 × 0.001 × 지폭 × 0.001 × 선속 × 1440</p>
           <p class="text-[10px] text-orange-500">최대CAPA(톤) = 이론생산(톤/일) × (1 − 폐품률/100) × 가동일수</p>
-          <p class="text-[10px] text-orange-500">필요일수 = 예상 양품량 ÷ (이론생산 × (1 − 폐품률/100))</p>
+          <p class="text-[10px] text-orange-500">필요일수 = 예상 총중량 ÷ 이론생산(톤/일)</p>
           <p class="text-[10px] text-orange-500">과부족 = 최대CAPA − 예상생산량 (양수=여유, 음수=초과)</p>
           <p class="text-[10px] text-gray-400 mt-1">※ 선속 데이터는 '제지 생산 선속' 탭의 마스터 데이터를 참조합니다.</p>
           <p class="text-[10px] text-gray-400">※ 필요일수 합계가 가동일수를 초과하면 해당 월 생산 불가로 판정됩니다.</p>
@@ -7205,7 +7205,8 @@ export function mainPage(): string {
           dailyTon = calcDailyTon(row.basis_weight, lsInfo.trim_width, lsInfo.speed);
           netDaily = dailyTon * (1 - wasteRate / 100);
           maxCapa = netDaily * capaOpDays;
-          needDays = netDaily > 0 ? (row.planned_qty || 0) / netDaily : 0;
+          var rowTotalWeight = wasteRate < 100 ? (row.planned_qty || 0) / (1 - wasteRate / 100) : 0;
+          needDays = dailyTon > 0 ? rowTotalWeight / dailyTon : 0;
           gap = maxCapa - (row.planned_qty || 0);
           if (gap >= 0) { judge = '✅ 가능'; judgeClass = 'text-emerald-600'; gapClass = 'text-emerald-600'; }
           else { judge = '⚠️ 초과'; judgeClass = 'text-red-600'; gapClass = 'text-red-600 font-bold'; }
@@ -7304,7 +7305,7 @@ export function mainPage(): string {
           totalWaste += (rowTotal - goodQty);
           totalWeight += rowTotal;
           totalMax += netDaily * capaOpDays;
-          totalDays += netDaily > 0 ? goodQty / netDaily : 0;
+          totalDays += dailyTon > 0 ? rowTotal / dailyTon : 0;
         } else {
           var rowTotal2 = wasteRate < 100 ? goodQty / (1 - wasteRate / 100) : 0;
           totalWaste += (rowTotal2 - goodQty);
@@ -7429,7 +7430,7 @@ export function mainPage(): string {
           dailyTon = calcDailyTon(row.basis_weight, lsInfo.trim_width, lsInfo.speed);
           netDaily = dailyTon * (1 - wasteRate / 100);
           maxCapa = netDaily * capaOpDays;
-          needDays = netDaily > 0 ? goodQty/netDaily : 0;
+          needDays = dailyTon > 0 ? totalWeight/dailyTon : 0;
           gap = maxCapa - goodQty;
           judge = gap >= 0 ? '가능' : '초과';
         }
