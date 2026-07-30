@@ -2333,7 +2333,7 @@ export function mainPage(): string {
           </div>
           <div class="flex items-center gap-2 ml-auto">
             <label class="text-xs font-medium text-gray-500">폐품률(%):</label>
-            <input type="number" id="capa-waste-rate" min="0" max="50" step="0.1" value="3" onchange="applyCapaWasteRate()" class="w-16 text-center border border-orange-200 rounded-lg px-2 py-1.5 text-xs font-bold text-orange-700 bg-orange-50 focus:ring-1 focus:ring-orange-300">
+            <input type="number" id="capa-waste-rate" min="0" max="50" step="0.01" value="0.86" onchange="applyCapaWasteRate()" class="w-16 text-center border border-orange-200 rounded-lg px-2 py-1.5 text-xs font-bold text-orange-700 bg-orange-50 focus:ring-1 focus:ring-orange-300">
             <button onclick="applyCapaWasteRate()" class="px-2 py-1.5 bg-orange-100 border border-orange-200 text-orange-700 rounded-lg text-[10px] font-medium hover:bg-orange-200 transition">일괄적용</button>
           </div>
           <button onclick="addCapaRow()" class="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition">
@@ -7393,8 +7393,8 @@ export function mainPage(): string {
       });
       // 데이터가 없으면 빈 양식 제공
       if (!rows.length) {
-        rows.push({ '지종': '(예시)SC', '평량(g/m²)': 180, '폐품률(%)': 3, '예상 양품량(톤)': 500 });
-        rows.push({ '지종': '(예시)KB', '평량(g/m²)': 240, '폐품률(%)': 3, '예상 양품량(톤)': 300 });
+        rows.push({ '지종': '(예시)SC', '평량(g/m²)': 180, '폐품률(%)': 0.86, '예상 양품량(톤)': 500 });
+        rows.push({ '지종': '(예시)KB', '평량(g/m²)': 240, '폐품률(%)': 0.86, '예상 양품량(톤)': 300 });
         rows.push({ '지종': '', '평량(g/m²)': '', '폐품률(%)': '', '예상 양품량(톤)': '' });
       }
       var ws = XLSX.utils.json_to_sheet(rows);
