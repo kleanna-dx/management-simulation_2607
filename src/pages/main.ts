@@ -2183,7 +2183,7 @@ export function mainPage(): string {
             <thead class="bg-slate-100 sticky top-0 z-10">
               <tr>
                 <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 w-10">#</th>
-                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200">지종</th>
+                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 w-24">지종</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-24">평량(g/m²)</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">이론생산(톤/일)</th>
                 <th class="px-3 py-2 text-center font-semibold text-orange-600 border-b border-slate-200 w-20 bg-orange-50">폐품률(%)</th>
@@ -6973,7 +6973,7 @@ export function mainPage(): string {
         html += '<td class="px-3 py-2 text-center text-gray-400">' + (idx+1) + '</td>';
 
         // 지종 select
-        html += '<td class="px-2 py-1"><select onchange="onCapaProductChange(this,'+idx+')" class="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-200">';
+        html += '<td class="px-2 py-1"><select onchange="onCapaProductChange(this,'+idx+')" class="w-20 border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-200">';
         html += '<option value="">선택</option>';
         productTypes.forEach(function(pt) {
           html += '<option value="'+pt+'"'+(pt===row.product_type?' selected':'')+'>'+pt+'</option>';
