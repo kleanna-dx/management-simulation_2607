@@ -7003,7 +7003,7 @@ export function mainPage(): string {
 
         // 예상생산량 입력
         html += '<td class="px-2 py-1 text-center bg-blue-50">';
-        html += '<input type="number" min="0" step="1" value="' + (row.planned_qty || '') + '" ';
+        html += '<input type="number" min="0" step="0.01" value="' + (row.planned_qty ? parseFloat(row.planned_qty.toFixed(2)) : '') + '" ';
         html += 'onchange="onCapaQtyChange(this,'+idx+')" ';
         html += 'class="w-24 text-center border border-blue-200 rounded px-1 py-1 text-xs font-bold focus:ring-1 focus:ring-blue-300 bg-white">';
         html += '</td>';
@@ -7049,12 +7049,12 @@ export function mainPage(): string {
       var overDays = totalDays > capaOpDays;
 
       // 요약 카드
-      document.getElementById('capa-total-plan').textContent = totalPlan > 0 ? Math.round(totalPlan).toLocaleString() : '-';
+      document.getElementById('capa-total-plan').textContent = totalPlan > 0 ? parseFloat(totalPlan.toFixed(2)).toLocaleString() : '-';
       document.getElementById('capa-total-max').textContent = totalMax > 0 ? Math.round(totalMax).toLocaleString() : '-';
       document.getElementById('capa-total-days').textContent = totalDays > 0 ? totalDays.toFixed(1) + ' / ' + capaOpDays : '-';
 
       // footer
-      document.getElementById('capa-foot-plan').textContent = totalPlan > 0 ? Math.round(totalPlan).toLocaleString() : '-';
+      document.getElementById('capa-foot-plan').textContent = totalPlan > 0 ? parseFloat(totalPlan.toFixed(2)).toLocaleString() : '-';
       document.getElementById('capa-foot-days').textContent = totalDays > 0 ? totalDays.toFixed(1) : '-';
       document.getElementById('capa-foot-max').textContent = totalMax > 0 ? Math.round(totalMax).toLocaleString() : '-';
 
@@ -7101,7 +7101,8 @@ export function mainPage(): string {
     }
 
     function onCapaQtyChange(inp, idx) {
-      capaData[idx].planned_qty = parseFloat(inp.value) || 0;
+      var val = parseFloat(inp.value) || 0;
+      capaData[idx].planned_qty = parseFloat(val.toFixed(2));
       updateCapaSummary();
     }
 
@@ -7163,7 +7164,7 @@ export function mainPage(): string {
           '이론생산(톤/일)': dailyTon > 0 ? +dailyTon.toFixed(1) : '',
           '폐품률(%)': wasteRate,
           '실생산(톤/일)': netDaily > 0 ? +netDaily.toFixed(1) : '',
-          '예상생산량(톤)': row.planned_qty || 0,
+          '예상생산량(톤)': row.planned_qty ? parseFloat(row.planned_qty.toFixed(2)) : 0,
           '필요일수': needDays > 0 ? +needDays.toFixed(1) : '',
           '최대CAPA(톤)': maxCapa > 0 ? Math.round(maxCapa) : '',
           '과부족(톤)': netDaily > 0 ? Math.round(gap) : '',
@@ -7199,7 +7200,7 @@ export function mainPage(): string {
           rows.forEach(function(r) {
             var productType = r['지종'] || r['product_type'] || '';
             var basisWeight = parseFloat(r['평량(g/m²)'] || r['평량'] || r['basis_weight'] || 0);
-            var plannedQty = parseFloat(r['예상생산량(톤)'] || r['예상생산량'] || r['planned_qty'] || 0);
+            var plannedQty = parseFloat(parseFloat(r['예상생산량(톤)'] || r['예상생산량'] || r['planned_qty'] || 0).toFixed(2));
             var wasteRate = parseFloat(r['폐품률(%)'] || r['폐품률'] || r['waste_rate'] || 0);
 
             if (productType && productType.trim()) {
