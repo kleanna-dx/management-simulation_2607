@@ -2383,9 +2383,9 @@ export function mainPage(): string {
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">이론생산(톤/일)</th>
                 <th class="px-3 py-2 text-center font-semibold text-orange-600 border-b border-slate-200 w-16 bg-orange-50">폐품률(%)</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">실생산(톤/일)</th>
-                <th class="px-3 py-2 text-center font-semibold text-blue-600 border-b border-slate-200 w-28 bg-blue-50">예상 양품량(톤)</th>
-                <th class="px-3 py-2 text-center font-semibold text-orange-600 border-b border-slate-200 w-24 bg-orange-50">예상 폐품량(톤)</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">예상 총중량(톤)</th>
+                <th class="px-3 py-2 text-center font-semibold text-blue-600 border-b border-slate-200 w-28 bg-indigo-50 border-l-2 border-l-indigo-300">예상 양품량(톤)</th>
+                <th class="px-3 py-2 text-center font-semibold text-orange-600 border-b border-slate-200 w-24 bg-indigo-50">예상 폐품량(톤)</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-700 border-b border-slate-200 w-28 bg-indigo-50 border-r-2 border-r-indigo-300">예상 총중량(톤)</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-24">필요일수</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">최대CAPA(톤)</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-24">과부족(톤)</th>
@@ -7197,7 +7197,7 @@ export function mainPage(): string {
         html += '<td class="px-3 py-2 text-center font-mono text-gray-700 font-bold">' + (netDaily > 0 ? netDaily.toFixed(1) : '-') + '</td>';
 
         // 예상 양품량 입력
-        html += '<td class="px-2 py-1 text-center bg-blue-50">';
+        html += '<td class="px-2 py-1 text-center bg-indigo-50/50 border-l-2 border-l-indigo-300">';
         html += '<input type="number" min="0" step="0.01" value="' + (row.planned_qty ? parseFloat(row.planned_qty.toFixed(2)) : '') + '" ';
         html += 'onchange="onCapaQtyChange(this,'+idx+')" ';
         html += 'class="w-24 text-center border border-blue-200 rounded px-1 py-1 text-xs font-bold focus:ring-1 focus:ring-blue-300 bg-white">';
@@ -7207,10 +7207,10 @@ export function mainPage(): string {
         var goodQty = row.planned_qty || 0;
         var totalWeight = wasteRate < 100 ? goodQty / (1 - wasteRate / 100) : 0;
         var wasteQty = totalWeight - goodQty;
-        html += '<td class="px-3 py-2 text-center font-mono text-orange-600 text-xs">' + (wasteQty > 0 ? parseFloat(wasteQty.toFixed(2)).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-3 py-2 text-center font-mono text-orange-600 text-xs bg-indigo-50/50">' + (wasteQty > 0 ? parseFloat(wasteQty.toFixed(2)).toLocaleString() : '-') + '</td>';
 
         // 예상 총중량 (양품량 + 폐품량)
-        html += '<td class="px-3 py-2 text-center font-mono text-gray-700 text-xs">' + (totalWeight > 0 ? parseFloat(totalWeight.toFixed(2)).toLocaleString() : '-') + '</td>';
+        html += '<td class="px-3 py-2 text-center font-mono text-gray-700 text-xs font-bold bg-indigo-50/50 border-r-2 border-r-indigo-300">' + (totalWeight > 0 ? parseFloat(totalWeight.toFixed(2)).toLocaleString() : '-') + '</td>';
 
         // 필요일수
         html += '<td class="px-3 py-2 text-center font-mono text-gray-600">' + (needDays > 0 ? needDays.toFixed(1) : '-') + '</td>';
@@ -7318,7 +7318,7 @@ export function mainPage(): string {
     function onCapaQtyChange(inp, idx) {
       var val = parseFloat(inp.value) || 0;
       capaData[idx].planned_qty = parseFloat(val.toFixed(2));
-      updateCapaSummary();
+      renderCapaTable();
     }
 
     function addCapaRow() {
