@@ -73,6 +73,40 @@ export function mainPage(): string {
     ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* 업무 플로우 스텝 */
+    .flow-step { display: flex; flex-direction: column; align-items: center; padding: 12px 14px; border-radius: 12px; border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.2s; min-width: 120px; text-align: center; background: white; }
+    .flow-step:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .flow-step-num { font-size: 9px; font-weight: 700; color: white; background: #94a3b8; border-radius: 9999px; padding: 1px 6px; margin-bottom: 6px; }
+    .flow-step-icon { font-size: 18px; margin-bottom: 4px; }
+    .flow-step-label { font-size: 11px; font-weight: 600; color: #334155; margin-bottom: 2px; }
+    .flow-step-desc { font-size: 9px; color: #94a3b8; }
+    .flow-arrow { padding: 0 4px; }
+
+    .flow-step-data { border-color: #fde68a; }
+    .flow-step-data:hover { border-color: #f59e0b; background: #fffbeb; }
+    .flow-step-data .flow-step-num { background: #f59e0b; }
+    .flow-step-data .flow-step-icon { color: #d97706; }
+
+    .flow-step-config { border-color: #bfdbfe; }
+    .flow-step-config:hover { border-color: #3b82f6; background: #eff6ff; }
+    .flow-step-config .flow-step-num { background: #3b82f6; }
+    .flow-step-config .flow-step-icon { color: #2563eb; }
+
+    .flow-step-analysis { border-color: #a7f3d0; }
+    .flow-step-analysis:hover { border-color: #10b981; background: #ecfdf5; }
+    .flow-step-analysis .flow-step-num { background: #10b981; }
+    .flow-step-analysis .flow-step-icon { color: #059669; }
+
+    .flow-step-decision { border-color: #e9d5ff; }
+    .flow-step-decision:hover { border-color: #8b5cf6; background: #faf5ff; }
+    .flow-step-decision .flow-step-num { background: #8b5cf6; }
+    .flow-step-decision .flow-step-icon { color: #7c3aed; }
+
+    .flow-step-result { border-color: #fecaca; }
+    .flow-step-result:hover { border-color: #ef4444; background: #fef2f2; }
+    .flow-step-result .flow-step-num { background: #ef4444; }
+    .flow-step-result .flow-step-icon { color: #dc2626; }
   </style>
 </head>
 <body class="bg-slate-50 min-h-screen overflow-hidden">
@@ -100,6 +134,13 @@ export function mainPage(): string {
 
       <!-- 네비게이션 메뉴 -->
       <nav class="flex-1 overflow-y-auto py-3 px-3">
+        <!-- 업무 플로우 -->
+        <div class="mb-4">
+          <button onclick="switchTab('workflow')" id="tab-workflow" class="nav-item w-full">
+            <i class="fas fa-stream w-4 text-center"></i><span>업무 플로우</span>
+          </button>
+        </div>
+
         <!-- 대시보드 섹션 -->
         <div class="mb-4">
           <p class="px-3 mb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">대시보드</p>
@@ -208,6 +249,160 @@ export function mainPage(): string {
 
       <!-- 스크롤 콘텐츠 -->
       <main class="flex-1 overflow-y-auto px-6 py-6">
+
+    <!-- ============ 업무 플로우 ============ -->
+    <div id="content-workflow" class="hidden fade-in space-y-5">
+      <div class="flex items-center justify-between mb-2">
+        <div>
+          <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-stream mr-2 text-emerald-600"></i>업무 플로우</h2>
+          <p class="text-xs text-gray-500 mt-1">경영시뮬레이션 데이터 흐름을 따라 각 단계를 진행하세요. 스텝을 클릭하면 해당 탭으로 이동합니다.</p>
+        </div>
+      </div>
+
+      <!-- 플로우 1: 데이터 준비 -->
+      <div class="card p-5">
+        <h3 class="text-sm font-bold text-gray-700 mb-4"><i class="fas fa-database mr-2 text-amber-500"></i>STEP 1. 데이터 준비</h3>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="switchTab('datainput')" class="flow-step flow-step-data">
+            <div class="flow-step-num">1-1</div>
+            <div class="flow-step-icon"><i class="fas fa-file-upload"></i></div>
+            <div class="flow-step-label">데이터 입력</div>
+            <div class="flow-step-desc">원부재료 실적 업로드</div>
+          </button>
+          <div class="flow-arrow"><i class="fas fa-chevron-right text-gray-300"></i></div>
+          <button onclick="switchTab('master')" class="flow-step flow-step-data">
+            <div class="flow-step-num">1-2</div>
+            <div class="flow-step-icon"><i class="fas fa-cog"></i></div>
+            <div class="flow-step-label">기준정보</div>
+            <div class="flow-step-desc">마스터 데이터 설정</div>
+          </button>
+          <div class="flow-arrow"><i class="fas fa-chevron-right text-gray-300"></i></div>
+          <button onclick="switchTab('mapping')" class="flow-step flow-step-data">
+            <div class="flow-step-num">1-3</div>
+            <div class="flow-step-icon"><i class="fas fa-exchange-alt"></i></div>
+            <div class="flow-step-label">카테고리 매핑</div>
+            <div class="flow-step-desc">자재-카테고리 연결</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 플로우 2: 생산 기준 설정 -->
+      <div class="card p-5">
+        <h3 class="text-sm font-bold text-gray-700 mb-4"><i class="fas fa-sliders-h mr-2 text-blue-500"></i>STEP 2. 생산 기준 설정</h3>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="switchTab('linespeed')" class="flow-step flow-step-config">
+            <div class="flow-step-num">2-1</div>
+            <div class="flow-step-icon"><i class="fas fa-tachometer-alt"></i></div>
+            <div class="flow-step-label">제지 생산 선속</div>
+            <div class="flow-step-desc">지종별 선속/지폭 마스터</div>
+          </button>
+          <div class="flow-arrow"><i class="fas fa-chevron-right text-gray-300"></i></div>
+          <button onclick="switchTab('opdays')" class="flow-step flow-step-config">
+            <div class="flow-step-num">2-2</div>
+            <div class="flow-step-icon"><i class="fas fa-calendar-check"></i></div>
+            <div class="flow-step-label">가동일수</div>
+            <div class="flow-step-desc">월별 운휴/가동일 계획</div>
+          </button>
+          <div class="flow-arrow"><i class="fas fa-chevron-right text-gray-300"></i></div>
+          <button onclick="switchTab('optime')" class="flow-step flow-step-config">
+            <div class="flow-step-num">2-3</div>
+            <div class="flow-step-icon"><i class="fas fa-clock"></i></div>
+            <div class="flow-step-label">가동시간</div>
+            <div class="flow-step-desc">호기별 가동시간 관리</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 플로우 3: 생산 최적화 -->
+      <div class="card p-5">
+        <h3 class="text-sm font-bold text-gray-700 mb-4"><i class="fas fa-chart-bar mr-2 text-emerald-500"></i>STEP 3. 생산 최적화</h3>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="switchTab('capa')" class="flow-step flow-step-analysis">
+            <div class="flow-step-num">3-1</div>
+            <div class="flow-step-icon"><i class="fas fa-chart-bar"></i></div>
+            <div class="flow-step-label">생산 CAPA 분석</div>
+            <div class="flow-step-desc">생산능력 vs 계획 검증</div>
+          </button>
+          <div class="flow-arrow"><i class="fas fa-chevron-right text-gray-300"></i></div>
+          <button onclick="switchTab('prodplan')" class="flow-step flow-step-analysis">
+            <div class="flow-step-num">3-2</div>
+            <div class="flow-step-icon"><i class="fas fa-route"></i></div>
+            <div class="flow-step-label">생산량 이동계획</div>
+            <div class="flow-step-desc">호기별 생산 배분</div>
+          </button>
+          <div class="flow-arrow"><i class="fas fa-chevron-right text-gray-300"></i></div>
+          <button onclick="switchTab('scenario')" class="flow-step flow-step-analysis">
+            <div class="flow-step-num">3-3</div>
+            <div class="flow-step-icon"><i class="fas fa-project-diagram"></i></div>
+            <div class="flow-step-label">시나리오 분석</div>
+            <div class="flow-step-desc">What-if 시뮬레이션</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 플로우 4: 원가 분석 & 의사결정 -->
+      <div class="card p-5">
+        <h3 class="text-sm font-bold text-gray-700 mb-4"><i class="fas fa-calculator mr-2 text-purple-500"></i>STEP 4. 원가 분석 & 의사결정</h3>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="switchTab('costforecast')" class="flow-step flow-step-decision">
+            <div class="flow-step-num">4-1</div>
+            <div class="flow-step-icon"><i class="fas fa-chart-line"></i></div>
+            <div class="flow-step-label">원가 변수 예측</div>
+            <div class="flow-step-desc">원가 트렌드 분석</div>
+          </button>
+          <div class="flow-arrow"><i class="fas fa-chevron-right text-gray-300"></i></div>
+          <button onclick="switchTab('simflow')" class="flow-step flow-step-decision">
+            <div class="flow-step-num">4-2</div>
+            <div class="flow-step-icon"><i class="fas fa-flask"></i></div>
+            <div class="flow-step-label">통합 시뮬레이션</div>
+            <div class="flow-step-desc">원가/생산 통합 분석</div>
+          </button>
+          <div class="flow-arrow"><i class="fas fa-chevron-right text-gray-300"></i></div>
+          <button onclick="switchTab('forecast')" class="flow-step flow-step-decision">
+            <div class="flow-step-num">4-3</div>
+            <div class="flow-step-icon"><i class="fas fa-chart-area"></i></div>
+            <div class="flow-step-label">전월 대비 예상 손익</div>
+            <div class="flow-step-desc">손익 예측 리포트</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 플로우 5: 결과 확인 -->
+      <div class="card p-5">
+        <h3 class="text-sm font-bold text-gray-700 mb-4"><i class="fas fa-tachometer-alt mr-2 text-red-500"></i>STEP 5. 결과 확인</h3>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="switchTab('pldashboard')" class="flow-step flow-step-result">
+            <div class="flow-step-num">5-1</div>
+            <div class="flow-step-icon"><i class="fas fa-tachometer-alt"></i></div>
+            <div class="flow-step-label">손익 대시보드</div>
+            <div class="flow-step-desc">P&L KPI 모니터링</div>
+          </button>
+          <div class="flow-arrow"><i class="fas fa-chevron-right text-gray-300"></i></div>
+          <button onclick="switchTab('dashboard')" class="flow-step flow-step-result">
+            <div class="flow-step-num">5-2</div>
+            <div class="flow-step-icon"><i class="fas fa-chart-line"></i></div>
+            <div class="flow-step-label">사용현황 분석</div>
+            <div class="flow-step-desc">자재 사용 상세 분석</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 전체 흐름 요약 다이어그램 -->
+      <div class="card p-5 bg-gradient-to-r from-slate-50 to-gray-50">
+        <h3 class="text-sm font-bold text-gray-700 mb-3"><i class="fas fa-sitemap mr-2 text-gray-500"></i>전체 업무 흐름 요약</h3>
+        <div class="flex items-center justify-center gap-1 flex-wrap text-[10px] font-medium">
+          <span class="px-2 py-1 rounded bg-amber-100 text-amber-700">데이터 준비</span>
+          <i class="fas fa-arrow-right text-gray-300 text-[8px]"></i>
+          <span class="px-2 py-1 rounded bg-blue-100 text-blue-700">생산 기준 설정</span>
+          <i class="fas fa-arrow-right text-gray-300 text-[8px]"></i>
+          <span class="px-2 py-1 rounded bg-emerald-100 text-emerald-700">생산 최적화</span>
+          <i class="fas fa-arrow-right text-gray-300 text-[8px]"></i>
+          <span class="px-2 py-1 rounded bg-purple-100 text-purple-700">원가 분석</span>
+          <i class="fas fa-arrow-right text-gray-300 text-[8px]"></i>
+          <span class="px-2 py-1 rounded bg-red-100 text-red-700">결과 확인</span>
+        </div>
+      </div>
+    </div>
 
     <!-- ============ 손익 대시보드 (P&L Dashboard) ============ -->
     <div id="content-pldashboard" class="fade-in space-y-5">
@@ -3676,7 +3871,7 @@ export function mainPage(): string {
         if (match) return match[1];
       }
       // fallback: 숨겨지지 않은 content 패널 찾기
-      var panels = ['pldashboard','dashboard','forecast','costforecast','simflow','optime','prodplan','scenario','datainput','master','mapping','linespeed','opdays','capa'];
+      var panels = ['workflow','pldashboard','dashboard','forecast','costforecast','simflow','optime','prodplan','scenario','datainput','master','mapping','linespeed','opdays','capa'];
       for (var i = 0; i < panels.length; i++) {
         var el = document.getElementById('content-' + panels[i]);
         if (el && !el.classList.contains('hidden')) return panels[i];
@@ -3910,7 +4105,7 @@ export function mainPage(): string {
     });
 
     function switchTab(tab) {
-      ['pldashboard','dashboard','detail','upload','dataview','master','mapping','linespeed','opdays','capa','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime','costforecast','prodplan','scenario'].forEach(t => {
+      ['workflow','pldashboard','dashboard','detail','upload','dataview','master','mapping','linespeed','opdays','capa','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime','costforecast','prodplan','scenario'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.remove('nav-item-active'); el.classList.add('pill-tab-inactive'); }
@@ -3920,7 +4115,7 @@ export function mainPage(): string {
       const sidebarBtn = document.getElementById('tab-' + tab);
       if (sidebarBtn) sidebarBtn.classList.add('nav-item-active');
       // 페이지 제목 업데이트
-      const titles = { pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'원부재료 전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', mapping:'자재 카테고리 매핑', linespeed:'제지 생산 선속', opdays:'가동일수', capa:'생산 CAPA 분석', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측', prodplan:'생산량 이동계획', scenario:'시나리오 분석' };
+      const titles = { workflow:'업무 플로우', pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'원부재료 전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', mapping:'자재 카테고리 매핑', linespeed:'제지 생산 선속', opdays:'가동일수', capa:'생산 CAPA 분석', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측', prodplan:'생산량 이동계획', scenario:'시나리오 분석' };
       const titleEl = document.getElementById('page-title');
       if (titleEl) titleEl.textContent = titles[tab] || tab;
       if (tab === 'pldashboard') {
