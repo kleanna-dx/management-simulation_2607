@@ -7117,15 +7117,20 @@ export function mainPage(): string {
         rows.push({
           '지종': row.product_type,
           '평량(g/m²)': row.basis_weight,
-          '이론생산(톤/일)': dailyTon > 0 ? +dailyTon.toFixed(1) : '',
           '예상생산량(톤)': row.planned_qty || 0,
+          '이론생산(톤/일)': dailyTon > 0 ? +dailyTon.toFixed(1) : '',
           '필요일수': needDays > 0 ? +needDays.toFixed(1) : '',
           '최대CAPA(톤)': maxCapa > 0 ? Math.round(maxCapa) : '',
           '과부족(톤)': dailyTon > 0 ? Math.round(gap) : '',
           '판정': judge
         });
       });
-      if (!rows.length) { alert('다운로드할 데이터가 없습니다.'); return; }
+      // 데이터가 없으면 빈 양식 제공
+      if (!rows.length) {
+        rows.push({ '지종': '(예시)SC', '평량(g/m²)': 180, '예상생산량(톤)': 500 });
+        rows.push({ '지종': '(예시)KB', '평량(g/m²)': 240, '예상생산량(톤)': 300 });
+        rows.push({ '지종': '', '평량(g/m²)': '', '예상생산량(톤)': '' });
+      }
       var ws = XLSX.utils.json_to_sheet(rows);
       var wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'CAPA분석');
