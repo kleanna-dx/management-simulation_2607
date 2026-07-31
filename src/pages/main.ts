@@ -2392,6 +2392,7 @@ export function mainPage(): string {
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-10">#</th>
                 <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 w-24">지종</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-24">평량(g/m²)</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-20">지폭(mm)</th>
                 <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-28">이론생산(톤/일)</th>
                 <th class="px-3 py-2 text-right font-semibold text-orange-600 border-b border-slate-200 w-16 bg-orange-50">폐품률(%)</th>
 
@@ -2406,11 +2407,11 @@ export function mainPage(): string {
               </tr>
             </thead>
             <tbody id="capa-table-body">
-              <tr><td colspan="13" class="text-center text-gray-400 py-8">호기와 월을 선택한 후 품목을 추가하세요.</td></tr>
+              <tr><td colspan="14" class="text-center text-gray-400 py-8">호기와 월을 선택한 후 품목을 추가하세요.</td></tr>
             </tbody>
             <tfoot class="bg-slate-50 border-t-2 border-slate-300 sticky bottom-0 z-10">
               <tr id="capa-table-footer">
-                <td colspan="5" class="px-3 py-2 text-right font-bold text-gray-600">합계</td>
+                <td colspan="6" class="px-3 py-2 text-right font-bold text-gray-600">합계</td>
                 <td class="px-3 py-2 text-right font-bold text-blue-700" id="capa-foot-good">-</td>
                 <td class="px-3 py-2 text-right font-bold text-orange-700" id="capa-foot-waste">-</td>
                 <td class="px-3 py-2 text-right font-bold text-gray-700" id="capa-foot-total">-</td>
@@ -7264,6 +7265,9 @@ export function mainPage(): string {
         });
         html += '</select></td>';
 
+        // 지폭(mm) - 선속 마스터에서 자동 표시
+        html += '<td class="px-3 py-2 text-right font-mono text-gray-500">' + (lsInfo && lsInfo.trim_width ? lsInfo.trim_width.toLocaleString() : '-') + '</td>';
+
         // 이론생산(톤/일)
         html += '<td class="px-3 py-2 text-right font-mono text-gray-700">' + (dailyTon > 0 ? dailyTon.toFixed(1) : '-') + '</td>';
 
@@ -7455,6 +7459,7 @@ export function mainPage(): string {
         rows.push({
           '지종': row.product_type,
           '평량(g/m²)': row.basis_weight,
+          '지폭(mm)': lsInfo ? lsInfo.trim_width : '',
           '이론생산(톤/일)': dailyTon > 0 ? +dailyTon.toFixed(1) : '',
           '폐품률(%)': wasteRate,
 
