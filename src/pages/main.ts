@@ -2400,14 +2400,11 @@ export function mainPage(): string {
                 <th class="px-3 py-2 text-right font-semibold text-orange-600 border-b border-slate-200 w-24 bg-indigo-50">예상 폐품량(톤)</th>
                 <th class="px-3 py-2 text-right font-semibold text-gray-700 border-b border-slate-200 w-28 bg-indigo-50 border-r-2 border-r-indigo-300">예상 총중량(톤)</th>
                 <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-24">필요일수</th>
-                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-28">최대CAPA(톤)</th>
-                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-24">과부족(톤)</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-20">판정</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-12">삭제</th>
               </tr>
             </thead>
             <tbody id="capa-table-body">
-              <tr><td colspan="14" class="text-center text-gray-400 py-8">호기와 월을 선택한 후 품목을 추가하세요.</td></tr>
+              <tr><td colspan="11" class="text-center text-gray-400 py-8">호기와 월을 선택한 후 품목을 추가하세요.</td></tr>
             </tbody>
             <tfoot class="bg-slate-50 border-t-2 border-slate-300 sticky bottom-0 z-10">
               <tr id="capa-table-footer">
@@ -2416,13 +2413,34 @@ export function mainPage(): string {
                 <td class="px-3 py-2 text-right font-bold text-orange-700" id="capa-foot-waste">-</td>
                 <td class="px-3 py-2 text-right font-bold text-gray-700" id="capa-foot-total">-</td>
                 <td class="px-3 py-2 text-right font-bold text-gray-700" id="capa-foot-days">-</td>
-                <td class="px-3 py-2 text-right font-bold text-gray-700" id="capa-foot-max">-</td>
-                <td class="px-3 py-2 text-right font-bold" id="capa-foot-gap">-</td>
-                <td class="px-3 py-2 text-center font-bold" id="capa-foot-judge">-</td>
                 <td></td>
               </tr>
             </tfoot>
           </table>
+        </div>
+
+        <!-- CAPA 합계 요약 -->
+        <div class="mt-4 grid grid-cols-4 gap-3" id="capa-summary-card">
+          <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
+            <p class="text-[10px] text-gray-500 mb-1">총 필요일수</p>
+            <p class="text-lg font-bold text-gray-800" id="capa-sum-days">-</p>
+            <p class="text-[10px] text-gray-400">/ <span id="capa-sum-opdays">-</span>일 가동</p>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
+            <p class="text-[10px] text-gray-500 mb-1">최대 CAPA (합계)</p>
+            <p class="text-lg font-bold text-gray-800" id="capa-sum-max">-</p>
+            <p class="text-[10px] text-gray-400">톤</p>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
+            <p class="text-[10px] text-gray-500 mb-1">과부족</p>
+            <p class="text-lg font-bold" id="capa-sum-gap">-</p>
+            <p class="text-[10px] text-gray-400">톤 (CAPA − 양품량)</p>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
+            <p class="text-[10px] text-gray-500 mb-1">판정</p>
+            <p class="text-xl font-bold" id="capa-sum-judge">-</p>
+            <p class="text-[10px] text-gray-400" id="capa-sum-judge-desc">-</p>
+          </div>
         </div>
 
         <!-- 참고사항 -->
@@ -7295,15 +7313,6 @@ export function mainPage(): string {
         // 필요일수
         html += '<td class="px-3 py-2 text-right font-mono text-gray-600">' + (needDays > 0 ? needDays.toFixed(1) : '-') + '</td>';
 
-        // 최대CAPA
-        html += '<td class="px-3 py-2 text-right font-mono text-gray-700">' + (maxCapa > 0 ? Math.round(maxCapa).toLocaleString() : '-') + '</td>';
-
-        // 과부족
-        html += '<td class="px-3 py-2 text-right font-mono ' + gapClass + '">' + (netDaily > 0 ? (gap>=0?'+':'') + Math.round(gap).toLocaleString() : '-') + '</td>';
-
-        // 판정
-        html += '<td class="px-3 py-2 text-center text-xs font-medium ' + judgeClass + '">' + judge + '</td>';
-
         // 삭제
         html += '<td class="px-3 py-2 text-center"><button onclick="removeCapaRow('+idx+')" class="text-red-400 hover:text-red-600"><i class="fas fa-trash-alt"></i></button></td>';
         html += '</tr>';
@@ -7343,7 +7352,7 @@ export function mainPage(): string {
       document.getElementById('capa-total-max').textContent = totalMax > 0 ? Math.round(totalMax).toLocaleString() : '-';
       document.getElementById('capa-total-days').textContent = totalDays > 0 ? totalDays.toFixed(1) + ' / ' + capaOpDays : '-';
 
-      // footer
+      // footer (테이블 합계행)
       var footGood = document.getElementById('capa-foot-good');
       var footWaste = document.getElementById('capa-foot-waste');
       var footTotal = document.getElementById('capa-foot-total');
@@ -7351,28 +7360,45 @@ export function mainPage(): string {
       if (footWaste) footWaste.textContent = totalWaste > 0 ? parseFloat(totalWaste.toFixed(2)).toLocaleString() : '-';
       if (footTotal) footTotal.textContent = totalWeight > 0 ? parseFloat(totalWeight.toFixed(2)).toLocaleString() : '-';
       document.getElementById('capa-foot-days').textContent = totalDays > 0 ? totalDays.toFixed(1) : '-';
-      document.getElementById('capa-foot-max').textContent = totalMax > 0 ? Math.round(totalMax).toLocaleString() : '-';
 
-      var footGap = document.getElementById('capa-foot-gap');
-      var footJudge = document.getElementById('capa-foot-judge');
-      if (footGap) {
+      // 하단 요약 카드
+      var sumDays = document.getElementById('capa-sum-days');
+      var sumOpdays = document.getElementById('capa-sum-opdays');
+      var sumMax = document.getElementById('capa-sum-max');
+      var sumGap = document.getElementById('capa-sum-gap');
+      var sumJudge = document.getElementById('capa-sum-judge');
+      var sumJudgeDesc = document.getElementById('capa-sum-judge-desc');
+
+      if (sumDays) sumDays.textContent = totalDays > 0 ? totalDays.toFixed(1) + '일' : '-';
+      if (sumOpdays) sumOpdays.textContent = capaOpDays;
+      if (sumMax) sumMax.textContent = totalMax > 0 ? Math.round(totalMax).toLocaleString() : '-';
+
+      if (sumGap) {
         if (totalMax > 0) {
-          footGap.textContent = (totalGap>=0?'+':'') + Math.round(totalGap).toLocaleString();
-          footGap.className = 'px-3 py-2 text-right font-bold ' + (totalGap >= 0 ? 'text-emerald-600' : 'text-red-600');
+          sumGap.textContent = (totalGap>=0?'+':'') + Math.round(totalGap).toLocaleString();
+          sumGap.className = 'text-lg font-bold ' + (totalGap >= 0 ? 'text-emerald-600' : 'text-red-600');
         } else {
-          footGap.textContent = '-'; footGap.className = 'px-3 py-2 text-right font-bold text-gray-400';
+          sumGap.textContent = '-';
+          sumGap.className = 'text-lg font-bold text-gray-400';
         }
       }
-      if (footJudge) {
+      if (sumJudge) {
         if (overDays) {
-          footJudge.textContent = '⚠️ 일수초과';
-          footJudge.className = 'px-3 py-2 text-center font-bold text-red-600';
+          sumJudge.textContent = '⚠️ 초과';
+          sumJudge.className = 'text-xl font-bold text-red-600';
+          if (sumJudgeDesc) sumJudgeDesc.textContent = '필요일수가 가동일수 초과';
+        } else if (totalGap < 0) {
+          sumJudge.textContent = '⚠️ 부족';
+          sumJudge.className = 'text-xl font-bold text-red-600';
+          if (sumJudgeDesc) sumJudgeDesc.textContent = 'CAPA 부족';
         } else if (totalDays > 0) {
-          footJudge.textContent = '✅ 가능';
-          footJudge.className = 'px-3 py-2 text-center font-bold text-emerald-600';
+          sumJudge.textContent = '✅ 가능';
+          sumJudge.className = 'text-xl font-bold text-emerald-600';
+          if (sumJudgeDesc) sumJudgeDesc.textContent = '생산 가능';
         } else {
-          footJudge.textContent = '-';
-          footJudge.className = 'px-3 py-2 text-center font-bold text-gray-400';
+          sumJudge.textContent = '-';
+          sumJudge.className = 'text-xl font-bold text-gray-400';
+          if (sumJudgeDesc) sumJudgeDesc.textContent = '-';
         }
       }
 
@@ -7466,10 +7492,7 @@ export function mainPage(): string {
           '예상 양품량(톤)': goodQty ? parseFloat(goodQty.toFixed(2)) : 0,
           '예상 폐품량(톤)': wasteQty > 0 ? parseFloat(wasteQty.toFixed(2)) : '',
           '예상 총중량(톤)': totalWeight > 0 ? parseFloat(totalWeight.toFixed(2)) : '',
-          '필요일수': needDays > 0 ? +needDays.toFixed(1) : '',
-          '최대CAPA(톤)': maxCapa > 0 ? Math.round(maxCapa) : '',
-          '과부족(톤)': netDaily > 0 ? Math.round(gap) : '',
-          '판정': judge
+          '필요일수': needDays > 0 ? +needDays.toFixed(1) : ''
         });
       });
       // 데이터가 없으면 빈 양식 제공
