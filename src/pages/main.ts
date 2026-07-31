@@ -2386,25 +2386,25 @@ export function mainPage(): string {
 
         <!-- CAPA 분석 테이블 -->
         <div class="overflow-auto max-h-[450px] border border-slate-200 rounded-lg">
-          <table class="text-xs border-collapse">
+          <table class="text-xs border-collapse min-w-[1400px]">
             <thead class="bg-slate-100 sticky top-0 z-10">
               <tr>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-10 sticky left-0 z-20 bg-slate-100">#</th>
-                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 w-24 sticky left-[40px] z-20 bg-slate-100">지종</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-24 sticky left-[136px] z-20 bg-slate-100 border-r border-slate-300">평량(g/m²)</th>
-                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-20">지폭(mm)</th>
-                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-28">이론생산(톤/일)</th>
-                <th class="px-3 py-2 text-right font-semibold text-orange-600 border-b border-slate-200 w-16 bg-orange-50">폐품률(%)</th>
+                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 w-20 sticky left-[40px] z-20 bg-slate-100 whitespace-nowrap">지종</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-20 sticky left-[120px] z-20 bg-slate-100 border-r border-slate-300 whitespace-nowrap">평량</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 whitespace-nowrap">지폭(mm)</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 whitespace-nowrap">이론생산(톤/일)</th>
+                <th class="px-3 py-2 text-right font-semibold text-orange-600 border-b border-slate-200 bg-orange-50 whitespace-nowrap">폐품률(%)</th>
 
-                <th class="px-3 py-2 text-right font-semibold text-blue-600 border-b border-slate-200 w-28 bg-indigo-50 border-l-2 border-l-indigo-300">예상 양품량(톤)</th>
-                <th class="px-3 py-2 text-right font-semibold text-orange-600 border-b border-slate-200 w-24 bg-indigo-50">예상 폐품량(톤)</th>
-                <th class="px-3 py-2 text-right font-semibold text-gray-700 border-b border-slate-200 w-28 bg-indigo-50 border-r-2 border-r-indigo-300">예상 총중량(톤)</th>
-                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-24">필요일수</th>
-                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-20 bg-teal-50 border-l-2 border-l-teal-300">생산비<br><span class="text-[9px] font-normal">(총중량)</span></th>
-                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-20 bg-teal-50">생산비<br><span class="text-[9px] font-normal">(가동일수)</span></th>
-                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-20 bg-teal-50">평균<br>평량</th>
-                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-20 bg-teal-50">평균<br>선속</th>
-                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-24 bg-teal-50 border-r-2 border-r-teal-300">이론<br>생산성</th>
+                <th class="px-3 py-2 text-right font-semibold text-blue-600 border-b border-slate-200 bg-indigo-50 border-l-2 border-l-indigo-300 whitespace-nowrap">예상 양품량(톤)</th>
+                <th class="px-3 py-2 text-right font-semibold text-orange-600 border-b border-slate-200 bg-indigo-50 whitespace-nowrap">예상 폐품량(톤)</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-700 border-b border-slate-200 bg-indigo-50 border-r-2 border-r-indigo-300 whitespace-nowrap">예상 총중량(톤)</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 whitespace-nowrap">필요일수</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 bg-teal-50 border-l-2 border-l-teal-300 whitespace-nowrap">생산비<br><span class="text-[9px] font-normal">(총중량)</span></th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 bg-teal-50 whitespace-nowrap">생산비<br><span class="text-[9px] font-normal">(가동일수)</span></th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 bg-teal-50 whitespace-nowrap">평균<br>평량</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 bg-teal-50 whitespace-nowrap">평균<br>선속</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 bg-teal-50 border-r-2 border-r-teal-300 whitespace-nowrap">이론<br>생산성</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-12">삭제</th>
               </tr>
             </thead>
@@ -2415,7 +2415,7 @@ export function mainPage(): string {
               <tr id="capa-table-footer">
                 <td class="px-3 py-2 text-right font-bold text-gray-600 sticky left-0 bg-slate-50 z-20"></td>
                 <td class="px-3 py-2 text-right font-bold text-gray-600 sticky left-[40px] bg-slate-50 z-20"></td>
-                <td class="px-3 py-2 text-right font-bold text-gray-600 sticky left-[136px] bg-slate-50 z-20 border-r border-slate-300">합계</td>
+                <td class="px-3 py-2 text-right font-bold text-gray-600 sticky left-[120px] bg-slate-50 z-20 border-r border-slate-300">합계</td>
                 <td colspan="3" class="px-3 py-2 text-right font-bold text-gray-600"></td>
                 <td class="px-3 py-2 text-right font-bold text-blue-700" id="capa-foot-good">-</td>
                 <td class="px-3 py-2 text-right font-bold text-orange-700" id="capa-foot-waste">-</td>
@@ -7295,7 +7295,7 @@ export function mainPage(): string {
         html += '<td class="px-3 py-2 text-center text-gray-400 sticky left-0 bg-white z-10">' + (idx+1) + '</td>';
 
         // 지종 select
-        html += '<td class="px-2 py-1 sticky left-[40px] bg-white z-10"><select onchange="onCapaProductChange(this,'+idx+')" class="w-20 border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-200">';
+        html += '<td class="px-2 py-1 sticky left-[40px] bg-white z-10"><select onchange="onCapaProductChange(this,'+idx+')" class="w-16 border border-gray-200 rounded px-1 py-1 text-xs focus:ring-1 focus:ring-blue-200">';
         html += '<option value="">선택</option>';
         productTypes.forEach(function(pt) {
           html += '<option value="'+pt+'"'+(pt===row.product_type?' selected':'')+'>'+pt+'</option>';
@@ -7303,7 +7303,7 @@ export function mainPage(): string {
         html += '</select></td>';
 
         // 평량 select
-        html += '<td class="px-2 py-1 text-center sticky left-[136px] bg-white z-10 border-r border-slate-200"><select onchange="onCapaBwChange(this,'+idx+')" class="w-20 text-center border border-gray-200 rounded px-1 py-1 text-xs focus:ring-1 focus:ring-blue-200">';
+        html += '<td class="px-2 py-1 text-center sticky left-[120px] bg-white z-10 border-r border-slate-200"><select onchange="onCapaBwChange(this,'+idx+')" class="w-16 text-center border border-gray-200 rounded px-1 py-1 text-xs focus:ring-1 focus:ring-blue-200">';
         html += '<option value="">-</option>';
         basisWeights.forEach(function(bw) {
           html += '<option value="'+bw+'"'+(bw===row.basis_weight?' selected':'')+'>'+bw+'</option>';
