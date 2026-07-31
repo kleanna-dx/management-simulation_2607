@@ -2400,11 +2400,16 @@ export function mainPage(): string {
                 <th class="px-3 py-2 text-right font-semibold text-orange-600 border-b border-slate-200 w-24 bg-indigo-50">예상 폐품량(톤)</th>
                 <th class="px-3 py-2 text-right font-semibold text-gray-700 border-b border-slate-200 w-28 bg-indigo-50 border-r-2 border-r-indigo-300">예상 총중량(톤)</th>
                 <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-24">필요일수</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-20 bg-teal-50 border-l-2 border-l-teal-300">생산비<br><span class="text-[9px] font-normal">(총중량)</span></th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-20 bg-teal-50">생산비<br><span class="text-[9px] font-normal">(가동일수)</span></th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-20 bg-teal-50">평균<br>평량</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-20 bg-teal-50">평균<br>선속</th>
+                <th class="px-3 py-2 text-right font-semibold text-gray-600 border-b border-slate-200 w-24 bg-teal-50 border-r-2 border-r-teal-300">이론<br>생산성</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-12">삭제</th>
               </tr>
             </thead>
             <tbody id="capa-table-body">
-              <tr><td colspan="11" class="text-center text-gray-400 py-8">호기와 월을 선택한 후 품목을 추가하세요.</td></tr>
+              <tr><td colspan="16" class="text-center text-gray-400 py-8">호기와 월을 선택한 후 품목을 추가하세요.</td></tr>
             </tbody>
             <tfoot class="bg-slate-50 border-t-2 border-slate-300 sticky bottom-0 z-10">
               <tr id="capa-table-footer">
@@ -2413,6 +2418,11 @@ export function mainPage(): string {
                 <td class="px-3 py-2 text-right font-bold text-orange-700" id="capa-foot-waste">-</td>
                 <td class="px-3 py-2 text-right font-bold text-gray-700" id="capa-foot-total">-</td>
                 <td class="px-3 py-2 text-right font-bold text-gray-700" id="capa-foot-days">-</td>
+                <td class="px-3 py-2 text-right font-bold text-teal-700 bg-teal-50" id="capa-foot-prodw">-</td>
+                <td class="px-3 py-2 text-right font-bold text-teal-700 bg-teal-50" id="capa-foot-prodd">-</td>
+                <td class="px-3 py-2 text-right font-bold text-teal-700 bg-teal-50" id="capa-foot-avgbw">-</td>
+                <td class="px-3 py-2 text-right font-bold text-teal-700 bg-teal-50" id="capa-foot-avgspd">-</td>
+                <td class="px-3 py-2 text-right font-bold text-teal-700 bg-teal-50" id="capa-foot-avgprod">-</td>
                 <td></td>
               </tr>
             </tfoot>
@@ -7220,10 +7230,24 @@ export function mainPage(): string {
       if (odLabel) odLabel.textContent = capaOpDays || '-';
 
       if (capaData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="14" class="text-center text-gray-400 py-8">품목을 추가하세요. 선속 마스터에 등록된 지종/평량 조합이 자동 참조됩니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="text-center text-gray-400 py-8">품목을 추가하세요. 선속 마스터에 등록된 지종/평량 조합이 자동 참조됩니다.</td></tr>';
         updateCapaSummary();
         return;
       }
+
+      // 1차 루프: 전체 총중량/필요일수 합계 (생산비 비율 계산용)
+      var sumTotalWeight = 0, sumNeedDays = 0;
+      capaData.forEach(function(row) {
+        var lsInfo = getLineSpeedInfo(row.product_type, row.basis_weight);
+        var wasteRate = row.waste_rate != null ? row.waste_rate : getDefaultWasteRate();
+        var goodQty = row.planned_qty || 0;
+        var tw = wasteRate < 100 ? goodQty / (1 - wasteRate / 100) : 0;
+        sumTotalWeight += tw;
+        if (lsInfo && lsInfo.speed > 0) {
+          var dt = calcDailyTon(row.basis_weight, lsInfo.trim_width, lsInfo.speed);
+          sumNeedDays += dt > 0 ? tw / dt : 0;
+        }
+      });
 
       var html = '';
       capaData.forEach(function(row, idx) {
@@ -7313,6 +7337,27 @@ export function mainPage(): string {
         // 필요일수
         html += '<td class="px-3 py-2 text-right font-mono text-gray-600">' + (needDays > 0 ? needDays.toFixed(1) : '-') + '</td>';
 
+        // 생산비 (총중량 기준) = 행 총중량 / 전체 총중량
+        var prodRatioW = sumTotalWeight > 0 ? totalWeight / sumTotalWeight : 0;
+        html += '<td class="px-2 py-2 text-right font-mono text-teal-700 text-xs bg-teal-50/50 border-l-2 border-l-teal-300">' + (prodRatioW > 0 ? (prodRatioW * 100).toFixed(1) + '%' : '-') + '</td>';
+
+        // 생산비 (가동일수 기준) = 행 필요일수 / 전체 필요일수
+        var prodRatioD = sumNeedDays > 0 ? needDays / sumNeedDays : 0;
+        html += '<td class="px-2 py-2 text-right font-mono text-teal-700 text-xs bg-teal-50/50">' + (prodRatioD > 0 ? (prodRatioD * 100).toFixed(1) + '%' : '-') + '</td>';
+
+        // 평균 평량 = 평량 × 생산비(가동일수)
+        var avgBw = (row.basis_weight || 0) * prodRatioD;
+        html += '<td class="px-2 py-2 text-right font-mono text-teal-700 text-xs bg-teal-50/50">' + (avgBw > 0 ? avgBw.toFixed(1) : '-') + '</td>';
+
+        // 평균 선속 = 선속 × 생산비(가동일수)
+        var speed = lsInfo ? lsInfo.speed : 0;
+        var avgSpd = speed * prodRatioD;
+        html += '<td class="px-2 py-2 text-right font-mono text-teal-700 text-xs bg-teal-50/50">' + (avgSpd > 0 ? avgSpd.toFixed(1) : '-') + '</td>';
+
+        // 이론 생산성 = 이론생산(톤/일) × 생산비(가동일수)
+        var avgProd = dailyTon * prodRatioD;
+        html += '<td class="px-2 py-2 text-right font-mono text-teal-700 text-xs bg-teal-50/50 border-r-2 border-r-teal-300">' + (avgProd > 0 ? avgProd.toFixed(2) : '-') + '</td>';
+
         // 삭제
         html += '<td class="px-3 py-2 text-center"><button onclick="removeCapaRow('+idx+')" class="text-red-400 hover:text-red-600"><i class="fas fa-trash-alt"></i></button></td>';
         html += '</tr>';
@@ -7360,6 +7405,33 @@ export function mainPage(): string {
       if (footWaste) footWaste.textContent = totalWaste > 0 ? parseFloat(totalWaste.toFixed(2)).toLocaleString() : '-';
       if (footTotal) footTotal.textContent = totalWeight > 0 ? parseFloat(totalWeight.toFixed(2)).toLocaleString() : '-';
       document.getElementById('capa-foot-days').textContent = totalDays > 0 ? totalDays.toFixed(1) : '-';
+
+      // footer 생산비 합계 계산
+      var footSumAvgBw = 0, footSumAvgSpd = 0, footSumAvgProd = 0;
+      capaData.forEach(function(row) {
+        var lsInfo = getLineSpeedInfo(row.product_type, row.basis_weight);
+        var wasteRate = row.waste_rate != null ? row.waste_rate : getDefaultWasteRate();
+        var goodQty = row.planned_qty || 0;
+        var tw = wasteRate < 100 ? goodQty / (1 - wasteRate / 100) : 0;
+        if (lsInfo && lsInfo.speed > 0) {
+          var dt = calcDailyTon(row.basis_weight, lsInfo.trim_width, lsInfo.speed);
+          var nd = dt > 0 ? tw / dt : 0;
+          var ratioD = totalDays > 0 ? nd / totalDays : 0;
+          footSumAvgBw += (row.basis_weight || 0) * ratioD;
+          footSumAvgSpd += lsInfo.speed * ratioD;
+          footSumAvgProd += dt * ratioD;
+        }
+      });
+      var fpw = document.getElementById('capa-foot-prodw');
+      var fpd = document.getElementById('capa-foot-prodd');
+      var fab = document.getElementById('capa-foot-avgbw');
+      var fas = document.getElementById('capa-foot-avgspd');
+      var fap = document.getElementById('capa-foot-avgprod');
+      if (fpw) fpw.textContent = totalWeight > 0 ? '100%' : '-';
+      if (fpd) fpd.textContent = totalDays > 0 ? '100%' : '-';
+      if (fab) fab.textContent = footSumAvgBw > 0 ? footSumAvgBw.toFixed(1) : '-';
+      if (fas) fas.textContent = footSumAvgSpd > 0 ? footSumAvgSpd.toFixed(1) : '-';
+      if (fap) fap.textContent = footSumAvgProd > 0 ? footSumAvgProd.toFixed(2) : '-';
 
       // 하단 요약 카드
       var sumDays = document.getElementById('capa-sum-days');
@@ -7466,33 +7538,48 @@ export function mainPage(): string {
       var year = getCapaYear();
       var month = getCapaMonth();
       var machine = getCapaMachine();
+      // 1차: 합계 계산
+      var exSumWeight = 0, exSumDays = 0;
+      capaData.forEach(function(row) {
+        var lsInfo = getLineSpeedInfo(row.product_type, row.basis_weight);
+        var wasteRate = row.waste_rate != null ? row.waste_rate : getDefaultWasteRate();
+        var gq = row.planned_qty || 0;
+        var tw = wasteRate < 100 ? gq / (1 - wasteRate / 100) : 0;
+        exSumWeight += tw;
+        if (lsInfo && lsInfo.speed > 0) {
+          var dt = calcDailyTon(row.basis_weight, lsInfo.trim_width, lsInfo.speed);
+          exSumDays += dt > 0 ? tw / dt : 0;
+        }
+      });
       var rows = [];
       capaData.forEach(function(row) {
         var lsInfo = getLineSpeedInfo(row.product_type, row.basis_weight);
-        var dailyTon = 0, netDaily = 0, maxCapa = 0, needDays = 0, gap = 0, judge = '';
+        var dailyTon = 0, needDays = 0;
         var wasteRate = row.waste_rate != null ? row.waste_rate : getDefaultWasteRate();
         var goodQty = row.planned_qty || 0;
         var totalWeight = wasteRate < 100 ? goodQty / (1 - wasteRate / 100) : 0;
         var wasteQty = totalWeight - goodQty;
         if (lsInfo && lsInfo.speed > 0) {
           dailyTon = calcDailyTon(row.basis_weight, lsInfo.trim_width, lsInfo.speed);
-          netDaily = dailyTon * (1 - wasteRate / 100);
-          maxCapa = netDaily * capaOpDays;
           needDays = dailyTon > 0 ? totalWeight/dailyTon : 0;
-          gap = maxCapa - goodQty;
-          judge = gap >= 0 ? '가능' : '초과';
         }
+        var ratioW = exSumWeight > 0 ? totalWeight / exSumWeight : 0;
+        var ratioD = exSumDays > 0 ? needDays / exSumDays : 0;
         rows.push({
           '지종': row.product_type,
           '평량(g/m²)': row.basis_weight,
           '지폭(mm)': lsInfo ? lsInfo.trim_width : '',
           '이론생산(톤/일)': dailyTon > 0 ? +dailyTon.toFixed(1) : '',
           '폐품률(%)': wasteRate,
-
           '예상 양품량(톤)': goodQty ? parseFloat(goodQty.toFixed(2)) : 0,
           '예상 폐품량(톤)': wasteQty > 0 ? parseFloat(wasteQty.toFixed(2)) : '',
           '예상 총중량(톤)': totalWeight > 0 ? parseFloat(totalWeight.toFixed(2)) : '',
-          '필요일수': needDays > 0 ? +needDays.toFixed(1) : ''
+          '필요일수': needDays > 0 ? +needDays.toFixed(1) : '',
+          '생산비(총중량)': ratioW > 0 ? +(ratioW * 100).toFixed(1) + '%' : '',
+          '생산비(가동일수)': ratioD > 0 ? +(ratioD * 100).toFixed(1) + '%' : '',
+          '평균 평량': ratioD > 0 ? +((row.basis_weight || 0) * ratioD).toFixed(1) : '',
+          '평균 선속': ratioD > 0 && lsInfo ? +(lsInfo.speed * ratioD).toFixed(1) : '',
+          '이론 생산성': ratioD > 0 ? +(dailyTon * ratioD).toFixed(2) : ''
         });
       });
       // 데이터가 없으면 빈 양식 제공
