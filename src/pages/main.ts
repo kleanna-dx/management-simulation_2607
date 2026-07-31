@@ -67,7 +67,10 @@ export function mainPage(): string {
     .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #4b5563; background: transparent; border: none; cursor: pointer; transition: all 0.15s; text-align: left; }
     .nav-item:hover { background: #f0fdf4; color: #166534; }
     .nav-item-active { background: #ecfdf5 !important; color: #047857 !important; font-weight: 600; box-shadow: inset 3px 0 0 #10b981; }
-    .sidebar-collapsed { width: 0 !important; overflow: hidden; padding: 0 !important; border: none !important; }
+    .sidebar-collapsed { width: 0 !important; min-width: 0 !important; overflow: hidden; padding: 0 !important; border: none !important; }
+    .sidebar-collapsed * { visibility: hidden; }
+    .sidebar-toggle-btn { position: absolute; top: 12px; right: -14px; width: 28px; height: 28px; border-radius: 50%; background: white; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 60; transition: all 0.2s; }
+    .sidebar-toggle-btn:hover { background: #f0fdf4; border-color: #10b981; }
     select, input[type="number"], input[type="text"] { font-size: 13px; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
@@ -112,7 +115,11 @@ export function mainPage(): string {
 <body class="bg-slate-50 min-h-screen overflow-hidden">
   <div class="flex h-screen">
     <!-- ============ 좌측 사이드바 ============ -->
-    <aside id="app-sidebar" class="w-[240px] bg-white border-r border-slate-200 flex flex-col flex-shrink-0 h-screen transition-all duration-300 z-50">
+    <aside id="app-sidebar" class="w-[240px] bg-white border-r border-slate-200 flex flex-col flex-shrink-0 h-screen transition-all duration-300 z-50 relative">
+      <!-- 사이드바 접기/펼치기 버튼 -->
+      <button onclick="toggleSidebar()" class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="사이드바 접기/펼치기">
+        <i class="fas fa-chevron-left text-xs text-gray-500" id="sidebar-toggle-icon"></i>
+      </button>
       <!-- 사이드바 헤더 -->
       <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
         <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm">
@@ -223,8 +230,8 @@ export function mainPage(): string {
       <!-- 상단 헤더 (gradient) -->
       <header class="gradient-header text-white px-6 py-3 flex items-center justify-between flex-shrink-0 z-40">
         <div class="flex items-center gap-3">
-          <!-- 사이드바 토글 -->
-          <button onclick="toggleSidebar()" class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 transition lg:hidden">
+          <!-- 사이드바 토글 (접힌 상태에서 열기) -->
+          <button onclick="toggleSidebar()" id="header-sidebar-toggle" class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/80 transition hidden">
             <i class="fas fa-bars text-sm"></i>
           </button>
           <!-- 현재 페이지 제목 -->
@@ -3797,9 +3804,20 @@ export function mainPage(): string {
 
   <script>
     // ============ 사이드바 토글 ============
+    var sidebarCollapsed = false;
     function toggleSidebar() {
-      const sidebar = document.getElementById('app-sidebar');
-      sidebar.classList.toggle('sidebar-collapsed');
+      sidebarCollapsed = !sidebarCollapsed;
+      var sidebar = document.getElementById('app-sidebar');
+      var icon = document.getElementById('sidebar-toggle-icon');
+      var headerBtn = document.getElementById('header-sidebar-toggle');
+      if (sidebarCollapsed) {
+        sidebar.classList.add('sidebar-collapsed');
+        headerBtn.classList.remove('hidden');
+      } else {
+        sidebar.classList.remove('sidebar-collapsed');
+        headerBtn.classList.add('hidden');
+        icon.className = 'fas fa-chevron-left text-xs text-gray-500';
+      }
     }
 
     let analysisData = null, unitSummaryData = null, unitsCache = [], materialsCache = [];
