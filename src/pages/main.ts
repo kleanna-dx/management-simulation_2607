@@ -13459,8 +13459,336 @@ export function mainPage(): string {
     document.addEventListener('DOMContentLoaded', function() {
       addOpenTab('pldashboard');
       setTimeout(function() { loadPLDashboard(); }, 500);
+      // 플로팅 손익 패널 초기 로드
+      setTimeout(function() { loadFloatingPL(); }, 1000);
     });
 
+  </script>
+
+  <!-- ============ 플로팅 손익 변화 패널 (Samsung AI 스타일) ============ -->
+  <style>
+    #floating-pl-toggle {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9998;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: white;
+      border: none;
+      box-shadow: 0 4px 20px rgba(79,70,229,0.4), 0 2px 8px rgba(0,0,0,0.1);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    #floating-pl-toggle:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 28px rgba(79,70,229,0.5), 0 4px 12px rgba(0,0,0,0.15);
+    }
+    #floating-pl-toggle.has-change {
+      animation: pulse-glow 2s infinite;
+    }
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 4px 20px rgba(79,70,229,0.4); }
+      50% { box-shadow: 0 4px 30px rgba(79,70,229,0.7), 0 0 20px rgba(124,58,237,0.3); }
+    }
+    #floating-pl-panel {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      width: 340px;
+      max-height: 520px;
+      border-radius: 20px;
+      background: white;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.12), 0 2px 12px rgba(0,0,0,0.06);
+      border: 1px solid #e5e7eb;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      animation: floatPanelIn 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    #floating-pl-panel.open { display: flex; }
+    @keyframes floatPanelIn {
+      from { opacity: 0; transform: translateY(20px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .fpl-header {
+      padding: 16px 20px;
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .fpl-header h4 { font-size: 13px; font-weight: 700; margin: 0; }
+    .fpl-header p { font-size: 10px; opacity: 0.8; margin-top: 2px; }
+    .fpl-close {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(255,255,255,0.15); border: none; color: white;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 14px; transition: background 0.2s;
+    }
+    .fpl-close:hover { background: rgba(255,255,255,0.3); }
+    .fpl-body {
+      padding: 16px 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .fpl-metric {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      transition: background 0.2s;
+    }
+    .fpl-metric:hover { background: #f8fafc; }
+    .fpl-metric-label {
+      font-size: 11px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+    .fpl-metric-value {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1f2937;
+    }
+    .fpl-metric-change {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+    }
+    .fpl-change-up { color: #dc2626; background: #fef2f2; }
+    .fpl-change-down { color: #16a34a; background: #f0fdf4; }
+    .fpl-change-flat { color: #6b7280; background: #f3f4f6; }
+    .fpl-section-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 12px 0 6px 4px;
+    }
+    .fpl-divider {
+      height: 1px;
+      background: #f1f5f9;
+      margin: 8px 0;
+    }
+    .fpl-footer {
+      padding: 12px 20px;
+      background: #f8fafc;
+      border-top: 1px solid #f1f5f9;
+      text-align: center;
+    }
+    .fpl-footer-text {
+      font-size: 10px;
+      color: #9ca3af;
+    }
+    .fpl-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ef4444;
+      color: white;
+      font-size: 9px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid white;
+    }
+    .fpl-sparkline {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 24px;
+    }
+    .fpl-sparkline-bar {
+      width: 6px;
+      border-radius: 2px;
+      transition: height 0.5s ease;
+    }
+  </style>
+
+  <!-- 플로팅 토글 버튼 -->
+  <button id="floating-pl-toggle" onclick="toggleFloatingPL()" title="손익 변화 요약">
+    <i class="fas fa-chart-line"></i>
+  </button>
+
+  <!-- 플로팅 패널 -->
+  <div id="floating-pl-panel">
+    <div class="fpl-header">
+      <div>
+        <h4><i class="fas fa-chart-line mr-1.5"></i>손익 변화 요약</h4>
+        <p id="fpl-period-label">로딩 중...</p>
+      </div>
+      <button class="fpl-close" onclick="toggleFloatingPL()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="fpl-body" id="fpl-body">
+      <div style="text-align:center; padding: 40px 0; color: #9ca3af;">
+        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+        <p class="text-xs">데이터를 불러오는 중...</p>
+      </div>
+    </div>
+    <div class="fpl-footer">
+      <p class="fpl-footer-text"><i class="fas fa-sync-alt mr-1"></i>탭 전환 시 자동 갱신 · <a href="#" onclick="loadFloatingPL();return false;" style="color:#6366f1;font-weight:600;">새로고침</a></p>
+    </div>
+  </div>
+
+  <script>
+    var _fplOpen = false;
+    var _fplData = null;
+
+    function toggleFloatingPL() {
+      _fplOpen = !_fplOpen;
+      var panel = document.getElementById('floating-pl-panel');
+      var toggle = document.getElementById('floating-pl-toggle');
+      if (_fplOpen) {
+        panel.classList.add('open');
+        toggle.style.display = 'none';
+        loadFloatingPL();
+      } else {
+        panel.classList.remove('open');
+        toggle.style.display = 'flex';
+      }
+    }
+
+    async function loadFloatingPL() {
+      var body = document.getElementById('fpl-body');
+      var periodLabel = document.getElementById('fpl-period-label');
+      try {
+        var div = typeof CC !== 'undefined' && CC.currentDivision ? CC.currentDivision : 'PS';
+        var ym = '';
+        var yearEl = document.getElementById('analysisYear');
+        var monthEl = document.getElementById('analysisMonth');
+        if (yearEl && monthEl) {
+          ym = yearEl.textContent + monthEl.textContent.replace('월','').padStart(2,'0');
+        }
+        var res = await fetch('/api/pl-dashboard?ym=' + ym + '&division=' + div);
+        var data = await res.json();
+        _fplData = data;
+        renderFloatingPL(data);
+        if (periodLabel) {
+          periodLabel.textContent = (div === 'HL' ? 'HL' : 'PS') + ' · ' + (ym ? ym.substring(0,4)+'.'+ym.substring(4,6) : '최신');
+        }
+      } catch(e) {
+        if (body) body.innerHTML = '<div style="text-align:center;padding:30px 0;color:#9ca3af;"><i class="fas fa-exclamation-circle text-lg mb-2"></i><p class="text-xs">데이터를 불러올 수 없습니다</p></div>';
+      }
+    }
+
+    function renderFloatingPL(data) {
+      var body = document.getElementById('fpl-body');
+      if (!body) return;
+
+      if (!data || !data.kpi) {
+        body.innerHTML = '<div style="text-align:center;padding:30px 0;color:#9ca3af;"><i class="fas fa-database text-lg mb-2"></i><p class="text-xs">분석 데이터가 없습니다</p><p class="text-[10px] mt-1">데이터 입력 후 이용 가능합니다</p></div>';
+        return;
+      }
+
+      var kpi = data.kpi;
+      var trend = data.trend || [];
+      var html = '';
+
+      // KPI 섹션
+      html += '<div class="fpl-section-title">핵심 손익 지표</div>';
+      html += fplMetricRow('매출액', kpi.revenue, kpi.revenueChange, '억원');
+      html += fplMetricRow('총원가', kpi.cost, kpi.costChange, '억원');
+      html += fplMetricRow('영업이익', kpi.profit, kpi.profitChange, '억원');
+      html += fplMetricRow('이익률', kpi.margin, kpi.marginChange, '%');
+
+      html += '<div class="fpl-divider"></div>';
+
+      // 원가 구성
+      if (data.costBreakdown && data.costBreakdown.length > 0) {
+        html += '<div class="fpl-section-title">원가 구성 (재료비)</div>';
+        data.costBreakdown.forEach(function(item) {
+          html += '<div class="fpl-metric">';
+          html += '<span class="fpl-metric-label">' + (item.name || item.group || '-') + '</span>';
+          html += '<span class="fpl-metric-value" style="font-size:12px;">' + (item.ratio || item.percent || 0) + '%</span>';
+          html += '</div>';
+        });
+        html += '<div class="fpl-divider"></div>';
+      }
+
+      // 최근 추이 스파크라인
+      if (trend.length > 1) {
+        html += '<div class="fpl-section-title">최근 이익 추이</div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;">';
+        html += '<div class="fpl-sparkline">';
+        var maxProfit = Math.max.apply(null, trend.map(function(t){return Math.abs(t.profit);}));
+        trend.forEach(function(t) {
+          var h = maxProfit > 0 ? Math.max(4, Math.abs(t.profit) / maxProfit * 24) : 4;
+          var color = t.profit >= 0 ? '#4f46e5' : '#ef4444';
+          html += '<div class="fpl-sparkline-bar" style="height:' + h + 'px;background:' + color + '"></div>';
+        });
+        html += '</div>';
+        html += '<div style="text-align:right;">';
+        html += '<p style="font-size:10px;color:#6b7280;">' + trend[0].month + ' ~ ' + trend[trend.length-1].month + '</p>';
+        var lastProfit = trend[trend.length-1].profit;
+        var firstProfit = trend[0].profit;
+        var trendDir = lastProfit > firstProfit ? '↑ 개선' : lastProfit < firstProfit ? '↓ 악화' : '→ 유지';
+        var trendColor = lastProfit > firstProfit ? '#16a34a' : lastProfit < firstProfit ? '#dc2626' : '#6b7280';
+        html += '<p style="font-size:11px;font-weight:700;color:' + trendColor + ';">' + trendDir + '</p>';
+        html += '</div>';
+        html += '</div>';
+      }
+
+      body.innerHTML = html;
+
+      // 토글 버튼에 변화 표시
+      var toggle = document.getElementById('floating-pl-toggle');
+      if (toggle && kpi.profitChange && parseFloat(kpi.profitChange) !== 0) {
+        toggle.classList.add('has-change');
+      } else if (toggle) {
+        toggle.classList.remove('has-change');
+      }
+    }
+
+    function fplMetricRow(label, value, change, unit) {
+      var changeNum = parseFloat(change) || 0;
+      var changeClass = changeNum > 0 ? 'fpl-change-down' : changeNum < 0 ? 'fpl-change-up' : 'fpl-change-flat';
+      var changeIcon = changeNum > 0 ? '▲' : changeNum < 0 ? '▼' : '−';
+      var changeText = changeNum !== 0 ? changeIcon + ' ' + Math.abs(changeNum) + '%' : '−';
+      // 비용은 증가=악화, 수익/이익은 증가=개선 (색상 반전)
+      if (label === '총원가') {
+        changeClass = changeNum > 0 ? 'fpl-change-up' : changeNum < 0 ? 'fpl-change-down' : 'fpl-change-flat';
+      }
+      var html = '<div class="fpl-metric">';
+      html += '<div><span class="fpl-metric-label">' + label + '</span></div>';
+      html += '<div style="display:flex;align-items:center;">';
+      html += '<span class="fpl-metric-value">' + (value || '-') + '<span style="font-size:10px;color:#9ca3af;margin-left:2px;">' + unit + '</span></span>';
+      html += '<span class="fpl-metric-change ' + changeClass + '">' + changeText + '</span>';
+      html += '</div>';
+      html += '</div>';
+      return html;
+    }
+
+    // switchTab 후 자동 갱신 연동
+    var _origSwitchTab = typeof switchTab === 'function' ? switchTab : null;
+    if (_origSwitchTab) {
+      // 탭 전환 시 패널이 열려있으면 갱신 (debounce)
+      var _fplDebounce = null;
+      var _origAddOpenTab = addOpenTab;
+      addOpenTab = function(tabId) {
+        _origAddOpenTab(tabId);
+        if (_fplOpen) {
+          clearTimeout(_fplDebounce);
+          _fplDebounce = setTimeout(loadFloatingPL, 800);
+        }
+      };
+    }
   </script>
 </body>
 </html>`;
