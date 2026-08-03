@@ -13667,6 +13667,13 @@ export function mainPage(): string {
       sgaFixed: 2800           // 판관비 (백만원/월, 고정)
     };
 
+    // 월/생산량 수동 설정
+    var _fplManual = {
+      year: null,              // null이면 CAPA에서 자동
+      month: null,             // null이면 CAPA에서 자동
+      productionTon: null      // null이면 CAPA에서 자동
+    };
+
     // 기준 P&L (첫 로드 시 캡처, 이후 변경분 비교)
     var _fplBaseline = null;
     var _fplCurrentMonth = null;
@@ -13703,15 +13710,46 @@ export function mainPage(): string {
     function renderFplSettingsForm() {
       var overlay = document.getElementById('fpl-settings');
       if (!overlay) return;
-      var html = '<div class="fpl-settings-title"><i class="fas fa-sliders-h mr-1"></i>P&L 단가 설정</div>';
+      var html = '<div class="fpl-settings-title"><i class="fas fa-sliders-h mr-1"></i>P&L 설정</div>';
+
+      // 기간 및 생산량 설정
+      html += '<div class="fpl-setting-section">기간 / 생산량</div>';
+      var curYear = _fplManual.year || (typeof getCapaYear === 'function' ? getCapaYear() : 2026);
+      var curMonth = _fplManual.month || (typeof getCapaMonth === 'function' ? getCapaMonth() : new Date().getMonth() + 1);
+      var curProd = _fplManual.productionTon || getFplCapaProduction() || 0;
+
+      html += '<div class="fpl-setting-row">';
+      html += '<span class="fpl-setting-label">년/월</span>';
+      html += '<div style="display:flex;align-items:center;gap:4px;">';
+      html += '<input class="fpl-setting-input" type="number" id="fpl-set-year" value="' + curYear + '" style="width:60px;" min="2020" max="2030">';
+      html += '<span style="font-size:10px;color:#6b7280;">년</span>';
+      html += '<select class="fpl-setting-input" id="fpl-set-month" style="width:52px;padding:4px 2px;">';
+      for (var m = 1; m <= 12; m++) {
+        html += '<option value="' + m + '"' + (m === curMonth ? ' selected' : '') + '>' + m + '월</option>';
+      }
+      html += '</select>';
+      html += '</div></div>';
+
+      html += '<div class="fpl-setting-row">';
+      html += '<span class="fpl-setting-label">생산량</span>';
+      html += '<div style="display:flex;align-items:center;">';
+      html += '<input class="fpl-setting-input" type="number" id="fpl-set-production" value="' + curProd.toFixed(0) + '" step="100" style="width:80px;">';
+      html += '<span class="fpl-setting-unit">톤/월</span>';
+      html += '</div></div>';
+      html += '<div style="font-size:9px;color:#9ca3af;margin-bottom:4px;"><i class="fas fa-info-circle mr-1"></i>비워두면 CAPA 데이터에서 자동 반영</div>';
+
+      // 변동비
       html += '<div class="fpl-setting-section">변동비 (톤당)</div>';
       html += fplSettingRow('매출단가', 'revenuePerTon', _fplRates.revenuePerTon, '천원/톤');
       html += fplSettingRow('에너지비', 'energyPerTon', _fplRates.energyPerTon, '천원/톤');
       html += fplSettingRow('물류비', 'logisticsPerTon', _fplRates.logisticsPerTon, '천원/톤');
+
+      // 고정비
       html += '<div class="fpl-setting-section">고정비 (월)</div>';
       html += fplSettingRow('인건비', 'laborFixed', _fplRates.laborFixed, '백만원/월');
       html += fplSettingRow('감가상각비', 'depreciationFixed', _fplRates.depreciationFixed, '백만원/월');
       html += fplSettingRow('판관비', 'sgaFixed', _fplRates.sgaFixed, '백만원/월');
+
       html += '<button class="fpl-setting-btn" onclick="applyFplSettings()"><i class="fas fa-check mr-1"></i>적용</button>';
       html += '<button class="fpl-setting-btn" style="background:#6b7280;margin-top:6px;" onclick="toggleFplSettings()"><i class="fas fa-arrow-left mr-1"></i>닫기</button>';
       overlay.innerHTML = html;
@@ -13727,11 +13765,26 @@ export function mainPage(): string {
     }
 
     function applyFplSettings() {
+      // 년/월/생산량
+      var yearEl = document.getElementById('fpl-set-year');
+      var monthEl = document.getElementById('fpl-set-month');
+      var prodEl = document.getElementById('fpl-set-production');
+      if (yearEl) _fplManual.year = parseInt(yearEl.value) || null;
+      if (monthEl) _fplManual.month = parseInt(monthEl.value) || null;
+      if (prodEl) {
+        var pVal = parseFloat(prodEl.value);
+        _fplManual.productionTon = pVal > 0 ? pVal : null;
+      }
+
+      // 단가
       var keys = ['revenuePerTon','energyPerTon','logisticsPerTon','laborFixed','depreciationFixed','sgaFixed'];
       keys.forEach(function(k) {
         var el = document.getElementById('fpl-set-' + k);
         if (el) _fplRates[k] = parseFloat(el.value) || 0;
       });
+
+      // baseline 리셋 (설정 변경 시 새로 시작)
+      _fplBaseline = null;
       _fplSettingsOpen = false;
       var s = document.getElementById('fpl-settings');
       if (s) s.classList.remove('open');
@@ -13794,9 +13847,10 @@ export function mainPage(): string {
       var content = document.getElementById('fpl-content');
       if (!content) return;
 
-      var prodTon = getFplCapaProduction();
-      var curMonth = typeof getCapaMonth === 'function' ? getCapaMonth() : '';
-      var curYear = typeof getCapaYear === 'function' ? getCapaYear() : '';
+      // 수동 설정이 있으면 우선 사용, 없으면 CAPA에서 자동
+      var prodTon = _fplManual.productionTon || getFplCapaProduction();
+      var curMonth = _fplManual.month || (typeof getCapaMonth === 'function' ? getCapaMonth() : '');
+      var curYear = _fplManual.year || (typeof getCapaYear === 'function' ? getCapaYear() : '');
       var curMachine = typeof getCapaMachine === 'function' ? getCapaMachine() : '';
 
       // 월 변경 시 baseline 리셋
@@ -13806,20 +13860,22 @@ export function mainPage(): string {
       }
       _fplCurrentMonth = monthKey;
 
-      // sub 라벨 갱신 — CAPA 데이터 없으면 월/년 표시하지 않음
+      // sub 라벨 갱신
+      var isManual = _fplManual.productionTon || _fplManual.month;
       var sub = document.getElementById('fpl-head-sub');
       if (sub) {
-        if (prodTon > 0 && curYear && curMonth) {
-          sub.textContent = curYear + '년 ' + curMonth + '월 · ' + curMachine;
+        if (curYear && curMonth) {
+          var src = isManual ? ' (수동)' : ' · ' + curMachine;
+          sub.textContent = curYear + '년 ' + curMonth + '월' + src;
         } else {
-          sub.textContent = 'CAPA 생산량 기반 손익 추정';
+          sub.textContent = '⚙️ 설정에서 월/생산량을 입력하세요';
         }
       }
 
       if (prodTon <= 0) {
         content.innerHTML = '<div style="text-align:center;padding:30px 0;color:#9ca3af;">' +
           '<i class="fas fa-inbox" style="font-size:24px;margin-bottom:8px;"></i>' +
-          '<p style="font-size:11px;line-height:1.6;">CAPA 데이터가 없습니다<br><span style="color:#a5b4fc;">CAPA 분석 탭에서 데이터를 로드하세요</span></p></div>';
+          '<p style="font-size:11px;line-height:1.6;">생산량 데이터가 없습니다<br><span style="color:#a5b4fc;">⚙️ 설정에서 생산량을 직접 입력하거나<br>CAPA 분석 탭에서 데이터를 로드하세요</span></p></div>';
         return;
       }
 
