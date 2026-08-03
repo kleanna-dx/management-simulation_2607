@@ -2372,12 +2372,6 @@ export function mainPage(): string {
             <p class="text-lg font-bold text-emerald-700" id="capa-total-plan">-</p>
             <p class="text-[10px] text-emerald-400">톤</p>
           </div>
-
-          <div class="bg-orange-50 border border-orange-100 rounded-lg p-3 text-center">
-            <p class="text-[10px] text-orange-500 mb-1">필요 가동일 합계</p>
-            <p class="text-lg font-bold text-orange-700" id="capa-total-days">-</p>
-            <p class="text-[10px] text-orange-400">일 (가용 대비)</p>
-          </div>
         </div>
 
         <!-- CAPA 분석 테이블 -->
@@ -2454,8 +2448,9 @@ export function mainPage(): string {
           <p class="text-[10px] text-orange-500">이론생산(톤/일) = 평량 × 0.001 × 0.001 × 지폭 × 0.001 × 선속 × 1440</p>
           <p class="text-[10px] text-orange-500">최대CAPA(톤) = 이론생산(톤/일) × (1 − 폐품률/100) × 가동일수</p>
           <p class="text-[10px] text-orange-500">필요일수 = 예상 총중량 ÷ 이론생산(톤/일)</p>
-          <p class="text-[10px] text-orange-500">잔여 CAPA = (가동일수 − 필요일수합계) × 가중평균 이론생산성 × (1 − 폐품률/100)</p>
-          <p class="text-[10px] text-gray-400 mt-1">※ 잔여 CAPA = 남은 가동일수로 추가 생산 가능한 양품량(톤)</p>
+          <p class="text-[10px] text-orange-500">잔여 CAPA = (가동일수 − 필요일수합계) × 가중평균 이론생산성 × (1 − 평균폐품률/100)</p>
+          <p class="text-[10px] text-gray-400 mt-1">※ 평균폐품률 = 각 행 폐품률의 가동일수 기준 가중평균</p>
+          <p class="text-[10px] text-gray-400">※ 잔여 CAPA = 남은 가동일수로 추가 생산 가능한 양품량(톤)</p>
           <p class="text-[10px] text-gray-400">※ 선속 데이터는 '제지 생산 선속' 탭의 마스터 데이터를 참조합니다.</p>
           <p class="text-[10px] text-gray-400">※ 필요일수 합계가 가동일수를 초과하면 해당 월 생산 불가로 판정됩니다.</p>
         </div>
@@ -7391,7 +7386,6 @@ export function mainPage(): string {
 
       // 요약 카드
       document.getElementById('capa-total-plan').textContent = totalGood > 0 ? parseFloat(totalGood.toFixed(2)).toLocaleString() : '-';
-      document.getElementById('capa-total-days').textContent = totalDays > 0 ? totalDays.toFixed(1) + ' / ' + capaOpDays : '-';
 
       // footer (테이블 합계행)
       var footGood = document.getElementById('capa-foot-good');
@@ -7403,7 +7397,7 @@ export function mainPage(): string {
       document.getElementById('capa-foot-days').textContent = totalDays > 0 ? totalDays.toFixed(1) : '-';
 
       // footer 생산비 합계 계산
-      var footSumAvgBw = 0, footSumAvgSpd = 0, footSumAvgProd = 0;
+      var footSumAvgBw = 0, footSumAvgSpd = 0, footSumAvgProd = 0, footSumAvgWaste = 0;
       capaData.forEach(function(row) {
         var lsInfo = getLineSpeedInfo(row.product_type, row.basis_weight);
         var wasteRate = row.waste_rate != null ? row.waste_rate : getDefaultWasteRate();
@@ -7416,6 +7410,7 @@ export function mainPage(): string {
           footSumAvgBw += (row.basis_weight || 0) * ratioD;
           footSumAvgSpd += lsInfo.speed * ratioD;
           footSumAvgProd += dt * ratioD;
+          footSumAvgWaste += wasteRate * ratioD;
         }
       });
       var fpw = document.getElementById('capa-foot-prodw');
@@ -7442,13 +7437,13 @@ export function mainPage(): string {
 
       if (sumGap) {
         var remainDays = capaOpDays - totalDays;
-        var wasteRateAvg = getDefaultWasteRate();
+        var wasteRateAvg = footSumAvgWaste > 0 ? footSumAvgWaste : getDefaultWasteRate();
         var remainCapa = remainDays > 0 ? footSumAvgProd * remainDays * (1 - wasteRateAvg / 100) : 0;
         var gapDesc = document.getElementById('capa-sum-gap-desc');
         if (remainDays > 0) {
           sumGap.textContent = '+' + parseFloat(remainCapa.toFixed(1)).toLocaleString() + ' 톤';
           sumGap.className = 'text-lg font-bold text-emerald-600';
-          if (gapDesc) gapDesc.textContent = remainDays.toFixed(1) + '일 여유 × 이론생산성 ' + footSumAvgProd.toFixed(1) + ' × (1−' + wasteRateAvg + '%)';
+          if (gapDesc) gapDesc.textContent = remainDays.toFixed(1) + '일 여유 × 이론생산성 ' + footSumAvgProd.toFixed(1) + ' × (1−평균폐품률 ' + wasteRateAvg.toFixed(2) + '%)';
         } else if (remainDays < 0) {
           sumGap.textContent = parseFloat(remainCapa.toFixed(1)).toLocaleString() + ' 톤 부족';
           sumGap.className = 'text-lg font-bold text-red-600';
@@ -7475,12 +7470,6 @@ export function mainPage(): string {
         }
       }
 
-      // 가동일수 카드 색상 업데이트
-      var odEl = document.getElementById('capa-total-days');
-      if (odEl && overDays) {
-        odEl.parentElement.classList.remove('bg-orange-50','border-orange-100');
-        odEl.parentElement.classList.add('bg-red-50','border-red-200');
-      }
     }
 
     function onCapaProductChange(sel, idx) {
