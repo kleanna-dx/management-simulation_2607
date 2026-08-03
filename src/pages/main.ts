@@ -13664,6 +13664,8 @@ export function mainPage(): string {
       _fplTracker.baseline = {
         capaTotal: getCapaTotalProduction(),
         capaNeedDays: getCapaNeedDays(),
+        capaOpDaysVal: typeof capaOpDays !== 'undefined' ? capaOpDays : 0,
+        capaMonth: typeof getCapaMonth === 'function' ? getCapaMonth() : 0,
         simTotalProfit: getSimTotalProfit(),
         simTotalBaseCost: getSimTotalBaseCost(),
         simTotalSimCost: getSimTotalSimCost(),
@@ -13788,9 +13790,16 @@ export function mainPage(): string {
         var blCapaDays = bl ? bl.capaNeedDays : curCapaDays;
         var capaProdDelta = curCapaProd - blCapaProd;
         var capaDaysDelta = curCapaDays - blCapaDays;
+        var curOpDays = typeof capaOpDays !== 'undefined' ? capaOpDays : 0;
+        var blOpDays = bl && bl.capaOpDaysVal ? bl.capaOpDaysVal : curOpDays;
+        var opDaysDelta = curOpDays - blOpDays;
+
+        var capaMonth = typeof getCapaMonth === 'function' ? getCapaMonth() : '';
+        var capaMachine = typeof getCapaMachine === 'function' ? getCapaMachine() : '';
 
         html += '<div class="fpl-card">';
-        html += '<div class="fpl-card-header"><span class="fpl-card-title"><i class="fas fa-industry mr-1 text-orange-400"></i>CAPA 생산 계획</span><span class="fpl-card-source">생산 CAPA</span></div>';
+        html += '<div class="fpl-card-header"><span class="fpl-card-title"><i class="fas fa-industry mr-1 text-orange-400"></i>CAPA 생산 계획</span><span class="fpl-card-source">' + (capaMonth ? capaMonth + '월 · ' + capaMachine : 'CAPA') + '</span></div>';
+        html += fplRow('월 가동일수', curOpDays.toFixed(1), '일', opDaysDelta, '일');
         html += fplRow('예상 양품량', curCapaProd.toFixed(1), '톤', capaProdDelta, '톤');
         html += fplRow('필요 가동일수', curCapaDays.toFixed(1), '일', capaDaysDelta, '일');
 
@@ -13898,10 +13907,8 @@ export function mainPage(): string {
     }
 
     // ---- calcSimProfit 후킹: 시뮬레이션 변경 시 자동 추적 ----
-    var _origCalcSimProfit = typeof calcSimProfit === 'function' ? calcSimProfit : null;
     var _prevSimProfit = null;
 
-    // calcSimProfit을 래핑하여 변경 추적
     (function() {
       var origFn = window.calcSimProfit || calcSimProfit;
       if (!origFn) return;
@@ -13915,7 +13922,6 @@ export function mainPage(): string {
         }
         _prevSimProfit = afterProfit;
       };
-      // 글로벌 재정의
       window.calcSimProfit = wrapped;
       calcSimProfit = wrapped;
     })();
@@ -13925,18 +13931,54 @@ export function mainPage(): string {
       var origFn = window.renderCapaTable || renderCapaTable;
       if (!origFn) return;
       var prevCapaProd = null;
+      var prevCapaOpDays = null;
       var wrapped = function() {
         var beforeProd = getCapaTotalProduction();
+        var beforeOpDays = typeof capaOpDays !== 'undefined' ? capaOpDays : 0;
         origFn.apply(this, arguments);
         var afterProd = getCapaTotalProduction();
+        var afterOpDays = typeof capaOpDays !== 'undefined' ? capaOpDays : 0;
+
+        // 가동일수 변화 추적 (월 변경 시)
+        if (prevCapaOpDays !== null && Math.abs(afterOpDays - prevCapaOpDays) > 0.1) {
+          trackFplChange('CAPA', '가동일수(' + getCapaMonth() + '월)', prevCapaOpDays, afterOpDays);
+        }
+        prevCapaOpDays = afterOpDays;
+
+        // 생산량 변화 추적
         if (prevCapaProd === null) { prevCapaProd = afterProd; return; }
         if (Math.abs(afterProd - prevCapaProd) > 0.1) {
-          trackFplChange('CAPA', '생산량', prevCapaProd, afterProd);
+          trackFplChange('CAPA', '예상 양품량', prevCapaProd, afterProd);
         }
         prevCapaProd = afterProd;
       };
       window.renderCapaTable = wrapped;
       renderCapaTable = wrapped;
+    })();
+
+    // ---- loadCapaAnalysis 후킹: 월 변경 시 전체 데이터 변경 추적 ----
+    (function() {
+      var origFn = window.loadCapaAnalysis || loadCapaAnalysis;
+      if (!origFn) return;
+      var prevMonth = null;
+      var wrapped = async function() {
+        var beforeMonth = getCapaMonth();
+        var beforeYear = getCapaYear();
+        await origFn.apply(this, arguments);
+        var afterMonth = getCapaMonth();
+        var afterYear = getCapaYear();
+        // 월 변경 감지 → 패널 갱신
+        if (prevMonth !== null && (prevMonth !== afterMonth || beforeYear !== afterYear)) {
+          // 패널 열려있으면 갱신
+          if (_fplOpen) renderFplPanel();
+          // 서브 라벨 갱신
+          var sub = document.getElementById('fpl-head-sub');
+          if (sub) sub.textContent = afterYear + '년 ' + afterMonth + '월 · ' + getCapaMachine();
+        }
+        prevMonth = afterMonth;
+      };
+      window.loadCapaAnalysis = wrapped;
+      loadCapaAnalysis = wrapped;
     })();
   </script>
 </body>
