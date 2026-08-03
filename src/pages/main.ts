@@ -2437,9 +2437,9 @@ export function mainPage(): string {
           </div>
 
           <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
-            <p class="text-[10px] text-gray-500 mb-1">과부족</p>
+            <p class="text-[10px] text-gray-500 mb-1">잔여 CAPA (추가 생산 가능 양품량)</p>
             <p class="text-lg font-bold" id="capa-sum-gap">-</p>
-            <p class="text-[10px] text-gray-400">톤 (CAPA − 양품량)</p>
+            <p class="text-[10px] text-gray-400" id="capa-sum-gap-desc">남은 일수 × 이론생산성 × (1−폐품률)</p>
           </div>
           <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
             <p class="text-[10px] text-gray-500 mb-1">판정</p>
@@ -2454,8 +2454,9 @@ export function mainPage(): string {
           <p class="text-[10px] text-orange-500">이론생산(톤/일) = 평량 × 0.001 × 0.001 × 지폭 × 0.001 × 선속 × 1440</p>
           <p class="text-[10px] text-orange-500">최대CAPA(톤) = 이론생산(톤/일) × (1 − 폐품률/100) × 가동일수</p>
           <p class="text-[10px] text-orange-500">필요일수 = 예상 총중량 ÷ 이론생산(톤/일)</p>
-          <p class="text-[10px] text-orange-500">과부족 = 최대CAPA − 예상생산량 (양수=여유, 음수=초과)</p>
-          <p class="text-[10px] text-gray-400 mt-1">※ 선속 데이터는 '제지 생산 선속' 탭의 마스터 데이터를 참조합니다.</p>
+          <p class="text-[10px] text-orange-500">잔여 CAPA = (가동일수 − 필요일수합계) × 가중평균 이론생산성 × (1 − 폐품률/100)</p>
+          <p class="text-[10px] text-gray-400 mt-1">※ 잔여 CAPA = 남은 가동일수로 추가 생산 가능한 양품량(톤)</p>
+          <p class="text-[10px] text-gray-400">※ 선속 데이터는 '제지 생산 선속' 탭의 마스터 데이터를 참조합니다.</p>
           <p class="text-[10px] text-gray-400">※ 필요일수 합계가 가동일수를 초과하면 해당 월 생산 불가로 판정됩니다.</p>
         </div>
       </div>
@@ -7386,6 +7387,7 @@ export function mainPage(): string {
 
       var totalGap = totalMax - totalGood;
       var overDays = totalDays > capaOpDays;
+      var remainDaysGlobal = capaOpDays - totalDays;
 
       // 요약 카드
       document.getElementById('capa-total-plan').textContent = totalGood > 0 ? parseFloat(totalGood.toFixed(2)).toLocaleString() : '-';
@@ -7439,27 +7441,33 @@ export function mainPage(): string {
 
 
       if (sumGap) {
-        if (totalMax > 0) {
-          sumGap.textContent = (totalGap>=0?'+':'') + Math.round(totalGap).toLocaleString();
-          sumGap.className = 'text-lg font-bold ' + (totalGap >= 0 ? 'text-emerald-600' : 'text-red-600');
+        var remainDays = capaOpDays - totalDays;
+        var wasteRateAvg = getDefaultWasteRate();
+        var remainCapa = remainDays > 0 ? footSumAvgProd * remainDays * (1 - wasteRateAvg / 100) : 0;
+        var gapDesc = document.getElementById('capa-sum-gap-desc');
+        if (remainDays > 0) {
+          sumGap.textContent = '+' + parseFloat(remainCapa.toFixed(1)).toLocaleString() + ' 톤';
+          sumGap.className = 'text-lg font-bold text-emerald-600';
+          if (gapDesc) gapDesc.textContent = remainDays.toFixed(1) + '일 여유 × 이론생산성 ' + footSumAvgProd.toFixed(1) + ' × (1−' + wasteRateAvg + '%)';
+        } else if (remainDays < 0) {
+          sumGap.textContent = parseFloat(remainCapa.toFixed(1)).toLocaleString() + ' 톤 부족';
+          sumGap.className = 'text-lg font-bold text-red-600';
+          if (gapDesc) gapDesc.textContent = Math.abs(remainDays).toFixed(1) + '일 초과';
         } else {
-          sumGap.textContent = '-';
-          sumGap.className = 'text-lg font-bold text-gray-400';
+          sumGap.textContent = '0 (풀가동)';
+          sumGap.className = 'text-lg font-bold text-orange-600';
+          if (gapDesc) gapDesc.textContent = '가동일수 100% 사용';
         }
       }
       if (sumJudge) {
         if (overDays) {
           sumJudge.textContent = '⚠️ 초과';
           sumJudge.className = 'text-xl font-bold text-red-600';
-          if (sumJudgeDesc) sumJudgeDesc.textContent = '필요일수가 가동일수 초과';
-        } else if (totalGap < 0) {
-          sumJudge.textContent = '⚠️ 부족';
-          sumJudge.className = 'text-xl font-bold text-red-600';
-          if (sumJudgeDesc) sumJudgeDesc.textContent = 'CAPA 부족';
+          if (sumJudgeDesc) sumJudgeDesc.textContent = '필요일수가 가동일수 초과 (' + Math.abs(remainDaysGlobal).toFixed(1) + '일 부족)';
         } else if (totalDays > 0) {
           sumJudge.textContent = '✅ 가능';
           sumJudge.className = 'text-xl font-bold text-emerald-600';
-          if (sumJudgeDesc) sumJudgeDesc.textContent = '생산 가능';
+          if (sumJudgeDesc) sumJudgeDesc.textContent = remainDaysGlobal.toFixed(1) + '일 여유';
         } else {
           sumJudge.textContent = '-';
           sumJudge.className = 'text-xl font-bold text-gray-400';
