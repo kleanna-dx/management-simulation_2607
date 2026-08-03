@@ -7584,6 +7584,8 @@ export function mainPage(): string {
       XLSX.writeFile(wb, 'CAPA분석_' + machine + '_' + year + '년' + month + '월.xlsx');
     }
 
+    var _capaUploadParsed = []; // 임시 저장용
+
     function uploadCapaExcel(event) {
       var file = event.target.files[0];
       if (!file) return;
@@ -7616,15 +7618,73 @@ export function mainPage(): string {
 
           if (!parsed.length) { alert('유효한 데이터가 없습니다. 컬럼명을 확인하세요: 지종, 평량(g/m²), 예상생산량(톤)'); return; }
 
-          capaData = parsed;
-          renderCapaTable();
-          alert('엑셀 업로드 완료: ' + parsed.length + '건. 확인 후 저장 버튼을 눌러주세요.');
+          _capaUploadParsed = parsed;
+          showCapaUploadModeModal(parsed.length);
         } catch(err) {
           alert('엑셀 파싱 오류: ' + err.message);
         }
       };
       reader.readAsArrayBuffer(file);
       event.target.value = '';
+    }
+
+    function showCapaUploadModeModal(count) {
+      var existingCount = capaData.length;
+      var modal = document.createElement('div');
+      modal.id = 'capa-upload-mode-modal';
+      modal.className = 'fixed inset-0 z-[9999] flex items-center justify-center bg-black/50';
+      modal.onclick = function(ev) { if (ev.target === modal) closeCapaUploadModal(); };
+      modal.innerHTML = \`
+        <div class="bg-white rounded-2xl shadow-2xl w-[420px] overflow-hidden animate-fade-in">
+          <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50">
+            <h3 class="text-sm font-bold text-gray-800"><i class="fas fa-file-excel text-green-600 mr-2"></i>엑셀 업로드 방식 선택</h3>
+            <p class="text-xs text-gray-500 mt-1">업로드할 데이터: <span class="font-semibold text-green-700">\${count}건</span> | 기존 데이터: <span class="font-semibold text-blue-700">\${existingCount}건</span></p>
+          </div>
+          <div class="p-6 space-y-3">
+            <button onclick="confirmCapaUploadMode('replace')" class="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-red-300 hover:bg-red-50/50 transition-all group text-left">
+              <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0 group-hover:bg-red-200 transition">
+                <i class="fas fa-sync-alt text-red-600"></i>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-gray-800">전체 교체</p>
+                <p class="text-xs text-gray-500 mt-0.5">기존 데이터를 삭제하고, 엑셀 데이터로 새로 세팅합니다.</p>
+              </div>
+            </button>
+            <button onclick="confirmCapaUploadMode('append')" class="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 transition-all group text-left">
+              <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 transition">
+                <i class="fas fa-plus-circle text-blue-600"></i>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-gray-800">기존에 추가</p>
+                <p class="text-xs text-gray-500 mt-0.5">기존 데이터를 유지하고, 엑셀 데이터를 뒤에 추가합니다.</p>
+              </div>
+            </button>
+          </div>
+          <div class="px-6 py-3 border-t border-gray-100 bg-gray-50 flex justify-end">
+            <button onclick="closeCapaUploadModal()" class="px-4 py-2 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition">취소</button>
+          </div>
+        </div>
+      \`;
+      document.body.appendChild(modal);
+    }
+
+    function confirmCapaUploadMode(mode) {
+      if (mode === 'replace') {
+        capaData = _capaUploadParsed;
+      } else {
+        capaData = capaData.concat(_capaUploadParsed);
+      }
+      renderCapaTable();
+      closeCapaUploadModal();
+      var modeLabel = mode === 'replace' ? '전체 교체' : '기존에 추가';
+      alert('엑셀 업로드 완료 (' + modeLabel + '): ' + _capaUploadParsed.length + '건. 확인 후 저장 버튼을 눌러주세요.');
+      _capaUploadParsed = [];
+    }
+
+    function closeCapaUploadModal() {
+      var m = document.getElementById('capa-upload-mode-modal');
+      if (m) m.remove();
+      _capaUploadParsed = [];
     }
     // ======== END 생산 CAPA 분석 ========
 
