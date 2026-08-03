@@ -7673,16 +7673,18 @@ export function mainPage(): string {
     }
 
     function confirmCapaUploadMode(mode) {
+      var uploadCount = _capaUploadParsed.length;
       if (mode === 'replace') {
-        capaData = _capaUploadParsed;
+        capaData = _capaUploadParsed.slice();
       } else {
         capaData = capaData.concat(_capaUploadParsed);
       }
-      renderCapaTable();
-      closeCapaUploadModal();
-      var modeLabel = mode === 'replace' ? '전체 교체' : '기존에 추가';
-      alert('엑셀 업로드 완료 (' + modeLabel + '): ' + _capaUploadParsed.length + '건. 확인 후 저장 버튼을 눌러주세요.');
       _capaUploadParsed = [];
+      renderCapaTable();
+      var m = document.getElementById('capa-upload-mode-modal');
+      if (m) m.remove();
+      var modeLabel = mode === 'replace' ? '전체 교체' : '기존에 추가';
+      alert('엑셀 업로드 완료 (' + modeLabel + '): ' + uploadCount + '건. 확인 후 저장 버튼을 눌러주세요.');
     }
 
     function closeCapaUploadModal() {
@@ -13164,16 +13166,18 @@ export function mainPage(): string {
     }
 
     function confirmGpUploadMode(mode) {
+      var uploadCount = _gpUploadParsed.length;
       if (mode === 'replace') {
-        gpData = _gpUploadParsed;
+        gpData = _gpUploadParsed.slice();
       } else {
         gpData = gpData.concat(_gpUploadParsed);
       }
-      renderGradeProductionTable();
-      closeGpUploadModal();
-      var modeLabel = mode === 'replace' ? '전체 교체' : '기존에 추가';
-      alert('엑셀 업로드 완료 (' + modeLabel + '): ' + _gpUploadParsed.length + '건. 확인 후 저장 버튼을 눌러주세요.');
       _gpUploadParsed = [];
+      renderGradeProductionTable();
+      var m = document.getElementById('gp-upload-mode-modal');
+      if (m) m.remove();
+      var modeLabel = mode === 'replace' ? '전체 교체' : '기존에 추가';
+      alert('엑셀 업로드 완료 (' + modeLabel + '): ' + uploadCount + '건. 확인 후 저장 버튼을 눌러주세요.');
     }
 
     function closeGpUploadModal() {
