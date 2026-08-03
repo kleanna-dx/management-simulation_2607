@@ -3205,6 +3205,10 @@ export function mainPage(): string {
             <button onclick="addGradeRow()" class="px-2 py-1 bg-blue-500 text-white text-[10px] font-semibold rounded hover:bg-blue-600 transition">
               <i class="fas fa-plus mr-0.5"></i>행 추가
             </button>
+            <label class="px-2 py-1 bg-green-100 border border-green-200 text-green-700 text-[10px] font-semibold rounded hover:bg-green-200 transition cursor-pointer">
+              <i class="fas fa-file-excel mr-0.5"></i>엑셀 업로드
+              <input type="file" accept=".xlsx,.xls" class="hidden" onchange="uploadGpExcel(event)">
+            </label>
             <button onclick="saveGradeProduction()" class="px-3 py-1.5 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 transition shadow-sm">
               <i class="fas fa-save mr-1"></i>저장
             </button>
@@ -13040,6 +13044,111 @@ export function mainPage(): string {
     function removeGpRow(btn) {
       var tr = btn.closest('tr');
       if (tr) tr.remove();
+    }
+
+    var _gpUploadParsed = [];
+
+    function uploadGpExcel(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          var data = new Uint8Array(e.target.result);
+          var workbook = XLSX.read(data, { type: 'array' });
+          var ws = workbook.Sheets[workbook.SheetNames[0]];
+          var rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+          if (!rows.length) { alert('데이터가 없습니다.'); return; }
+
+          var parsed = [];
+          rows.forEach(function(r) {
+            var gradeName = r['지종'] || r['grade_name'] || '';
+            var basisWeight = parseFloat(r['평량'] || r['평량(g/㎡)'] || r['basis_weight'] || 0);
+            var paperWidth = parseFloat(r['지폭'] || r['지폭(mm)'] || r['paper_width'] || 3510);
+            var lineSpeed = parseFloat(r['선속'] || r['선속(m/min)'] || r['line_speed'] || 0);
+
+            if (gradeName && gradeName.trim() && basisWeight > 0) {
+              var theor = basisWeight * paperWidth * lineSpeed * 1440 * 0.000000001;
+              parsed.push({
+                grade_name: gradeName.trim(),
+                basis_weight: basisWeight,
+                paper_width: paperWidth,
+                line_speed: lineSpeed,
+                theoretical_daily_ton: theor
+              });
+            }
+          });
+
+          if (!parsed.length) { alert('유효한 데이터가 없습니다. 컬럼명을 확인하세요: 지종, 평량, 지폭, 선속'); return; }
+
+          _gpUploadParsed = parsed;
+          showGpUploadModeModal(parsed.length);
+        } catch(err) {
+          alert('엑셀 파싱 오류: ' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      event.target.value = '';
+    }
+
+    function showGpUploadModeModal(count) {
+      var existingCount = gpData ? gpData.length : 0;
+      var modal = document.createElement('div');
+      modal.id = 'gp-upload-mode-modal';
+      modal.className = 'fixed inset-0 z-[9999] flex items-center justify-center bg-black/50';
+      modal.onclick = function(ev) { if (ev.target === modal) closeGpUploadModal(); };
+      modal.innerHTML = \`
+        <div class="bg-white rounded-2xl shadow-2xl w-[420px] overflow-hidden animate-fade-in">
+          <div class="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50">
+            <h3 class="text-sm font-bold text-gray-800"><i class="fas fa-file-excel text-green-600 mr-2"></i>엑셀 업로드 방식 선택</h3>
+            <p class="text-xs text-gray-500 mt-1">업로드할 데이터: <span class="font-semibold text-green-700">\${count}건</span> | 기존 데이터: <span class="font-semibold text-blue-700">\${existingCount}건</span></p>
+          </div>
+          <div class="p-6 space-y-3">
+            <button onclick="confirmGpUploadMode('replace')" class="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-red-300 hover:bg-red-50/50 transition-all group text-left">
+              <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0 group-hover:bg-red-200 transition">
+                <i class="fas fa-sync-alt text-red-600"></i>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-gray-800">전체 교체</p>
+                <p class="text-xs text-gray-500 mt-0.5">기존 데이터를 삭제하고, 엑셀 데이터로 새로 세팅합니다.</p>
+              </div>
+            </button>
+            <button onclick="confirmGpUploadMode('append')" class="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 transition-all group text-left">
+              <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 transition">
+                <i class="fas fa-plus-circle text-blue-600"></i>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-gray-800">기존에 추가</p>
+                <p class="text-xs text-gray-500 mt-0.5">기존 데이터를 유지하고, 엑셀 데이터를 뒤에 추가합니다.</p>
+              </div>
+            </button>
+          </div>
+          <div class="px-6 py-3 border-t border-gray-100 bg-gray-50 flex justify-end">
+            <button onclick="closeGpUploadModal()" class="px-4 py-2 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition">취소</button>
+          </div>
+        </div>
+      \`;
+      document.body.appendChild(modal);
+    }
+
+    function confirmGpUploadMode(mode) {
+      if (mode === 'replace') {
+        gpData = _gpUploadParsed;
+      } else {
+        gpData = gpData.concat(_gpUploadParsed);
+      }
+      renderGradeProductionTable();
+      closeGpUploadModal();
+      var modeLabel = mode === 'replace' ? '전체 교체' : '기존에 추가';
+      alert('엑셀 업로드 완료 (' + modeLabel + '): ' + _gpUploadParsed.length + '건. 확인 후 저장 버튼을 눌러주세요.');
+      _gpUploadParsed = [];
+    }
+
+    function closeGpUploadModal() {
+      var m = document.getElementById('gp-upload-mode-modal');
+      if (m) m.remove();
+      _gpUploadParsed = [];
     }
 
     async function saveGradeProduction() {
