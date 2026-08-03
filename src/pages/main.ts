@@ -3205,6 +3205,9 @@ export function mainPage(): string {
             <button onclick="addGradeRow()" class="px-2 py-1 bg-blue-500 text-white text-[10px] font-semibold rounded hover:bg-blue-600 transition">
               <i class="fas fa-plus mr-0.5"></i>행 추가
             </button>
+            <button onclick="downloadGpExcel()" class="px-2 py-1 bg-slate-100 border border-slate-200 text-gray-600 text-[10px] font-semibold rounded hover:bg-slate-200 transition">
+              <i class="fas fa-download mr-0.5"></i>엑셀 다운
+            </button>
             <label class="px-2 py-1 bg-green-100 border border-green-200 text-green-700 text-[10px] font-semibold rounded hover:bg-green-200 transition cursor-pointer">
               <i class="fas fa-file-excel mr-0.5"></i>엑셀 업로드
               <input type="file" accept=".xlsx,.xls" class="hidden" onchange="uploadGpExcel(event)">
@@ -13047,6 +13050,34 @@ export function mainPage(): string {
     }
 
     var _gpUploadParsed = [];
+
+    function downloadGpExcel() {
+      var machineSel = document.getElementById('gp-machine-select');
+      var machine = machineSel ? machineSel.value : 'PM';
+
+      var rows = [];
+      if (gpData && gpData.length) {
+        gpData.forEach(function(g) {
+          var theor = g.theoretical_daily_ton || (g.basis_weight * (g.paper_width || 3510) * (g.line_speed || 0) * 1440 * 0.000000001);
+          rows.push({
+            '지종': g.grade_name || '',
+            '평량(g/㎡)': g.basis_weight || '',
+            '지폭(mm)': g.paper_width || 3510,
+            '선속(m/min)': g.line_speed || '',
+            '이론생산성(톤/일)': parseFloat(theor.toFixed(1))
+          });
+        });
+      } else {
+        rows.push({ '지종': '(예시) SC', '평량(g/㎡)': 100, '지폭(mm)': 3510, '선속(m/min)': 650, '이론생산성(톤/일)': '' });
+        rows.push({ '지종': '', '평량(g/㎡)': '', '지폭(mm)': '', '선속(m/min)': '', '이론생산성(톤/일)': '' });
+      }
+
+      var ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = [{ wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 16 }];
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '생산성마스터');
+      XLSX.writeFile(wb, '지종별생산성_' + machine + '.xlsx');
+    }
 
     function uploadGpExcel(event) {
       var file = event.target.files[0];
