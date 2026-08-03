@@ -13806,9 +13806,15 @@ export function mainPage(): string {
       }
       _fplCurrentMonth = monthKey;
 
-      // sub 라벨 갱신
+      // sub 라벨 갱신 — CAPA 데이터 없으면 월/년 표시하지 않음
       var sub = document.getElementById('fpl-head-sub');
-      if (sub) sub.textContent = (curYear && curMonth) ? curYear + '년 ' + curMonth + '월 · ' + curMachine : 'CAPA 생산량 기반 손익 추정';
+      if (sub) {
+        if (prodTon > 0 && curYear && curMonth) {
+          sub.textContent = curYear + '년 ' + curMonth + '월 · ' + curMachine;
+        } else {
+          sub.textContent = 'CAPA 생산량 기반 손익 추정';
+        }
+      }
 
       if (prodTon <= 0) {
         content.innerHTML = '<div style="text-align:center;padding:30px 0;color:#9ca3af;">' +
