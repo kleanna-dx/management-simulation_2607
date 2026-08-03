@@ -2372,11 +2372,7 @@ export function mainPage(): string {
             <p class="text-lg font-bold text-emerald-700" id="capa-total-plan">-</p>
             <p class="text-[10px] text-emerald-400">톤</p>
           </div>
-          <div class="bg-purple-50 border border-purple-100 rounded-lg p-3 text-center">
-            <p class="text-[10px] text-purple-500 mb-1">총 최대CAPA</p>
-            <p class="text-lg font-bold text-purple-700" id="capa-total-max">-</p>
-            <p class="text-[10px] text-purple-400">톤</p>
-          </div>
+
           <div class="bg-orange-50 border border-orange-100 rounded-lg p-3 text-center">
             <p class="text-[10px] text-orange-500 mb-1">필요 가동일 합계</p>
             <p class="text-lg font-bold text-orange-700" id="capa-total-days">-</p>
@@ -2433,17 +2429,13 @@ export function mainPage(): string {
         </div>
 
         <!-- CAPA 합계 요약 -->
-        <div class="mt-4 grid grid-cols-4 gap-3" id="capa-summary-card">
+        <div class="mt-4 grid grid-cols-3 gap-3" id="capa-summary-card">
           <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
             <p class="text-[10px] text-gray-500 mb-1">총 필요일수</p>
             <p class="text-lg font-bold text-gray-800" id="capa-sum-days">-</p>
             <p class="text-[10px] text-gray-400">/ <span id="capa-sum-opdays">-</span>일 가동</p>
           </div>
-          <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
-            <p class="text-[10px] text-gray-500 mb-1">최대 CAPA (합계)</p>
-            <p class="text-lg font-bold text-gray-800" id="capa-sum-max">-</p>
-            <p class="text-[10px] text-gray-400">톤</p>
-          </div>
+
           <div class="bg-white border border-slate-200 rounded-lg p-3 text-center">
             <p class="text-[10px] text-gray-500 mb-1">과부족</p>
             <p class="text-lg font-bold" id="capa-sum-gap">-</p>
@@ -7397,7 +7389,6 @@ export function mainPage(): string {
 
       // 요약 카드
       document.getElementById('capa-total-plan').textContent = totalGood > 0 ? parseFloat(totalGood.toFixed(2)).toLocaleString() : '-';
-      document.getElementById('capa-total-max').textContent = totalMax > 0 ? Math.round(totalMax).toLocaleString() : '-';
       document.getElementById('capa-total-days').textContent = totalDays > 0 ? totalDays.toFixed(1) + ' / ' + capaOpDays : '-';
 
       // footer (테이블 합계행)
@@ -7439,14 +7430,13 @@ export function mainPage(): string {
       // 하단 요약 카드
       var sumDays = document.getElementById('capa-sum-days');
       var sumOpdays = document.getElementById('capa-sum-opdays');
-      var sumMax = document.getElementById('capa-sum-max');
       var sumGap = document.getElementById('capa-sum-gap');
       var sumJudge = document.getElementById('capa-sum-judge');
       var sumJudgeDesc = document.getElementById('capa-sum-judge-desc');
 
       if (sumDays) sumDays.textContent = totalDays > 0 ? totalDays.toFixed(1) + '일' : '-';
       if (sumOpdays) sumOpdays.textContent = capaOpDays;
-      if (sumMax) sumMax.textContent = totalMax > 0 ? Math.round(totalMax).toLocaleString() : '-';
+
 
       if (sumGap) {
         if (totalMax > 0) {
