@@ -2361,15 +2361,15 @@ export function mainPage(): string {
         </div>
 
         <!-- 요약 카드 -->
-        <div class="grid grid-cols-4 gap-3 mb-4">
+        <div class="grid grid-cols-2 gap-3 mb-4 max-w-md">
           <div class="bg-blue-50 border border-blue-100 rounded-lg p-3 text-center">
             <p class="text-[10px] text-blue-500 mb-1">가동일수</p>
-            <p class="text-lg font-bold text-blue-700" id="capa-opdays-label">-</p>
+            <p class="text-sm font-bold text-blue-700" id="capa-opdays-label">-</p>
             <p class="text-[10px] text-blue-400">일</p>
           </div>
           <div class="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-center">
             <p class="text-[10px] text-emerald-500 mb-1">총 예상 양품량</p>
-            <p class="text-lg font-bold text-emerald-700" id="capa-total-plan">-</p>
+            <p class="text-sm font-bold text-emerald-700" id="capa-total-plan">-</p>
             <p class="text-[10px] text-emerald-400">톤</p>
           </div>
         </div>
