@@ -13842,7 +13842,7 @@ export function mainPage(): string {
       };
     }
 
-    // 손익 패널 렌더링
+    // 손익 패널 렌더링 — 증감(±) 중심 표시
     function renderFplPL() {
       var content = document.getElementById('fpl-content');
       if (!content) return;
@@ -13868,79 +13868,77 @@ export function mainPage(): string {
           var src = isManual ? ' (수동)' : ' · ' + curMachine;
           sub.textContent = curYear + '년 ' + curMonth + '월' + src;
         } else {
-          sub.textContent = '⚙️ 설정에서 월/생산량을 입력하세요';
+          sub.textContent = '설정에서 월/생산량을 입력하세요';
         }
       }
 
       if (prodTon <= 0) {
         content.innerHTML = '<div style="text-align:center;padding:30px 0;color:#9ca3af;">' +
           '<i class="fas fa-inbox" style="font-size:24px;margin-bottom:8px;"></i>' +
-          '<p style="font-size:11px;line-height:1.6;">생산량 데이터가 없습니다<br><span style="color:#a5b4fc;">⚙️ 설정에서 생산량을 직접 입력하거나<br>CAPA 분석 탭에서 데이터를 로드하세요</span></p></div>';
+          '<p style="font-size:11px;line-height:1.6;">생산량 데이터가 없습니다<br><span style="color:#a5b4fc;">설정에서 생산량을 직접 입력하거나<br>CAPA 분석 탭에서 데이터를 로드하세요</span></p></div>';
         return;
       }
 
       var pl = calcFplPL(prodTon);
 
-      // 첫 로드 시 기준값 설정
+      // 첫 로드 시 기준값(=전월) 설정
       if (!_fplBaseline) {
         _fplBaseline = JSON.parse(JSON.stringify(pl));
       }
 
       var base = _fplBaseline;
-      var hasChange = Math.abs(pl.production - base.production) > 0.1;
+      var prodDelta = pl.production - base.production;
+      var hasChange = Math.abs(prodDelta) > 0.1;
 
       var html = '';
 
-      // 생산량 정보
-      html += '<div class="fpl-info-bar' + (hasChange ? ' warning' : '') + '">';
-      html += '<i class="fas fa-' + (hasChange ? 'exchange-alt' : 'industry') + '"></i>';
-      html += '<span>생산량: <b>' + pl.production.toFixed(0) + '톤</b>';
+      // 생산량 변동 헤더
+      html += '<div style="padding:10px 12px;background:' + (hasChange ? 'linear-gradient(135deg,#fef3c7,#fde68a)' : 'linear-gradient(135deg,#f0fdf4,#dcfce7)') + ';border-radius:10px;margin-bottom:12px;text-align:center;">';
+      html += '<div style="font-size:9px;color:#6b7280;margin-bottom:2px;">생산량 변동 (전월 대비)</div>';
       if (hasChange) {
-        var prodDelta = pl.production - base.production;
-        html += ' (기준 ' + base.production.toFixed(0) + '톤, ' + (prodDelta > 0 ? '+' : '') + prodDelta.toFixed(0) + '톤)';
+        html += '<div style="font-size:22px;font-weight:800;color:' + (prodDelta > 0 ? '#b45309' : '#dc2626') + ';font-family:SF Mono,Roboto Mono,monospace;">' + (prodDelta > 0 ? '+' : '') + prodDelta.toFixed(0) + ' <span style="font-size:12px;">톤</span></div>';
+        html += '<div style="font-size:9px;color:#92400e;">' + base.production.toFixed(0) + '톤 → ' + pl.production.toFixed(0) + '톤</div>';
+      } else {
+        html += '<div style="font-size:18px;font-weight:800;color:#16a34a;">0 <span style="font-size:11px;">변동 없음</span></div>';
+        html += '<div style="font-size:9px;color:#6b7280;">기준: ' + base.production.toFixed(0) + '톤</div>';
       }
-      html += '</span></div>';
+      html += '</div>';
 
-      // 손익 테이블
+      // 증감 테이블 — 각 항목별 ± 금액만 표시
       html += '<table class="fpl-pl-table">';
-      html += '<tr><th style="text-align:left;">항목</th><th>금액</th>' + (hasChange ? '<th>변동</th>' : '') + '</tr>';
+      html += '<tr><th style="text-align:left;">항목</th><th style="text-align:right;">증감액</th></tr>';
 
-      // 매출
-      html += fplPLRow('매출액', pl.revenue, hasChange ? pl.revenue - base.revenue : null, false, false, hasChange);
-
-      // 제조원가
-      html += fplPLRow('제조원가', pl.manufacturingCost, hasChange ? pl.manufacturingCost - base.manufacturingCost : null, true, false, hasChange);
-      html += fplPLSubRow('재료비', pl.materialCost, hasChange ? pl.materialCost - base.materialCost : null, hasChange);
-      html += fplPLSubRow('에너지비', pl.energyCost, hasChange ? pl.energyCost - base.energyCost : null, hasChange);
-      html += fplPLSubRow('인건비(고정)', pl.laborCost, hasChange ? pl.laborCost - base.laborCost : null, hasChange);
-      html += fplPLSubRow('감가상각(고정)', pl.depreciation, hasChange ? pl.depreciation - base.depreciation : null, hasChange);
-
-      // 물류비
-      html += fplPLRow('물류비', pl.logisticsCost, hasChange ? pl.logisticsCost - base.logisticsCost : null, true, false, hasChange);
-
-      // 판관비
-      html += fplPLRow('판관비(고정)', pl.sgaCost, hasChange ? pl.sgaCost - base.sgaCost : null, true, false, hasChange);
-
-      // 영업이익
-      html += fplPLRow('영업이익', pl.operatingProfit, hasChange ? pl.operatingProfit - base.operatingProfit : null, false, true, hasChange);
-
-      // 영업이익률
-      html += '<tr class="fpl-pl-profit">';
-      html += '<td class="fpl-pl-label">영업이익률</td>';
-      html += '<td class="fpl-pl-val" style="color:' + (pl.marginPct >= 0 ? '#16a34a' : '#dc2626') + ';">' + pl.marginPct.toFixed(1) + '%</td>';
-      if (hasChange) {
-        var marginDelta = pl.marginPct - base.marginPct;
-        var mClass = marginDelta > 0 ? 'fpl-profit-pos' : marginDelta < 0 ? 'fpl-profit-neg' : 'fpl-delta-zero';
-        html += '<td class="fpl-pl-delta ' + mClass + '">' + (marginDelta > 0 ? '+' : '') + marginDelta.toFixed(1) + '%p</td>';
-      }
-      html += '</tr>';
+      html += fplDeltaRow('매출액', pl.revenue - base.revenue, false);
+      html += '<tr><td colspan="2" style="padding:2px 0;border:none;"></td></tr>';
+      html += fplDeltaRow('제조원가', pl.manufacturingCost - base.manufacturingCost, true);
+      html += fplDeltaSubRow('재료비', pl.materialCost - base.materialCost, true);
+      html += fplDeltaSubRow('에너지비', pl.energyCost - base.energyCost, true);
+      html += fplDeltaSubRow('인건비(고정)', pl.laborCost - base.laborCost, true);
+      html += fplDeltaSubRow('감가상각(고정)', pl.depreciation - base.depreciation, true);
+      html += '<tr><td colspan="2" style="padding:2px 0;border:none;"></td></tr>';
+      html += fplDeltaRow('물류비', pl.logisticsCost - base.logisticsCost, true);
+      html += fplDeltaRow('판관비(고정)', pl.sgaCost - base.sgaCost, true);
 
       html += '</table>';
 
-      // 톤당 단가 참고
-      html += '<div style="margin-top:10px;padding:8px 10px;background:#f8fafc;border-radius:8px;font-size:9px;color:#6b7280;">';
-      html += '<i class="fas fa-info-circle mr-1"></i>톤당 재료비: ' + pl.matPerTon.toFixed(0) + '천원 (시뮬레이션 기준) | ';
-      html += '매출단가: ' + _fplRates.revenuePerTon + '천원/톤';
+      // 영업이익 증감 — 큰 박스로 강조
+      var profitDelta = pl.operatingProfit - base.operatingProfit;
+      var profitColor = profitDelta > 0 ? '#16a34a' : profitDelta < 0 ? '#dc2626' : '#6b7280';
+      var profitBg = profitDelta > 0 ? '#f0fdf4' : profitDelta < 0 ? '#fef2f2' : '#f9fafb';
+      html += '<div style="margin-top:12px;padding:14px;background:' + profitBg + ';border:2px solid ' + profitColor + '33;border-radius:12px;text-align:center;">';
+      html += '<div style="font-size:9px;color:#6b7280;margin-bottom:4px;">영업이익 증감</div>';
+      html += '<div style="font-size:24px;font-weight:900;color:' + profitColor + ';font-family:SF Mono,Roboto Mono,monospace;">';
+      if (Math.abs(profitDelta) < 0.5) {
+        html += '0';
+      } else {
+        html += (profitDelta > 0 ? '+' : '') + fplFmtDelta(profitDelta);
+      }
+      html += '</div>';
+      // 영업이익률 변동
+      var marginDelta = pl.marginPct - base.marginPct;
+      if (Math.abs(marginDelta) >= 0.1) {
+        html += '<div style="font-size:10px;color:' + profitColor + ';margin-top:2px;">(이익률 ' + (marginDelta > 0 ? '+' : '') + marginDelta.toFixed(1) + '%p)</div>';
+      }
       html += '</div>';
 
       content.innerHTML = html;
@@ -13960,51 +13958,44 @@ export function mainPage(): string {
       }
     }
 
-    function fplPLRow(label, value, delta, isCost, isProfit, hasChange) {
-      var trClass = isProfit ? ' class="fpl-pl-profit"' : '';
-      var html = '<tr' + trClass + '>';
-      html += '<td class="fpl-pl-label">' + label + '</td>';
-      var valColor = isProfit ? (value >= 0 ? '#16a34a' : '#dc2626') : '#111827';
-      html += '<td class="fpl-pl-val" style="color:' + valColor + ';">' + fplFmt(value) + '</td>';
-      if (hasChange) {
-        html += '<td class="fpl-pl-delta">' + fplDeltaStr(delta, isCost) + '</td>';
-      }
+    // 증감 행 (주항목)
+    function fplDeltaRow(label, delta, isCost) {
+      var html = '<tr>';
+      html += '<td class="fpl-pl-label" style="font-weight:600;">' + label + '</td>';
+      html += '<td class="fpl-pl-val" style="text-align:right;">' + fplDeltaCell(delta, isCost) + '</td>';
       html += '</tr>';
       return html;
     }
 
-    function fplPLSubRow(label, value, delta, hasChange) {
+    // 증감 행 (하위항목)
+    function fplDeltaSubRow(label, delta, isCost) {
       var html = '<tr>';
       html += '<td class="fpl-pl-label fpl-pl-sub">' + label + '</td>';
-      html += '<td class="fpl-pl-val" style="font-size:10px;color:#4b5563;">' + fplFmt(value) + '</td>';
-      if (hasChange) {
-        html += '<td class="fpl-pl-delta" style="font-size:9px;">' + fplDeltaStr(delta, true) + '</td>';
-      }
+      html += '<td style="text-align:right;font-size:10px;">' + fplDeltaCell(delta, isCost) + '</td>';
       html += '</tr>';
       return html;
     }
 
-    function fplFmt(val) {
-      // 백만원 단위로 표시, 억 단위 병기
-      if (Math.abs(val) >= 1000) {
-        return (val / 100).toFixed(0) + '<span style="font-size:8px;color:#9ca3af;">억</span>';
+    // 증감 셀: 0이면 "0", 양수면 +금액, 음수면 △금액
+    function fplDeltaCell(delta, isCost) {
+      if (Math.abs(delta) < 0.5) {
+        return '<span style="color:#9ca3af;font-family:SF Mono,Roboto Mono,monospace;font-weight:600;">0</span>';
       }
-      return val.toFixed(0) + '<span style="font-size:8px;color:#9ca3af;">백만</span>';
+      // 색상: 비용은 증가=빨강(나쁨), 감소=녹색(좋음) / 매출/이익은 반대
+      var isGood = isCost ? (delta < 0) : (delta > 0);
+      var color = isGood ? '#16a34a' : '#dc2626';
+      var sign = delta > 0 ? '+' : (delta < 0 ? String.fromCharCode(9651) : ''); // △ for decrease
+      var display = fplFmtDelta(delta);
+      return '<span style="color:' + color + ';font-family:SF Mono,Roboto Mono,monospace;font-weight:700;">' + sign + display + '</span>';
     }
 
-    function fplDeltaStr(delta, isCost) {
-      if (delta === null || Math.abs(delta) < 0.5) return '<span class="fpl-delta-zero">-</span>';
-      // 비용: 증가=나쁨(빨강), 감소=좋음(녹색) / 수익/이익: 증가=좋음(녹색), 감소=나쁨(빨강)
-      var positive = delta > 0;
-      var cls;
-      if (isCost) {
-        cls = positive ? 'fpl-delta-pos' : 'fpl-delta-neg'; // 비용 증가=빨강
-      } else {
-        cls = positive ? 'fpl-profit-pos' : 'fpl-profit-neg'; // 수익 증가=녹색
+    // 증감액 포맷: 백만원 단위 → 억 또는 백만원 표시 (절대값)
+    function fplFmtDelta(val) {
+      var abs = Math.abs(val);
+      if (abs >= 1000) {
+        return (abs / 100).toFixed(0) + '억';
       }
-      var sign = positive ? '+' : '';
-      var display = Math.abs(delta) >= 1000 ? (delta / 100).toFixed(0) + '억' : delta.toFixed(0) + '백만';
-      return '<span class="' + cls + '">' + sign + display + '</span>';
+      return abs.toFixed(0) + '백만';
     }
 
     // 기준 리셋

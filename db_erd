@@ -1,0 +1,136 @@
+digraph DB_Schema {
+	bgcolor=white dpi=150 fontname=NanumGothic fontsize=10 nodesep=0.6 pad=0.5 rankdir=LR ranksep=1.5
+	node [fontname=NanumGothic fontsize=9 shape=none]
+	edge [arrowsize=0.7 fontname=NanumGothic fontsize=7]
+	units [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+    <TR><TD COLSPAN="3" BGCOLOR="#4f46e5"><FONT COLOR="white"><B>units (호기 마스터)</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Column</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Type</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Key</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#fffbeb" ALIGN="LEFT" PORT="id"><FONT POINT-SIZE="8">id</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7" COLOR="#6b7280">PK AUTO</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="unit_code"><FONT POINT-SIZE="8">unit_code</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">UNIQUE</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="unit_name"><FONT POINT-SIZE="8">unit_name</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">NOT NULL</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="is_active"><FONT POINT-SIZE="8">is_active</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">DEFAULT 1</FONT></TD></TR>
+    </TABLE>>]
+	materials [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+    <TR><TD COLSPAN="3" BGCOLOR="#4f46e5"><FONT COLOR="white"><B>materials (원부자재)</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Column</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Type</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Key</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#fffbeb" ALIGN="LEFT" PORT="id"><FONT POINT-SIZE="8">id</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7" COLOR="#6b7280">PK AUTO</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="material_code"><FONT POINT-SIZE="8">material_code</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">UNIQUE</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="material_name"><FONT POINT-SIZE="8">material_name</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">NOT NULL</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="category"><FONT POINT-SIZE="8">category</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">RAW/SUB</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="unit_of_measure"><FONT POINT-SIZE="8">unit_of_measure</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    </TABLE>>]
+	products [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+    <TR><TD COLSPAN="3" BGCOLOR="#4f46e5"><FONT COLOR="white"><B>products (제품)</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Column</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Type</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Key</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#fffbeb" ALIGN="LEFT" PORT="id"><FONT POINT-SIZE="8">id</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7" COLOR="#6b7280">PK AUTO</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="product_code"><FONT POINT-SIZE="8">product_code</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">UNIQUE</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="product_name"><FONT POINT-SIZE="8">product_name</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">NOT NULL</FONT></TD></TR>
+    <TR><TD BGCOLOR="#f0fdf4" ALIGN="LEFT" PORT="unit_id"><FONT POINT-SIZE="8">unit_id</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7" COLOR="#6b7280">FK</FONT></TD></TR>
+    </TABLE>>]
+	bom [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+    <TR><TD COLSPAN="3" BGCOLOR="#4f46e5"><FONT COLOR="white"><B>bom (자재명세서)</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Column</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Type</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Key</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#fffbeb" ALIGN="LEFT" PORT="id"><FONT POINT-SIZE="8">id</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7" COLOR="#6b7280">PK AUTO</FONT></TD></TR>
+    <TR><TD BGCOLOR="#f0fdf4" ALIGN="LEFT" PORT="product_id"><FONT POINT-SIZE="8">product_id</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7" COLOR="#6b7280">FK</FONT></TD></TR>
+    <TR><TD BGCOLOR="#f0fdf4" ALIGN="LEFT" PORT="material_id"><FONT POINT-SIZE="8">material_id</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7" COLOR="#6b7280">FK</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="unit_consumption"><FONT POINT-SIZE="8">unit_consumption</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">REAL</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    </TABLE>>]
+	raw_records [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+    <TR><TD COLSPAN="3" BGCOLOR="#4f46e5"><FONT COLOR="white"><B>raw_records (SAP원본)</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Column</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Type</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Key</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#fffbeb" ALIGN="LEFT" PORT="id"><FONT POINT-SIZE="8">id</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7" COLOR="#6b7280">PK AUTO</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="calendar_ym"><FONT POINT-SIZE="8">calendar_ym</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">YYYYMM</FONT></TD></TR>
+    <TR><TD BGCOLOR="#f0fdf4" ALIGN="LEFT" PORT="machine_code"><FONT POINT-SIZE="8">machine_code</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7" COLOR="#6b7280">FK</FONT></TD></TR>
+    <TR><TD BGCOLOR="#f0fdf4" ALIGN="LEFT" PORT="material_code"><FONT POINT-SIZE="8">material_code</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7" COLOR="#6b7280">FK</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="division"><FONT POINT-SIZE="8">division</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">PS/HL</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="plan_qty"><FONT POINT-SIZE="8">plan_qty</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">REAL</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="actual_qty"><FONT POINT-SIZE="8">actual_qty</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">REAL</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="actual_amount"><FONT POINT-SIZE="8">actual_amount</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">REAL</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    </TABLE>>]
+	monthly_records [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+    <TR><TD COLSPAN="3" BGCOLOR="#4f46e5"><FONT COLOR="white"><B>monthly_records (월별집계)</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Column</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Type</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Key</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#fffbeb" ALIGN="LEFT" PORT="id"><FONT POINT-SIZE="8">id</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7" COLOR="#6b7280">PK AUTO</FONT></TD></TR>
+    <TR><TD BGCOLOR="#f0fdf4" ALIGN="LEFT" PORT="unit_id"><FONT POINT-SIZE="8">unit_id</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7" COLOR="#6b7280">FK</FONT></TD></TR>
+    <TR><TD BGCOLOR="#f0fdf4" ALIGN="LEFT" PORT="material_id"><FONT POINT-SIZE="8">material_id</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7" COLOR="#6b7280">FK</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="year"><FONT POINT-SIZE="8">year</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="month"><FONT POINT-SIZE="8">month</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="usage_qty"><FONT POINT-SIZE="8">usage_qty</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">REAL</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="unit_price"><FONT POINT-SIZE="8">unit_price</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">REAL</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="production_qty"><FONT POINT-SIZE="8">production_qty</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">REAL</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    </TABLE>>]
+	machine_capacity [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+    <TR><TD COLSPAN="3" BGCOLOR="#4f46e5"><FONT COLOR="white"><B>machine_capacity (생산능력)</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Column</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Type</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Key</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#fffbeb" ALIGN="LEFT" PORT="id"><FONT POINT-SIZE="8">id</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7" COLOR="#6b7280">PK AUTO</FONT></TD></TR>
+    <TR><TD BGCOLOR="#f0fdf4" ALIGN="LEFT" PORT="machine_code"><FONT POINT-SIZE="8">machine_code</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7" COLOR="#6b7280">FK</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="hourly_capacity"><FONT POINT-SIZE="8">hourly_capacity</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">REAL</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="paper_width"><FONT POINT-SIZE="8">paper_width</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">REAL</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">mm</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="valid_from"><FONT POINT-SIZE="8">valid_from</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    </TABLE>>]
+	machine_op_time [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+    <TR><TD COLSPAN="3" BGCOLOR="#4f46e5"><FONT COLOR="white"><B>machine_operating_time (가동일수)</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Column</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Type</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Key</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#fffbeb" ALIGN="LEFT" PORT="id"><FONT POINT-SIZE="8">id</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7" COLOR="#6b7280">PK AUTO</FONT></TD></TR>
+    <TR><TD BGCOLOR="#f0fdf4" ALIGN="LEFT" PORT="machine_code"><FONT POINT-SIZE="8">machine_code</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7" COLOR="#6b7280">FK</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="ym"><FONT POINT-SIZE="8">ym</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">YYYYMM</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="total_days"><FONT POINT-SIZE="8">total_days</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">REAL</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="planned_shutdown"><FONT POINT-SIZE="8">planned_shutdown</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">REAL</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="op_normal_days"><FONT POINT-SIZE="8">op_normal_days</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">REAL</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="non_op_maint"><FONT POINT-SIZE="8">non_op_maint</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">REAL</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    </TABLE>>]
+	grade_prod [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+    <TR><TD COLSPAN="3" BGCOLOR="#4f46e5"><FONT COLOR="white"><B>grade_production_master (지종생산성)</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Column</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Type</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Key</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#fffbeb" ALIGN="LEFT" PORT="id"><FONT POINT-SIZE="8">id</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7" COLOR="#6b7280">PK AUTO</FONT></TD></TR>
+    <TR><TD BGCOLOR="#f0fdf4" ALIGN="LEFT" PORT="machine_code"><FONT POINT-SIZE="8">machine_code</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7" COLOR="#6b7280">FK</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="grade_name"><FONT POINT-SIZE="8">grade_name</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="basis_weight"><FONT POINT-SIZE="8">basis_weight</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">REAL</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">g/m2</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="line_speed"><FONT POINT-SIZE="8">line_speed</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">REAL</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">m/min</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="daily_ton"><FONT POINT-SIZE="8">daily_ton</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">REAL</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">GENERATED</FONT></TD></TR>
+    </TABLE>>]
+	batch_jobs [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+    <TR><TD COLSPAN="3" BGCOLOR="#4f46e5"><FONT COLOR="white"><B>batch_jobs (배치이력)</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Column</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Type</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Key</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#fffbeb" ALIGN="LEFT" PORT="id"><FONT POINT-SIZE="8">id</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7" COLOR="#6b7280">PK AUTO</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="job_id"><FONT POINT-SIZE="8">job_id</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">UNIQUE</FONT></TD></TR>
+    <TR><TD BGCOLOR="#f0fdf4" ALIGN="LEFT" PORT="rfc_code"><FONT POINT-SIZE="8">rfc_code</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7" COLOR="#6b7280">FK</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="input_month"><FONT POINT-SIZE="8">input_month</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="status"><FONT POINT-SIZE="8">status</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    </TABLE>>]
+	rfc_master [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+    <TR><TD COLSPAN="3" BGCOLOR="#4f46e5"><FONT COLOR="white"><B>rfc_master (RFC관리)</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Column</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Type</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Key</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#fffbeb" ALIGN="LEFT" PORT="id"><FONT POINT-SIZE="8">id</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7" COLOR="#6b7280">PK AUTO</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="rfc_code"><FONT POINT-SIZE="8">rfc_code</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280">UNIQUE</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="rfc_function"><FONT POINT-SIZE="8">rfc_function</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="target_table"><FONT POINT-SIZE="8">target_table</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    </TABLE>>]
+	exclusion_rules [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+    <TR><TD COLSPAN="3" BGCOLOR="#4f46e5"><FONT COLOR="white"><B>exclusion_rules (제외규칙)</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Column</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Type</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Key</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#fffbeb" ALIGN="LEFT" PORT="id"><FONT POINT-SIZE="8">id</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7" COLOR="#6b7280">PK AUTO</FONT></TD></TR>
+    <TR><TD BGCOLOR="#f0fdf4" ALIGN="LEFT" PORT="machine_code"><FONT POINT-SIZE="8">machine_code</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#f0fdf4"><FONT POINT-SIZE="7" COLOR="#6b7280">FK</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="mat_group_keyword"><FONT POINT-SIZE="8">mat_group_keyword</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="excluded_product"><FONT POINT-SIZE="8">excluded_product</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    </TABLE>>]
+	simulations [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+    <TR><TD COLSPAN="3" BGCOLOR="#4f46e5"><FONT COLOR="white"><B>simulations (시뮬저장)</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Column</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Type</B></FONT></TD><TD BGCOLOR="#e0e7ff"><FONT POINT-SIZE="7"><B>Key</B></FONT></TD></TR>
+    <TR><TD BGCOLOR="#fffbeb" ALIGN="LEFT" PORT="id"><FONT POINT-SIZE="8">id</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7">INT</FONT></TD><TD BGCOLOR="#fffbeb"><FONT POINT-SIZE="7" COLOR="#6b7280">PK AUTO</FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="name"><FONT POINT-SIZE="8">name</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">TEXT</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    <TR><TD BGCOLOR="#ffffff" ALIGN="LEFT" PORT="created_at"><FONT POINT-SIZE="8">created_at</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7">DATETIME</FONT></TD><TD BGCOLOR="#ffffff"><FONT POINT-SIZE="7" COLOR="#6b7280"></FONT></TD></TR>
+    </TABLE>>]
+	products:unit_id -> units:id [color="#dc2626" penwidth=1.5]
+	bom:product_id -> products:id [color="#dc2626" penwidth=1.5]
+	bom:material_id -> materials:id [color="#dc2626" penwidth=1.5]
+	raw_records:machine_code -> units:unit_code [color="#2563eb" penwidth=1.2]
+	raw_records:material_code -> materials:material_code [color="#2563eb" penwidth=1.2]
+	monthly_records:unit_id -> units:id [color="#dc2626" penwidth=1.5]
+	monthly_records:material_id -> materials:id [color="#dc2626" penwidth=1.5]
+	machine_capacity:machine_code -> units:unit_code [color="#059669" penwidth=1.2]
+	machine_op_time:machine_code -> units:unit_code [color="#059669" penwidth=1.2]
+	grade_prod:machine_code -> units:unit_code [color="#059669" penwidth=1.2]
+	batch_jobs:rfc_code -> rfc_master:rfc_code [color="#d97706" penwidth=1.2]
+	exclusion_rules:machine_code -> units:unit_code [color="#059669" penwidth=1.2]
+}
