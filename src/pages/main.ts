@@ -2195,9 +2195,9 @@ export function mainPage(): string {
           <table class="w-full text-xs">
             <thead class="bg-slate-100 sticky top-0 z-10">
               <tr>
-                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 w-10">#</th>
-                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200">지종 (Product Type)</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">평량 (g/m²)</th>
+                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 w-10 sticky left-0 z-20 bg-slate-100">#</th>
+                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 w-28 sticky left-[40px] z-20 bg-slate-100 whitespace-nowrap">지종</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28 sticky left-[152px] z-20 bg-slate-100 border-r border-slate-300 whitespace-nowrap">평량 (g/m²)</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">지폭 (mm)</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-28">선속 (m/min)</th>
                 <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 w-36">이론 생산량 (톤/일)</th>
@@ -6785,11 +6785,11 @@ export function mainPage(): string {
       lineSpeedData.forEach(function(r, idx) {
         var dailyTon = calcDailyProduction(r.speed, r.basis_weight, r.trim_width);
         html += '<tr class="border-b border-slate-100 hover:bg-blue-50/30">';
-        html += '<td class="px-3 py-2 text-gray-400 font-mono">' + (idx + 1) + '</td>';
+        html += '<td class="px-3 py-2 text-gray-400 font-mono sticky left-0 bg-white z-10">' + (idx + 1) + '</td>';
         // 지종
-        html += '<td class="px-3 py-2"><input type="text" data-idx="' + idx + '" data-field="product_type" value="' + (r.product_type || '') + '" class="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-200" placeholder="지종명 입력" onchange="onLsFieldChange(this)"></td>';
+        html += '<td class="px-3 py-2 sticky left-[40px] bg-white z-10"><input type="text" data-idx="' + idx + '" data-field="product_type" value="' + (r.product_type || '') + '" class="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-200" placeholder="지종명 입력" onchange="onLsFieldChange(this)"></td>';
         // 평량
-        html += '<td class="px-3 py-2 text-center"><input type="number" step="0.1" data-idx="' + idx + '" data-field="basis_weight" value="' + (r.basis_weight || '') + '" class="w-20 text-center border border-gray-200 rounded px-2 py-1 text-xs font-mono focus:ring-1 focus:ring-blue-200" placeholder="g/m²" onchange="onLsFieldChange(this)"></td>';
+        html += '<td class="px-3 py-2 text-center sticky left-[152px] bg-white z-10 border-r border-slate-200"><input type="number" step="0.1" data-idx="' + idx + '" data-field="basis_weight" value="' + (r.basis_weight || '') + '" class="w-20 text-center border border-gray-200 rounded px-2 py-1 text-xs font-mono focus:ring-1 focus:ring-blue-200" placeholder="g/m²" onchange="onLsFieldChange(this)"></td>';
         // 지폭
         html += '<td class="px-3 py-2 text-center"><input type="number" step="1" data-idx="' + idx + '" data-field="trim_width" value="' + (r.trim_width || '') + '" class="w-20 text-center border border-gray-200 rounded px-2 py-1 text-xs font-mono focus:ring-1 focus:ring-blue-200" placeholder="mm" onchange="onLsFieldChange(this)"></td>';
         // 선속
