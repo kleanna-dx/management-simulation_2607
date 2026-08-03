@@ -3866,18 +3866,16 @@ app.post('/api/grade-production/batch', async (c) => {
   ).bind(div, machine_code).first() as any
   const defaultPW = mc?.paper_width || 3510
 
+  // 기존 데이터 삭제 후 새로 INSERT (전체 교체 방식)
+  await db.prepare(
+    `DELETE FROM grade_production_master WHERE division = ? AND machine_code = ?`
+  ).bind(div, machine_code).run()
+
   const stmt = db.prepare(`
     INSERT INTO grade_production_master 
       (division, machine_code, grade_name, basis_weight, line_speed, paper_width, 
        waste_rate, sort_order, is_active, note)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(division, machine_code, grade_name, basis_weight, line_speed) DO UPDATE SET
-      paper_width = excluded.paper_width,
-      waste_rate = excluded.waste_rate,
-      sort_order = excluded.sort_order,
-      is_active = excluded.is_active,
-      note = excluded.note,
-      updated_at = CURRENT_TIMESTAMP
   `)
 
   const batch = entries.map((e: any, i: number) => stmt.bind(
