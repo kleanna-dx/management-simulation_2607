@@ -3216,7 +3216,7 @@ export function mainPage(): string {
           <div class="flex items-center gap-4 text-xs">
             <span class="text-gray-500">등록 지종: <strong id="gp-count" class="text-gray-800">-</strong>개</span>
             <span class="text-gray-500">가중평균 생산성: <strong id="gp-avg-prod" class="text-blue-700">-</strong> 톤/일</span>
-            <span class="text-gray-500">폐품율: <strong id="gp-waste-rate" class="text-red-500">-</strong></span>
+
           </div>
         </div>
 
@@ -3231,14 +3231,11 @@ export function mainPage(): string {
                 <th class="px-2 py-2 text-center font-medium">지폭<br><span class="text-[9px]">(mm)</span></th>
                 <th class="px-2 py-2 text-center font-medium">선속<br><span class="text-[9px]">(m/min)</span></th>
                 <th class="px-2 py-2 text-center font-medium text-blue-600">이론생산성<br><span class="text-[9px]">(톤/일)</span></th>
-                <th class="px-2 py-2 text-center font-medium text-red-400">폐품율<br><span class="text-[9px]">(%)</span></th>
-                <th class="px-2 py-2 text-center font-medium text-emerald-600">양품생산성<br><span class="text-[9px]">(톤/일)</span></th>
-                <th class="px-2 py-2 text-center font-medium">비고</th>
                 <th class="px-2 py-2 text-center font-medium w-8">삭제</th>
               </tr>
             </thead>
             <tbody id="gp-table-body">
-              <tr><td colspan="10" class="text-center py-6 text-gray-400">호기를 선택하세요</td></tr>
+              <tr><td colspan="7" class="text-center py-6 text-gray-400">호기를 선택하세요</td></tr>
             </tbody>
             <tfoot id="gp-table-foot" class="bg-slate-50 font-semibold border-t-2 border-slate-200">
             </tfoot>
@@ -12959,20 +12956,17 @@ export function mainPage(): string {
       if (!tbody) return;
 
       if (!gpData || gpData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-6 text-gray-400">등록된 지종이 없습니다. [행 추가]로 등록하세요</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-gray-400">등록된 지종이 없습니다. [행 추가]로 등록하세요</td></tr>';
         if (tfoot) tfoot.innerHTML = '';
         updateGpSummary();
         return;
       }
 
       var html = '';
-      var totalTheor = 0, totalGood = 0, count = 0;
+      var totalTheor = 0, count = 0;
       gpData.forEach(function(g, idx) {
         var theor = g.theoretical_daily_ton || 0;
-        var good = g.good_daily_ton || 0;
-        var wr = ((g.waste_rate || 0) * 100).toFixed(2);
         totalTheor += theor;
-        totalGood += good;
         count++;
 
         html += '<tr class="border-b border-slate-100 hover:bg-blue-50/30 gp-row" data-id="' + (g.id || '') + '">' +
@@ -12982,9 +12976,6 @@ export function mainPage(): string {
           '<td class="px-2 py-1.5 text-center"><input type="number" data-field="paper_width" value="' + (g.paper_width || 3510) + '" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)"></td>' +
           '<td class="px-2 py-1.5 text-center"><input type="number" data-field="line_speed" value="' + (g.line_speed || '') + '" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)"></td>' +
           '<td class="px-2 py-1.5 text-center font-semibold text-blue-700 gp-theor">' + theor.toFixed(1) + '</td>' +
-          '<td class="px-2 py-1.5 text-center"><input type="number" step="0.01" data-field="waste_rate" value="' + wr + '" class="w-14 text-center text-xs border border-red-200 rounded px-1 py-0.5 bg-red-50/30 gp-input" onchange="recalcGpRow(this)"></td>' +
-          '<td class="px-2 py-1.5 text-center font-semibold text-emerald-700 gp-good">' + good.toFixed(1) + '</td>' +
-          '<td class="px-2 py-1.5"><input type="text" data-field="note" value="' + (g.note || '') + '" class="w-24 text-[10px] border border-gray-200 rounded px-1 py-0.5 gp-input" placeholder="메모"></td>' +
           '<td class="px-2 py-1.5 text-center"><button onclick="removeGpRow(this)" class="text-red-400 hover:text-red-600"><i class="fas fa-trash-alt"></i></button></td>' +
           '</tr>';
       });
@@ -12995,9 +12986,7 @@ export function mainPage(): string {
         tfoot.innerHTML = '<tr>' +
           '<td class="px-2 py-2" colspan="5"><strong>합계 (' + count + '건)</strong></td>' +
           '<td class="px-2 py-2 text-center text-blue-700">' + totalTheor.toFixed(1) + '</td>' +
-          '<td class="px-2 py-2"></td>' +
-          '<td class="px-2 py-2 text-center text-emerald-700">' + totalGood.toFixed(1) + '</td>' +
-          '<td colspan="2"></td></tr>';
+          '<td></td></tr>';
       }
 
       updateGpSummary();
@@ -13005,19 +12994,16 @@ export function mainPage(): string {
 
     function updateGpSummary() {
       var count = gpData ? gpData.length : 0;
-      var avgProd = 0, avgWaste = 0;
+      var avgProd = 0;
       if (count > 0) {
-        var sumTheor = 0, sumWaste = 0;
-        gpData.forEach(function(g) { sumTheor += (g.theoretical_daily_ton || 0); sumWaste += (g.waste_rate || 0); });
+        var sumTheor = 0;
+        gpData.forEach(function(g) { sumTheor += (g.theoretical_daily_ton || 0); });
         avgProd = sumTheor / count;
-        avgWaste = (sumWaste / count) * 100;
       }
       var el1 = document.getElementById('gp-count');
       var el2 = document.getElementById('gp-avg-prod');
-      var el3 = document.getElementById('gp-waste-rate');
       if (el1) el1.textContent = count;
       if (el2) el2.textContent = avgProd.toFixed(1);
-      if (el3) el3.textContent = avgWaste.toFixed(2) + '%';
     }
 
     function recalcGpRow(el) {
@@ -13026,12 +13012,9 @@ export function mainPage(): string {
       var bw = parseFloat(tr.querySelector('[data-field="basis_weight"]').value) || 0;
       var ls = parseFloat(tr.querySelector('[data-field="line_speed"]').value) || 0;
       var pw = parseFloat(tr.querySelector('[data-field="paper_width"]').value) || 3510;
-      var wr = parseFloat(tr.querySelector('[data-field="waste_rate"]').value) / 100 || 0.0122;
       // 이론생산성 = 평량 × 지폭 × 선속 × 1440 × 10⁻⁹
       var theor = bw * pw * ls * 1440 * 0.000000001;
-      var good = theor * (1 - wr);
       tr.querySelector('.gp-theor').textContent = theor.toFixed(1);
-      tr.querySelector('.gp-good').textContent = good.toFixed(1);
     }
 
     function addGradeRow() {
@@ -13050,9 +13033,6 @@ export function mainPage(): string {
         '<td class="px-2 py-1.5 text-center"><input type="number" data-field="paper_width" value="3510" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)"></td>' +
         '<td class="px-2 py-1.5 text-center"><input type="number" data-field="line_speed" value="" class="w-16 text-center text-xs border border-gray-200 rounded px-1 py-0.5 gp-input" onchange="recalcGpRow(this)" placeholder="300"></td>' +
         '<td class="px-2 py-1.5 text-center font-semibold text-blue-700 gp-theor">0.0</td>' +
-        '<td class="px-2 py-1.5 text-center"><input type="number" step="0.01" data-field="waste_rate" value="1.22" class="w-14 text-center text-xs border border-red-200 rounded px-1 py-0.5 bg-red-50/30 gp-input" onchange="recalcGpRow(this)"></td>' +
-        '<td class="px-2 py-1.5 text-center font-semibold text-emerald-700 gp-good">0.0</td>' +
-        '<td class="px-2 py-1.5"><input type="text" data-field="note" value="" class="w-24 text-[10px] border border-gray-200 rounded px-1 py-0.5 gp-input" placeholder="메모"></td>' +
         '<td class="px-2 py-1.5 text-center"><button onclick="removeGpRow(this)" class="text-red-400 hover:text-red-600"><i class="fas fa-trash-alt"></i></button></td>';
       tbody.appendChild(tr);
     }
@@ -13079,9 +13059,7 @@ export function mainPage(): string {
           basis_weight: bw,
           line_speed: ls,
           paper_width: parseFloat(tr.querySelector('[data-field="paper_width"]').value) || 3510,
-          waste_rate: (parseFloat(tr.querySelector('[data-field="waste_rate"]').value) || 1.22) / 100,
-          sort_order: idx,
-          note: tr.querySelector('[data-field="note"]')?.value || ''
+          sort_order: idx
         });
       });
 
