@@ -205,9 +205,6 @@ export function mainPage(): string {
           <button onclick="switchTab('linespeed')" id="tab-linespeed" class="nav-item w-full">
             <i class="fas fa-tachometer-alt w-4 text-center"></i><span>제지 생산 선속</span>
           </button>
-          <button onclick="switchTab('opdays')" id="tab-opdays" class="nav-item w-full">
-            <i class="fas fa-calendar-check w-4 text-center"></i><span>가동일수</span>
-          </button>
         </div>
       </nav>
 
@@ -309,15 +306,8 @@ export function mainPage(): string {
             <div class="flow-step-desc">지종별 선속/지폭 마스터</div>
           </button>
           <div class="flow-arrow"><i class="fas fa-chevron-right text-gray-300"></i></div>
-          <button onclick="switchTab('opdays')" class="flow-step flow-step-config">
-            <div class="flow-step-num">2-2</div>
-            <div class="flow-step-icon"><i class="fas fa-calendar-check"></i></div>
-            <div class="flow-step-label">가동일수</div>
-            <div class="flow-step-desc">월별 운휴/가동일 계획</div>
-          </button>
-          <div class="flow-arrow"><i class="fas fa-chevron-right text-gray-300"></i></div>
           <button onclick="switchTab('optime')" class="flow-step flow-step-config">
-            <div class="flow-step-num">2-3</div>
+            <div class="flow-step-num">2-2</div>
             <div class="flow-step-icon"><i class="fas fa-clock"></i></div>
             <div class="flow-step-label">가동시간</div>
             <div class="flow-step-desc">호기별 가동시간 관리</div>
@@ -2220,86 +2210,6 @@ export function mainPage(): string {
       </div>
     </div>
 
-    <!-- 가동일수 관리 -->
-    <div id="content-opdays" class="hidden fade-in w-full space-y-5">
-      <div class="card p-6">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-calendar-check text-indigo-500 mr-1.5"></i>월별 가동일수 관리</h3>
-            <p class="text-xs text-gray-400 mt-1">호기별/연도별 월간 가동일수를 설정합니다. 생산 CAPA 분석에 활용됩니다.</p>
-          </div>
-          <div class="flex items-center gap-2">
-            <button onclick="loadOpDaysData()" class="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-slate-200 transition">
-              <i class="fas fa-sync-alt mr-1"></i>새로고침
-            </button>
-            <button onclick="saveOpDaysData()" class="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-medium hover:bg-emerald-600 transition">
-              <i class="fas fa-save mr-1"></i>저장
-            </button>
-          </div>
-        </div>
-
-        <!-- 연도 + 호기 선택 -->
-        <div class="flex items-center gap-4 mb-4 p-3 bg-slate-50 rounded-lg">
-          <div class="flex items-center gap-2">
-            <label class="text-xs font-medium text-gray-500">연도:</label>
-            <select id="od-year-select" onchange="loadOpDaysData()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-mono focus:ring-1 focus:ring-blue-200">
-              <option value="2024">2024</option>
-              <option value="2025">2025</option>
-              <option value="2026" selected>2026</option>
-              <option value="2027">2027</option>
-            </select>
-          </div>
-          <div class="flex items-center gap-2">
-            <label class="text-xs font-medium text-gray-500">호기:</label>
-            <select id="od-machine-select" onchange="loadOpDaysData()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-blue-200">
-            </select>
-          </div>
-          <button onclick="fillDefaultOpDays()" class="ml-auto px-3 py-1.5 bg-amber-100 border border-amber-200 text-amber-700 rounded-lg text-xs font-medium hover:bg-amber-200 transition">
-            <i class="fas fa-magic mr-1"></i>기본값 채우기 (30일)
-          </button>
-        </div>
-
-        <!-- 가동일수 테이블 (월별) -->
-        <div class="overflow-auto border border-slate-200 rounded-lg">
-          <table class="w-full text-xs">
-            <thead class="bg-slate-100 sticky top-0 z-10">
-              <tr>
-                <th class="px-3 py-2 text-left font-semibold text-gray-600 border-b border-slate-200 bg-slate-50 sticky left-0 z-20" style="min-width:100px">구분 <span class="font-normal text-gray-400">(단위: 일)</span></th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">1월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">2월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">3월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">4월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">5월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">6월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">7월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">8월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">9월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">10월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">11월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200" style="min-width:56px">12월</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600 border-b border-slate-200 bg-emerald-50" style="min-width:64px">합계</th>
-              </tr>
-            </thead>
-            <tbody id="od-table-body">
-              <tr><td colspan="14" class="text-center text-gray-400 py-8">호기를 선택하면 데이터가 표시됩니다.</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- 참고사항 -->
-        <div class="mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
-          <p class="text-[10px] text-indigo-600 font-medium mb-2"><i class="fas fa-info-circle mr-1"></i>가동일수 구성 항목</p>
-          <div class="text-[10px] leading-relaxed text-indigo-700 space-y-0.5">
-            <p><b class="text-orange-600">계획운휴</b></p>
-            <p><b class="text-blue-700">가동일수</b> — 정상 / 폐품 / 비계획생산 / 초출 / 절지 / 소계</p>
-            <p><b class="text-gray-600">비가동일수</b> — 지교 / 세척 / 사고 등 / 소계</p>
-          </div>
-          <p class="text-[10px] text-emerald-600 mt-2">• <b>조업 Total</b> = 계획운휴 + 가동일수 + 비가동일수 (자동 계산)</p>
-          <p class="text-[10px] text-gray-400 mt-1">※ '가동일수'가 '생산 CAPA 분석' 탭에서 월 최대 생산가능량 계산에 사용됩니다.</p>
-        </div>
-      </div>
-    </div>
-
     <!-- 생산 CAPA 분석 -->
     <div id="content-capa" class="hidden fade-in w-full space-y-5">
       <div class="card p-6">
@@ -3917,7 +3827,7 @@ export function mainPage(): string {
         if (match) return match[1];
       }
       // fallback: 숨겨지지 않은 content 패널 찾기
-      var panels = ['workflow','pldashboard','dashboard','forecast','costforecast','simflow','optime','prodplan','scenario','datainput','master','mapping','linespeed','opdays','capa'];
+      var panels = ['workflow','pldashboard','dashboard','forecast','costforecast','simflow','optime','prodplan','scenario','datainput','master','mapping','linespeed','capa'];
       for (var i = 0; i < panels.length; i++) {
         var el = document.getElementById('content-' + panels[i]);
         if (el && !el.classList.contains('hidden')) return panels[i];
@@ -4153,7 +4063,7 @@ export function mainPage(): string {
     // ========== 열린 탭 히스토리 관리 ==========
     var openTabs = []; // [{id:'pldashboard', title:'손익 대시보드'}, ...]
     var activeTabId = 'pldashboard';
-    var TAB_TITLES = { workflow:'업무 플로우', pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', mapping:'카테고리 매핑', linespeed:'생산 선속', opdays:'가동일수', capa:'CAPA 분석', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 예측', prodplan:'이동계획', scenario:'시나리오 분석' };
+    var TAB_TITLES = { workflow:'업무 플로우', pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', mapping:'카테고리 매핑', linespeed:'생산 선속', capa:'CAPA 분석', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 예측', prodplan:'이동계획', scenario:'시나리오 분석' };
 
     function addOpenTab(tabId) {
       // 이미 있으면 활성만 변경
@@ -4203,7 +4113,7 @@ export function mainPage(): string {
     }
 
     function switchTab(tab) {
-      ['workflow','pldashboard','dashboard','detail','upload','dataview','master','mapping','linespeed','opdays','capa','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime','costforecast','prodplan','scenario'].forEach(t => {
+      ['workflow','pldashboard','dashboard','detail','upload','dataview','master','mapping','linespeed','capa','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime','costforecast','prodplan','scenario'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.remove('nav-item-active'); el.classList.add('pill-tab-inactive'); }
@@ -4215,7 +4125,7 @@ export function mainPage(): string {
       // 열린 탭 히스토리에 추가
       addOpenTab(tab);
       // 페이지 제목 업데이트
-      const titles = { workflow:'업무 플로우', pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'원부재료 전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', mapping:'자재 카테고리 매핑', linespeed:'제지 생산 선속', opdays:'가동일수', capa:'생산 CAPA 분석', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측', prodplan:'생산량 이동계획', scenario:'시나리오 분석' };
+      const titles = { workflow:'업무 플로우', pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'원부재료 전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', mapping:'자재 카테고리 매핑', linespeed:'제지 생산 선속', capa:'생산 CAPA 분석', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측', prodplan:'생산량 이동계획', scenario:'시나리오 분석' };
       const titleEl = document.getElementById('page-title');
       if (titleEl) titleEl.textContent = titles[tab] || tab;
       if (tab === 'pldashboard') {
@@ -4255,10 +4165,6 @@ export function mainPage(): string {
         document.getElementById('content-linespeed')?.classList.remove('hidden');
         initLineSpeedMachineSelect();
         loadLineSpeedData();
-      } else if (tab === 'opdays') {
-        document.getElementById('content-opdays')?.classList.remove('hidden');
-        initOpDaysMachineSelect();
-        loadOpDaysData();
       } else if (tab === 'capa') {
         document.getElementById('content-capa')?.classList.remove('hidden');
         initCapaMachineSelect();
@@ -6985,139 +6891,6 @@ export function mainPage(): string {
       event.target.value = '';
     }
     // ======== END 제지 생산 선속 ========
-
-    // ======== 가동일수 관리 ========
-    var odShutdown = [0,0,0,0,0,0,0,0,0,0,0,0];
-    var odOperating = [0,0,0,0,0,0,0,0,0,0,0,0];
-    var odNonOperating = [0,0,0,0,0,0,0,0,0,0,0,0];
-
-    function initOpDaysMachineSelect() {
-      var sel = document.getElementById('od-machine-select');
-      if (!sel || sel.options.length > 0) return;
-      var currentDiv = typeof CC !== 'undefined' && CC.currentDivision ? CC.currentDivision : 'PS';
-      var machines = currentDiv === 'HL' ? ['TM5','PD1'] : ['PM2','PM3'];
-      machines.forEach(function(m) {
-        var opt = document.createElement('option');
-        opt.value = m; opt.textContent = m;
-        sel.appendChild(opt);
-      });
-    }
-
-    function getOdYear() {
-      var sel = document.getElementById('od-year-select');
-      return sel ? parseInt(sel.value) : 2026;
-    }
-    function getOdMachine() {
-      var sel = document.getElementById('od-machine-select');
-      return sel ? sel.value : 'PM2';
-    }
-
-    async function loadOpDaysData() {
-      var year = getOdYear();
-      var machine = getOdMachine();
-      var division = typeof CC !== 'undefined' && CC.currentDivision ? CC.currentDivision : 'PS';
-      try {
-        var res = await fetch('/api/opdays?year=' + year + '&machine=' + machine + '&division=' + division);
-        var json = await res.json();
-        odShutdown = json.shutdown || [0,0,0,0,0,0,0,0,0,0,0,0];
-        odOperating = json.operating || json.data || [0,0,0,0,0,0,0,0,0,0,0,0];
-        odNonOperating = json.non_operating || [0,0,0,0,0,0,0,0,0,0,0,0];
-      } catch(e) {
-        odShutdown = [0,0,0,0,0,0,0,0,0,0,0,0];
-        odOperating = [0,0,0,0,0,0,0,0,0,0,0,0];
-        odNonOperating = [0,0,0,0,0,0,0,0,0,0,0,0];
-      }
-      renderOpDaysTable();
-    }
-
-    function renderOpDaysTable() {
-      var tbody = document.getElementById('od-table-body');
-      if (!tbody) return;
-
-      var rows = [
-        { label: '계획운휴', key: 'shutdown', data: odShutdown, color: 'text-orange-600', bg: 'bg-orange-50' },
-        { label: '가동일수', key: 'operating', data: odOperating, color: 'text-blue-700', bg: 'bg-blue-50' },
-        { label: '비가동일수', key: 'non_operating', data: odNonOperating, color: 'text-gray-600', bg: 'bg-gray-50' }
-      ];
-
-      var html = '';
-
-      rows.forEach(function(row) {
-        var total = row.data.reduce(function(s,v){return s+(v||0);}, 0);
-        html += '<tr class="border-b border-slate-100">';
-        html += '<td class="px-3 py-2 text-left font-semibold ' + row.color + ' ' + row.bg + ' sticky left-0 z-10 border-r border-slate-200">' + row.label + '</td>';
-        for (var i = 0; i < 12; i++) {
-          html += '<td class="px-1 py-1.5 text-center">';
-          html += '<input type="number" min="0" max="31" step="0.5" value="' + (row.data[i] || '') + '" ';
-          html += 'data-odkey="' + row.key + '" data-odidx="' + i + '" onchange="onOdChange(this)" ';
-          html += 'class="w-12 text-center border border-gray-200 rounded px-1 py-1 text-xs focus:ring-1 focus:ring-indigo-200 focus:border-indigo-300">';
-          html += '</td>';
-        }
-        html += '<td class="px-3 py-2 text-center font-bold ' + row.color + ' bg-slate-50">' + (total ? parseFloat(total.toFixed(1)) : '-') + '</td>';
-        html += '</tr>';
-      });
-
-      // 조업 Total 행 (계획운휴 + 가동일수 + 비가동일수)
-      var totalRow = [];
-      var grandTotal = 0;
-      for (var i = 0; i < 12; i++) {
-        var v = parseFloat(((odShutdown[i]||0) + (odOperating[i]||0) + (odNonOperating[i]||0)).toFixed(1));
-        totalRow.push(v);
-        grandTotal += v;
-      }
-      grandTotal = parseFloat(grandTotal.toFixed(1));
-      html += '<tr class="border-t-2 border-emerald-300 bg-emerald-50">';
-      html += '<td class="px-3 py-2 text-left font-bold text-emerald-700 sticky left-0 z-10 bg-emerald-50 border-r border-slate-200"><i class="fas fa-calculator mr-1"></i>조업 Total</td>';
-      for (var i = 0; i < 12; i++) {
-        html += '<td class="px-3 py-2 text-center font-bold text-emerald-700">' + (totalRow[i] || '-') + '</td>';
-      }
-      html += '<td class="px-3 py-2 text-center font-bold text-emerald-800 bg-emerald-100">' + grandTotal + '</td>';
-      html += '</tr>';
-
-      tbody.innerHTML = html;
-    }
-
-    function onOdChange(inp) {
-      var key = inp.getAttribute('data-odkey');
-      var idx = parseInt(inp.getAttribute('data-odidx'));
-      var val = parseFloat(inp.value) || 0;
-      if (key === 'shutdown') odShutdown[idx] = val;
-      else if (key === 'operating') odOperating[idx] = val;
-      else if (key === 'non_operating') odNonOperating[idx] = val;
-      renderOpDaysTable();
-    }
-
-    function fillDefaultOpDays() {
-      odShutdown = [0,0,0,0,0,0,0,0,0,0,0,0];
-      odOperating = [30,28,30,30,30,30,30,30,30,30,30,30];
-      odNonOperating = [1,0,1,0,1,0,1,1,0,1,0,1];
-      renderOpDaysTable();
-    }
-
-    async function saveOpDaysData() {
-      var year = getOdYear();
-      var machine = getOdMachine();
-      var division = typeof CC !== 'undefined' && CC.currentDivision ? CC.currentDivision : 'PS';
-      try {
-        var res = await fetch('/api/opdays', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            year: year, machine: machine, division: division,
-            shutdown: odShutdown, operating: odOperating, non_operating: odNonOperating
-          })
-        });
-        var json = await res.json();
-        if (json.success) {
-          alert('가동일수 저장 완료');
-        } else {
-          alert('저장 실패: ' + (json.error || ''));
-        }
-      } catch(e) {
-        alert('저장 오류: ' + e.message);
-      }
-    }
-    // ======== END 가동일수 ========
 
     // ======== 생산 CAPA 분석 ========
     var capaData = []; // [{product_type, basis_weight, planned_qty, ...}]
