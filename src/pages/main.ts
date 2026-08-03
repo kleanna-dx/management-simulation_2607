@@ -13463,7 +13463,7 @@ export function mainPage(): string {
 
   </script>
 
-  <!-- ============ 플로팅 P&L 시뮬레이션 패널 ============ -->
+  <!-- ============ 플로팅 손익 시뮬레이션 패널 ============ -->
   <style>
     #fpl-toggle-btn {
       position: fixed;
@@ -13620,7 +13620,7 @@ export function mainPage(): string {
   </style>
 
   <!-- 토글 버튼 -->
-  <button id="fpl-toggle-btn" onclick="toggleFplPanel()" title="P&L 시뮬레이션">
+  <button id="fpl-toggle-btn" onclick="toggleFplPanel()" title="손익 시뮬레이션">
     <i class="fas fa-chart-line"></i>
     <span class="fpl-badge-dot" id="fpl-badge"></span>
   </button>
@@ -13629,7 +13629,7 @@ export function mainPage(): string {
   <div id="fpl-panel">
     <div class="fpl-head">
       <div>
-        <div class="fpl-head-title"><i class="fas fa-calculator mr-1.5"></i>P&L 시뮬레이션</div>
+        <div class="fpl-head-title"><i class="fas fa-calculator mr-1.5"></i>손익 시뮬레이션</div>
         <div class="fpl-head-sub" id="fpl-head-sub">CAPA 생산량 기반 손익 추정</div>
       </div>
       <div class="fpl-head-actions">
@@ -13653,7 +13653,7 @@ export function mainPage(): string {
   </div>
 
   <script>
-    // ======== P&L 시뮬레이션 패널 (Full P&L) ========
+    // ======== 손익 시뮬레이션 패널 ========
     var _fplOpen = false;
     var _fplSettingsOpen = false;
 
@@ -13674,7 +13674,7 @@ export function mainPage(): string {
       productionTon: null      // null이면 CAPA에서 자동
     };
 
-    // 기준 P&L (첫 로드 시 캡처, 이후 변경분 비교)
+    // 기준 손익 (첫 로드 시 캡처, 이후 변경분 비교)
     var _fplBaseline = null;
     var _fplCurrentMonth = null;
 
@@ -13710,7 +13710,7 @@ export function mainPage(): string {
     function renderFplSettingsForm() {
       var overlay = document.getElementById('fpl-settings');
       if (!overlay) return;
-      var html = '<div class="fpl-settings-title"><i class="fas fa-sliders-h mr-1"></i>P&L 설정</div>';
+      var html = '<div class="fpl-settings-title"><i class="fas fa-sliders-h mr-1"></i>손익 시뮬레이션 설정</div>';
 
       // 기간 및 생산량 설정
       html += '<div class="fpl-setting-section">기간 / 생산량</div>';
@@ -13810,7 +13810,7 @@ export function mainPage(): string {
       return totalProd > 0 ? totalCost / totalProd : 300;
     }
 
-    // P&L 계산 (단위: 백만원)
+    // 손익 계산 (단위: 백만원)
     function calcFplPL(productionTon) {
       var r = _fplRates;
       var matPerTon = getFplMaterialCostPerTon(); // 천원/톤
@@ -13842,7 +13842,7 @@ export function mainPage(): string {
       };
     }
 
-    // P&L 패널 렌더링
+    // 손익 패널 렌더링
     function renderFplPL() {
       var content = document.getElementById('fpl-content');
       if (!content) return;
@@ -13901,7 +13901,7 @@ export function mainPage(): string {
       }
       html += '</span></div>';
 
-      // P&L 테이블
+      // 손익 테이블
       html += '<table class="fpl-pl-table">';
       html += '<tr><th style="text-align:left;">항목</th><th>금액</th>' + (hasChange ? '<th>변동</th>' : '') + '</tr>';
 
