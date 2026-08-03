@@ -13459,26 +13459,24 @@ export function mainPage(): string {
     document.addEventListener('DOMContentLoaded', function() {
       addOpenTab('pldashboard');
       setTimeout(function() { loadPLDashboard(); }, 500);
-      // 플로팅 손익 패널 초기 로드
-      setTimeout(function() { loadFloatingPL(); }, 1000);
     });
 
   </script>
 
-  <!-- ============ 플로팅 손익 변화 패널 (Samsung AI 스타일) ============ -->
+  <!-- ============ 플로팅 손익 변화 추적 패널 ============ -->
   <style>
-    #floating-pl-toggle {
+    #fpl-toggle-btn {
       position: fixed;
       bottom: 24px;
       right: 24px;
       z-index: 9998;
-      width: 52px;
-      height: 52px;
-      border-radius: 50%;
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
       background: linear-gradient(135deg, #4f46e5, #7c3aed);
       color: white;
       border: none;
-      box-shadow: 0 4px 20px rgba(79,70,229,0.4), 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 20px rgba(79,70,229,0.35), 0 2px 8px rgba(0,0,0,0.1);
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -13486,309 +13484,460 @@ export function mainPage(): string {
       font-size: 20px;
       transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
     }
-    #floating-pl-toggle:hover {
-      transform: scale(1.1);
-      box-shadow: 0 6px 28px rgba(79,70,229,0.5), 0 4px 12px rgba(0,0,0,0.15);
+    #fpl-toggle-btn:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(79,70,229,0.5); }
+    #fpl-toggle-btn .fpl-badge-dot {
+      position: absolute; top: 8px; right: 8px;
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #ef4444; border: 2px solid white;
+      display: none;
     }
-    #floating-pl-toggle.has-change {
-      animation: pulse-glow 2s infinite;
-    }
-    @keyframes pulse-glow {
-      0%, 100% { box-shadow: 0 4px 20px rgba(79,70,229,0.4); }
-      50% { box-shadow: 0 4px 30px rgba(79,70,229,0.7), 0 0 20px rgba(124,58,237,0.3); }
-    }
-    #floating-pl-panel {
+    #fpl-toggle-btn .fpl-badge-dot.active { display: block; animation: fplPulse 1.5s infinite; }
+    @keyframes fplPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.7;transform:scale(1.3)} }
+
+    #fpl-panel {
       position: fixed;
       bottom: 24px;
       right: 24px;
       z-index: 9999;
-      width: 340px;
-      max-height: 520px;
+      width: 360px;
+      max-height: 560px;
       border-radius: 20px;
-      background: white;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.12), 0 2px 12px rgba(0,0,0,0.06);
+      background: #ffffff;
+      box-shadow: 0 10px 50px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.06);
       border: 1px solid #e5e7eb;
       display: none;
       flex-direction: column;
       overflow: hidden;
-      animation: floatPanelIn 0.3s cubic-bezier(0.4,0,0.2,1);
     }
-    #floating-pl-panel.open { display: flex; }
-    @keyframes floatPanelIn {
-      from { opacity: 0; transform: translateY(20px) scale(0.95); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    .fpl-header {
-      padding: 16px 20px;
-      background: linear-gradient(135deg, #4f46e5, #6366f1);
+    #fpl-panel.open { display: flex; animation: fplSlideIn 0.3s cubic-bezier(0.4,0,0.2,1); }
+    @keyframes fplSlideIn { from{opacity:0;transform:translateY(16px) scale(0.96)} to{opacity:1;transform:translateY(0) scale(1)} }
+
+    .fpl-head {
+      padding: 14px 18px;
+      background: linear-gradient(135deg, #312e81, #4f46e5);
       color: white;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between;
     }
-    .fpl-header h4 { font-size: 13px; font-weight: 700; margin: 0; }
-    .fpl-header p { font-size: 10px; opacity: 0.8; margin-top: 2px; }
-    .fpl-close {
-      width: 28px; height: 28px; border-radius: 50%;
-      background: rgba(255,255,255,0.15); border: none; color: white;
+    .fpl-head-title { font-size: 13px; font-weight: 700; }
+    .fpl-head-sub { font-size: 10px; opacity: 0.75; margin-top: 2px; }
+    .fpl-head-close {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: rgba(255,255,255,0.12); border: none; color: white;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
-      font-size: 14px; transition: background 0.2s;
+      font-size: 13px; transition: background 0.2s;
     }
-    .fpl-close:hover { background: rgba(255,255,255,0.3); }
-    .fpl-body {
-      padding: 16px 20px;
+    .fpl-head-close:hover { background: rgba(255,255,255,0.25); }
+
+    .fpl-content {
+      padding: 14px 16px;
       overflow-y: auto;
       flex: 1;
+      max-height: 440px;
     }
-    .fpl-metric {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 12px;
-      border-radius: 10px;
+
+    .fpl-card {
+      border: 1px solid #f1f5f9;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      background: #fafbfc;
+      transition: all 0.2s;
+    }
+    .fpl-card:hover { border-color: #e0e7ff; background: #f8faff; }
+    .fpl-card-header {
+      display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 8px;
+    }
+    .fpl-card-title { font-size: 11px; font-weight: 600; color: #6b7280; }
+    .fpl-card-source { font-size: 9px; color: #9ca3af; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; }
+
+    .fpl-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 4px 0;
+    }
+    .fpl-row-label { font-size: 11px; color: #374151; }
+    .fpl-row-value { font-size: 13px; font-weight: 700; font-family: 'SF Mono', 'Roboto Mono', monospace; }
+    .fpl-row-delta { font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 4px; margin-left: 6px; }
+    .fpl-delta-pos { color: #dc2626; background: #fef2f2; }
+    .fpl-delta-neg { color: #16a34a; background: #f0fdf4; }
+    .fpl-delta-zero { color: #9ca3af; background: #f3f4f6; }
+
+    .fpl-total-bar {
+      margin-top: 10px;
+      padding: 12px 14px;
+      background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+      border: 1px solid #c7d2fe;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .fpl-total-label { font-size: 11px; font-weight: 600; color: #4338ca; }
+    .fpl-total-value { font-size: 18px; font-weight: 800; color: #312e81; font-family: 'SF Mono', 'Roboto Mono', monospace; }
+    .fpl-total-unit { font-size: 10px; color: #6366f1; margin-left: 3px; }
+
+    .fpl-empty {
+      text-align: center; padding: 30px 0; color: #9ca3af;
+    }
+    .fpl-empty i { font-size: 24px; margin-bottom: 8px; }
+    .fpl-empty p { font-size: 11px; line-height: 1.6; }
+
+    .fpl-footer {
+      padding: 10px 16px; background: #f9fafb; border-top: 1px solid #f1f5f9;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .fpl-footer-text { font-size: 9px; color: #9ca3af; }
+    .fpl-footer-btn {
+      font-size: 10px; color: #4f46e5; font-weight: 600; cursor: pointer;
+      background: none; border: none; padding: 4px 8px; border-radius: 4px;
       transition: background 0.2s;
     }
-    .fpl-metric:hover { background: #f8fafc; }
-    .fpl-metric-label {
-      font-size: 11px;
-      color: #6b7280;
-      font-weight: 500;
-    }
-    .fpl-metric-value {
-      font-size: 15px;
-      font-weight: 700;
-      color: #1f2937;
-    }
-    .fpl-metric-change {
-      font-size: 10px;
-      font-weight: 600;
-      padding: 2px 6px;
-      border-radius: 4px;
-      margin-left: 6px;
-    }
-    .fpl-change-up { color: #dc2626; background: #fef2f2; }
-    .fpl-change-down { color: #16a34a; background: #f0fdf4; }
-    .fpl-change-flat { color: #6b7280; background: #f3f4f6; }
-    .fpl-section-title {
-      font-size: 10px;
-      font-weight: 700;
-      color: #9ca3af;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin: 12px 0 6px 4px;
-    }
-    .fpl-divider {
-      height: 1px;
-      background: #f1f5f9;
-      margin: 8px 0;
-    }
-    .fpl-footer {
-      padding: 12px 20px;
-      background: #f8fafc;
+    .fpl-footer-btn:hover { background: #eef2ff; }
+
+    .fpl-change-log {
+      max-height: 120px;
+      overflow-y: auto;
+      margin-top: 8px;
       border-top: 1px solid #f1f5f9;
-      text-align: center;
+      padding-top: 8px;
     }
-    .fpl-footer-text {
-      font-size: 10px;
-      color: #9ca3af;
+    .fpl-log-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 3px 0;
+      font-size: 10px; color: #6b7280;
     }
-    .fpl-badge {
-      position: absolute;
-      top: -4px;
-      right: -4px;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #ef4444;
-      color: white;
-      font-size: 9px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 2px solid white;
-    }
-    .fpl-sparkline {
-      display: flex;
-      align-items: flex-end;
-      gap: 2px;
-      height: 24px;
-    }
-    .fpl-sparkline-bar {
-      width: 6px;
-      border-radius: 2px;
-      transition: height 0.5s ease;
-    }
+    .fpl-log-item i { font-size: 8px; color: #a5b4fc; }
+    .fpl-log-time { color: #9ca3af; font-size: 9px; min-width: 40px; }
   </style>
 
-  <!-- 플로팅 토글 버튼 -->
-  <button id="floating-pl-toggle" onclick="toggleFloatingPL()" title="손익 변화 요약">
+  <!-- 토글 버튼 -->
+  <button id="fpl-toggle-btn" onclick="toggleFplPanel()" title="손익 변화 추적">
     <i class="fas fa-chart-line"></i>
+    <span class="fpl-badge-dot" id="fpl-badge"></span>
   </button>
 
   <!-- 플로팅 패널 -->
-  <div id="floating-pl-panel">
-    <div class="fpl-header">
+  <div id="fpl-panel">
+    <div class="fpl-head">
       <div>
-        <h4><i class="fas fa-chart-line mr-1.5"></i>손익 변화 요약</h4>
-        <p id="fpl-period-label">로딩 중...</p>
+        <div class="fpl-head-title"><i class="fas fa-bolt mr-1.5"></i>실시간 손익 변화</div>
+        <div class="fpl-head-sub" id="fpl-head-sub">변수를 변경하면 자동 반영됩니다</div>
       </div>
-      <button class="fpl-close" onclick="toggleFloatingPL()"><i class="fas fa-times"></i></button>
+      <button class="fpl-head-close" onclick="toggleFplPanel()"><i class="fas fa-times"></i></button>
     </div>
-    <div class="fpl-body" id="fpl-body">
-      <div style="text-align:center; padding: 40px 0; color: #9ca3af;">
-        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
-        <p class="text-xs">데이터를 불러오는 중...</p>
+    <div class="fpl-content" id="fpl-content">
+      <div class="fpl-empty">
+        <i class="fas fa-sliders-h"></i>
+        <p>아직 변경사항이 없습니다<br><span style="color:#a5b4fc;">CAPA·시뮬레이션에서 생산량/원단위를<br>조정하면 손익 변화가 여기에 표시됩니다</span></p>
       </div>
     </div>
     <div class="fpl-footer">
-      <p class="fpl-footer-text"><i class="fas fa-sync-alt mr-1"></i>탭 전환 시 자동 갱신 · <a href="#" onclick="loadFloatingPL();return false;" style="color:#6366f1;font-weight:600;">새로고침</a></p>
+      <span class="fpl-footer-text" id="fpl-footer-time">대기 중</span>
+      <button class="fpl-footer-btn" onclick="resetFplTracker()"><i class="fas fa-redo mr-1"></i>초기화</button>
     </div>
   </div>
 
   <script>
+    // ======== 플로팅 손익 변화 추적기 ========
     var _fplOpen = false;
-    var _fplData = null;
+    var _fplTracker = {
+      baseline: null,       // 기준 스냅샷 { capaTotal, simProfit, timestamp }
+      changes: [],          // [{time, source, label, before, after, delta}]
+      capaSnapshot: null,   // CAPA 현재 상태
+      simSnapshot: null     // 시뮬레이션 현재 상태
+    };
 
-    function toggleFloatingPL() {
+    function toggleFplPanel() {
       _fplOpen = !_fplOpen;
-      var panel = document.getElementById('floating-pl-panel');
-      var toggle = document.getElementById('floating-pl-toggle');
+      var panel = document.getElementById('fpl-panel');
+      var toggle = document.getElementById('fpl-toggle-btn');
       if (_fplOpen) {
         panel.classList.add('open');
         toggle.style.display = 'none';
-        loadFloatingPL();
+        renderFplPanel();
       } else {
         panel.classList.remove('open');
         toggle.style.display = 'flex';
       }
     }
 
-    async function loadFloatingPL() {
-      var body = document.getElementById('fpl-body');
-      var periodLabel = document.getElementById('fpl-period-label');
-      try {
-        var div = typeof CC !== 'undefined' && CC.currentDivision ? CC.currentDivision : 'PS';
-        var ym = '';
-        var yearEl = document.getElementById('analysisYear');
-        var monthEl = document.getElementById('analysisMonth');
-        if (yearEl && monthEl) {
-          ym = yearEl.textContent + monthEl.textContent.replace('월','').padStart(2,'0');
-        }
-        var res = await fetch('/api/pl-dashboard?ym=' + ym + '&division=' + div);
-        var data = await res.json();
-        _fplData = data;
-        renderFloatingPL(data);
-        if (periodLabel) {
-          periodLabel.textContent = (div === 'HL' ? 'HL' : 'PS') + ' · ' + (ym ? ym.substring(0,4)+'.'+ym.substring(4,6) : '최신');
-        }
-      } catch(e) {
-        if (body) body.innerHTML = '<div style="text-align:center;padding:30px 0;color:#9ca3af;"><i class="fas fa-exclamation-circle text-lg mb-2"></i><p class="text-xs">데이터를 불러올 수 없습니다</p></div>';
-      }
+    // 기준 스냅샷 캡처
+    function captureFplBaseline() {
+      _fplTracker.baseline = {
+        capaTotal: getCapaTotalProduction(),
+        capaNeedDays: getCapaNeedDays(),
+        simTotalProfit: getSimTotalProfit(),
+        simTotalBaseCost: getSimTotalBaseCost(),
+        simTotalSimCost: getSimTotalSimCost(),
+        timestamp: Date.now()
+      };
     }
 
-    function renderFloatingPL(data) {
-      var body = document.getElementById('fpl-body');
-      if (!body) return;
+    // CAPA에서 총 생산량 가져오기
+    function getCapaTotalProduction() {
+      if (typeof capaData === 'undefined' || !capaData.length) return 0;
+      var total = 0;
+      capaData.forEach(function(r) { total += (r.planned_qty || 0); });
+      return total;
+    }
 
-      if (!data || !data.kpi) {
-        body.innerHTML = '<div style="text-align:center;padding:30px 0;color:#9ca3af;"><i class="fas fa-database text-lg mb-2"></i><p class="text-xs">분석 데이터가 없습니다</p><p class="text-[10px] mt-1">데이터 입력 후 이용 가능합니다</p></div>';
+    // CAPA에서 총 필요일수 가져오기
+    function getCapaNeedDays() {
+      if (typeof capaData === 'undefined' || !capaData.length) return 0;
+      var days = 0;
+      capaData.forEach(function(r) {
+        if (typeof getLineSpeedInfo === 'function' && typeof calcDailyTon === 'function') {
+          var lsInfo = getLineSpeedInfo(r.product_type, r.basis_weight);
+          if (lsInfo && lsInfo.speed > 0) {
+            var wasteRate = r.waste_rate != null ? r.waste_rate : (typeof getDefaultWasteRate === 'function' ? getDefaultWasteRate() : 3);
+            var tw = wasteRate < 100 ? (r.planned_qty || 0) / (1 - wasteRate / 100) : 0;
+            var dt = calcDailyTon(r.basis_weight, lsInfo.trim_width, lsInfo.speed);
+            days += dt > 0 ? tw / dt : 0;
+          }
+        }
+      });
+      return days;
+    }
+
+    // 시뮬레이션에서 총 손익 (천원 단위)
+    function getSimTotalProfit() {
+      if (typeof simRows === 'undefined' || !simRows.length) return 0;
+      var total = 0;
+      simRows.forEach(function(row) {
+        var baseMatCost = row.base_unit_cost * row.base_prod;
+        var simMatCost = row.sim_unit_cost * row.sim_prod;
+        total += (baseMatCost - simMatCost);
+      });
+      return total;
+    }
+
+    // 시뮬레이션 기준 재료비 합계(천원)
+    function getSimTotalBaseCost() {
+      if (typeof simRows === 'undefined' || !simRows.length) return 0;
+      var total = 0;
+      simRows.forEach(function(row) { total += row.base_unit_cost * row.base_prod; });
+      return total;
+    }
+
+    // 시뮬레이션 변경 후 재료비 합계(천원)
+    function getSimTotalSimCost() {
+      if (typeof simRows === 'undefined' || !simRows.length) return 0;
+      var total = 0;
+      simRows.forEach(function(row) { total += row.sim_unit_cost * row.sim_prod; });
+      return total;
+    }
+
+    // 변경 감지 및 기록
+    function trackFplChange(source, label, before, after) {
+      var delta = after - before;
+      if (Math.abs(delta) < 0.001) return;
+
+      // 기준값이 없으면 첫 변경 시점에서 baseline 캡처
+      if (!_fplTracker.baseline) captureFplBaseline();
+
+      var now = new Date();
+      var timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+
+      _fplTracker.changes.push({
+        time: timeStr,
+        source: source,
+        label: label,
+        before: before,
+        after: after,
+        delta: delta
+      });
+
+      // 최대 20개까지만 유지
+      if (_fplTracker.changes.length > 20) _fplTracker.changes.shift();
+
+      // 배지 표시
+      var badge = document.getElementById('fpl-badge');
+      if (badge) badge.classList.add('active');
+
+      // 패널 열려있으면 갱신
+      if (_fplOpen) renderFplPanel();
+
+      // 푸터 시간 갱신
+      var footTime = document.getElementById('fpl-footer-time');
+      if (footTime) footTime.textContent = '마지막 변경: ' + timeStr;
+    }
+
+    // 패널 렌더링
+    function renderFplPanel() {
+      var content = document.getElementById('fpl-content');
+      if (!content) return;
+
+      var hasChanges = _fplTracker.changes.length > 0;
+      var bl = _fplTracker.baseline;
+
+      if (!hasChanges && !bl) {
+        content.innerHTML = '<div class="fpl-empty"><i class="fas fa-sliders-h"></i><p>아직 변경사항이 없습니다<br><span style="color:#a5b4fc;">CAPA·시뮬레이션에서 생산량/원단위를<br>조정하면 손익 변화가 여기에 표시됩니다</span></p></div>';
         return;
       }
 
-      var kpi = data.kpi;
-      var trend = data.trend || [];
       var html = '';
 
-      // KPI 섹션
-      html += '<div class="fpl-section-title">핵심 손익 지표</div>';
-      html += fplMetricRow('매출액', kpi.revenue, kpi.revenueChange, '억원');
-      html += fplMetricRow('총원가', kpi.cost, kpi.costChange, '억원');
-      html += fplMetricRow('영업이익', kpi.profit, kpi.profitChange, '억원');
-      html += fplMetricRow('이익률', kpi.margin, kpi.marginChange, '%');
+      // 현재값 vs 기준값 비교
+      var curCapaProd = getCapaTotalProduction();
+      var curCapaDays = getCapaNeedDays();
+      var curSimProfit = getSimTotalProfit();
+      var curSimBaseCost = getSimTotalBaseCost();
+      var curSimSimCost = getSimTotalSimCost();
 
-      html += '<div class="fpl-divider"></div>';
+      // ---- CAPA 영향 카드 ----
+      if (curCapaProd > 0 || (bl && bl.capaTotal > 0)) {
+        var blCapaProd = bl ? bl.capaTotal : curCapaProd;
+        var blCapaDays = bl ? bl.capaNeedDays : curCapaDays;
+        var capaProdDelta = curCapaProd - blCapaProd;
+        var capaDaysDelta = curCapaDays - blCapaDays;
 
-      // 원가 구성
-      if (data.costBreakdown && data.costBreakdown.length > 0) {
-        html += '<div class="fpl-section-title">원가 구성 (재료비)</div>';
-        data.costBreakdown.forEach(function(item) {
-          html += '<div class="fpl-metric">';
-          html += '<span class="fpl-metric-label">' + (item.name || item.group || '-') + '</span>';
-          html += '<span class="fpl-metric-value" style="font-size:12px;">' + (item.ratio || item.percent || 0) + '%</span>';
+        html += '<div class="fpl-card">';
+        html += '<div class="fpl-card-header"><span class="fpl-card-title"><i class="fas fa-industry mr-1 text-orange-400"></i>CAPA 생산 계획</span><span class="fpl-card-source">생산 CAPA</span></div>';
+        html += fplRow('예상 양품량', curCapaProd.toFixed(1), '톤', capaProdDelta, '톤');
+        html += fplRow('필요 가동일수', curCapaDays.toFixed(1), '일', capaDaysDelta, '일');
+
+        // 생산량 변화에 따른 재료비 영향 추정 (톤당 약 30만원 추정)
+        var estMaterialImpact = capaProdDelta * 0.3; // 백만원 단위
+        if (Math.abs(capaProdDelta) > 0.1) {
+          html += '<div style="margin-top:6px;padding:6px 8px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;">';
+          html += '<span style="font-size:10px;color:#c2410c;"><i class="fas fa-arrow-right mr-1"></i>예상 재료비 영향: ';
+          html += '<b>' + (estMaterialImpact > 0 ? '+' : '') + estMaterialImpact.toFixed(1) + ' 백만원</b>';
+          html += '</span></div>';
+        }
+        html += '</div>';
+      }
+
+      // ---- 시뮬레이션 손익 카드 ----
+      if (curSimBaseCost > 0 || (bl && bl.simTotalBaseCost > 0)) {
+        var blSimProfit = bl ? bl.simTotalProfit : 0;
+        var simProfitDelta = curSimProfit - blSimProfit;
+        var simProfitEok = curSimProfit * 1000 / 100000000;
+        var simDeltaEok = simProfitDelta * 1000 / 100000000;
+        var simBaseCostEok = curSimBaseCost * 1000 / 100000000;
+        var simSimCostEok = curSimSimCost * 1000 / 100000000;
+        var costDiff = simSimCostEok - simBaseCostEok;
+
+        html += '<div class="fpl-card">';
+        html += '<div class="fpl-card-header"><span class="fpl-card-title"><i class="fas fa-flask mr-1 text-indigo-400"></i>시뮬레이션 손익</span><span class="fpl-card-source">통합 시뮬</span></div>';
+        html += fplRow('기준 재료비', simBaseCostEok.toFixed(2), '억원', 0, '');
+        html += fplRow('변경 재료비', simSimCostEok.toFixed(2), '억원', costDiff, '억원');
+        html += fplRow('손익 효과', simProfitEok.toFixed(2), '억원', simDeltaEok, '억원');
+        html += '</div>';
+      }
+
+      // ---- 종합 손익 변화 바 ----
+      var totalDeltaEok = 0;
+      if (bl) {
+        totalDeltaEok = (curSimProfit - bl.simTotalProfit) * 1000 / 100000000;
+      } else if (curSimProfit !== 0) {
+        totalDeltaEok = curSimProfit * 1000 / 100000000;
+      }
+
+      html += '<div class="fpl-total-bar">';
+      html += '<div><span class="fpl-total-label">종합 손익 변화</span></div>';
+      html += '<div>';
+      var totalColor = totalDeltaEok > 0 ? '#16a34a' : totalDeltaEok < 0 ? '#dc2626' : '#6b7280';
+      var totalSign = totalDeltaEok > 0 ? '+' : '';
+      html += '<span class="fpl-total-value" style="color:' + totalColor + ';">' + totalSign + totalDeltaEok.toFixed(2) + '</span>';
+      html += '<span class="fpl-total-unit">억원</span>';
+      html += '</div></div>';
+
+      // ---- 변경 로그 ----
+      if (_fplTracker.changes.length > 0) {
+        html += '<div class="fpl-change-log">';
+        html += '<div style="font-size:10px;font-weight:600;color:#9ca3af;margin-bottom:4px;"><i class="fas fa-history mr-1"></i>변경 이력</div>';
+        var recentChanges = _fplTracker.changes.slice(-8).reverse();
+        recentChanges.forEach(function(ch) {
+          var icon = ch.source === 'CAPA' ? 'fa-industry' : 'fa-flask';
+          var deltaStr = ch.delta > 0 ? '+' + ch.delta.toFixed(1) : ch.delta.toFixed(1);
+          html += '<div class="fpl-log-item">';
+          html += '<span class="fpl-log-time">' + ch.time + '</span>';
+          html += '<i class="fas ' + icon + '"></i>';
+          html += '<span>' + ch.label + ' ' + deltaStr + '</span>';
           html += '</div>';
         });
-        html += '<div class="fpl-divider"></div>';
-      }
-
-      // 최근 추이 스파크라인
-      if (trend.length > 1) {
-        html += '<div class="fpl-section-title">최근 이익 추이</div>';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;">';
-        html += '<div class="fpl-sparkline">';
-        var maxProfit = Math.max.apply(null, trend.map(function(t){return Math.abs(t.profit);}));
-        trend.forEach(function(t) {
-          var h = maxProfit > 0 ? Math.max(4, Math.abs(t.profit) / maxProfit * 24) : 4;
-          var color = t.profit >= 0 ? '#4f46e5' : '#ef4444';
-          html += '<div class="fpl-sparkline-bar" style="height:' + h + 'px;background:' + color + '"></div>';
-        });
-        html += '</div>';
-        html += '<div style="text-align:right;">';
-        html += '<p style="font-size:10px;color:#6b7280;">' + trend[0].month + ' ~ ' + trend[trend.length-1].month + '</p>';
-        var lastProfit = trend[trend.length-1].profit;
-        var firstProfit = trend[0].profit;
-        var trendDir = lastProfit > firstProfit ? '↑ 개선' : lastProfit < firstProfit ? '↓ 악화' : '→ 유지';
-        var trendColor = lastProfit > firstProfit ? '#16a34a' : lastProfit < firstProfit ? '#dc2626' : '#6b7280';
-        html += '<p style="font-size:11px;font-weight:700;color:' + trendColor + ';">' + trendDir + '</p>';
-        html += '</div>';
         html += '</div>';
       }
 
-      body.innerHTML = html;
-
-      // 토글 버튼에 변화 표시
-      var toggle = document.getElementById('floating-pl-toggle');
-      if (toggle && kpi.profitChange && parseFloat(kpi.profitChange) !== 0) {
-        toggle.classList.add('has-change');
-      } else if (toggle) {
-        toggle.classList.remove('has-change');
-      }
+      content.innerHTML = html;
     }
 
-    function fplMetricRow(label, value, change, unit) {
-      var changeNum = parseFloat(change) || 0;
-      var changeClass = changeNum > 0 ? 'fpl-change-down' : changeNum < 0 ? 'fpl-change-up' : 'fpl-change-flat';
-      var changeIcon = changeNum > 0 ? '▲' : changeNum < 0 ? '▼' : '−';
-      var changeText = changeNum !== 0 ? changeIcon + ' ' + Math.abs(changeNum) + '%' : '−';
-      // 비용은 증가=악화, 수익/이익은 증가=개선 (색상 반전)
-      if (label === '총원가') {
-        changeClass = changeNum > 0 ? 'fpl-change-up' : changeNum < 0 ? 'fpl-change-down' : 'fpl-change-flat';
+    function fplRow(label, value, unit, delta, deltaUnit) {
+      var deltaClass = 'fpl-delta-zero';
+      var deltaStr = '−';
+      if (Math.abs(delta) >= 0.01) {
+        if (delta > 0) { deltaClass = 'fpl-delta-pos'; deltaStr = '▲' + Math.abs(delta).toFixed(1) + deltaUnit; }
+        else { deltaClass = 'fpl-delta-neg'; deltaStr = '▼' + Math.abs(delta).toFixed(1) + deltaUnit; }
       }
-      var html = '<div class="fpl-metric">';
-      html += '<div><span class="fpl-metric-label">' + label + '</span></div>';
+      // 비용 항목은 색상 반전 (증가=악화=빨강, 감소=개선=녹색)
+      if (label.indexOf('재료비') >= 0 && label.indexOf('기준') < 0) {
+        if (delta > 0) deltaClass = 'fpl-delta-pos';   // 비용 증가 = 빨강
+        else if (delta < 0) deltaClass = 'fpl-delta-neg'; // 비용 감소 = 녹색
+      }
+      // 손익은 양수가 좋은 것
+      if (label.indexOf('손익') >= 0 || label.indexOf('양품') >= 0) {
+        if (delta > 0) deltaClass = 'fpl-delta-neg';   // 손익 증가 = 녹색(좋음)
+        else if (delta < 0) deltaClass = 'fpl-delta-pos'; // 손익 감소 = 빨강(나쁨)
+      }
+      var html = '<div class="fpl-row">';
+      html += '<span class="fpl-row-label">' + label + '</span>';
       html += '<div style="display:flex;align-items:center;">';
-      html += '<span class="fpl-metric-value">' + (value || '-') + '<span style="font-size:10px;color:#9ca3af;margin-left:2px;">' + unit + '</span></span>';
-      html += '<span class="fpl-metric-change ' + changeClass + '">' + changeText + '</span>';
-      html += '</div>';
-      html += '</div>';
+      html += '<span class="fpl-row-value">' + value + '<span style="font-size:9px;color:#9ca3af;margin-left:2px;">' + unit + '</span></span>';
+      html += '<span class="fpl-row-delta ' + deltaClass + '">' + deltaStr + '</span>';
+      html += '</div></div>';
       return html;
     }
 
-    // switchTab 후 자동 갱신 연동
-    var _origSwitchTab = typeof switchTab === 'function' ? switchTab : null;
-    if (_origSwitchTab) {
-      // 탭 전환 시 패널이 열려있으면 갱신 (debounce)
-      var _fplDebounce = null;
-      var _origAddOpenTab = addOpenTab;
-      addOpenTab = function(tabId) {
-        _origAddOpenTab(tabId);
-        if (_fplOpen) {
-          clearTimeout(_fplDebounce);
-          _fplDebounce = setTimeout(loadFloatingPL, 800);
-        }
-      };
+    // 초기화
+    function resetFplTracker() {
+      _fplTracker.baseline = null;
+      _fplTracker.changes = [];
+      var badge = document.getElementById('fpl-badge');
+      if (badge) badge.classList.remove('active');
+      var footTime = document.getElementById('fpl-footer-time');
+      if (footTime) footTime.textContent = '초기화됨';
+      renderFplPanel();
     }
+
+    // ---- calcSimProfit 후킹: 시뮬레이션 변경 시 자동 추적 ----
+    var _origCalcSimProfit = typeof calcSimProfit === 'function' ? calcSimProfit : null;
+    var _prevSimProfit = null;
+
+    // calcSimProfit을 래핑하여 변경 추적
+    (function() {
+      var origFn = window.calcSimProfit || calcSimProfit;
+      if (!origFn) return;
+      var wrapped = function() {
+        var beforeProfit = getSimTotalProfit();
+        origFn.apply(this, arguments);
+        var afterProfit = getSimTotalProfit();
+        if (_prevSimProfit === null) { _prevSimProfit = beforeProfit; return; }
+        if (Math.abs(afterProfit - _prevSimProfit) > 0.1) {
+          trackFplChange('시뮬', '손익 효과', _prevSimProfit * 1000 / 1e8, afterProfit * 1000 / 1e8);
+        }
+        _prevSimProfit = afterProfit;
+      };
+      // 글로벌 재정의
+      window.calcSimProfit = wrapped;
+      calcSimProfit = wrapped;
+    })();
+
+    // ---- renderCapaTable 후킹: CAPA 변경 시 자동 추적 ----
+    (function() {
+      var origFn = window.renderCapaTable || renderCapaTable;
+      if (!origFn) return;
+      var prevCapaProd = null;
+      var wrapped = function() {
+        var beforeProd = getCapaTotalProduction();
+        origFn.apply(this, arguments);
+        var afterProd = getCapaTotalProduction();
+        if (prevCapaProd === null) { prevCapaProd = afterProd; return; }
+        if (Math.abs(afterProd - prevCapaProd) > 0.1) {
+          trackFplChange('CAPA', '생산량', prevCapaProd, afterProd);
+        }
+        prevCapaProd = afterProd;
+      };
+      window.renderCapaTable = wrapped;
+      renderCapaTable = wrapped;
+    })();
   </script>
 </body>
 </html>`;
