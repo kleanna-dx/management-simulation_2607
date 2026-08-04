@@ -4888,7 +4888,13 @@ export function mainPage(): string {
     function onMainDateChange() {
       refreshActiveTab();
       // 손익 시뮬레이션 패널도 글로벌 기준월 연동 갱신
-      if (typeof _fplOpen !== 'undefined' && _fplOpen && typeof renderFplPL === 'function') renderFplPL();
+      if (typeof _fplOpen !== 'undefined' && _fplOpen && typeof renderFplPL === 'function') {
+        if (typeof loadFplAllMachines === 'function') {
+          loadFplAllMachines().then(function() { renderFplPL(); });
+        } else {
+          renderFplPL();
+        }
+      }
     }
     // 데이터 조회 (dv-year / dv-month)
     function stepDvYear(dir) {
@@ -13612,6 +13618,13 @@ export function mainPage(): string {
     }
     .fpl-info-bar.warning { background: #fefce8; border-color: #fde047; color: #854d0e; }
 
+    .fpl-mtab {
+      flex: 1; padding: 7px 0; text-align: center; font-size: 10px; font-weight: 600;
+      color: #6b7280; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s;
+    }
+    .fpl-mtab:hover { color: #4f46e5; }
+    .fpl-mtab.active { color: #4f46e5; border-bottom-color: #4f46e5; background: #eef2ff; }
+
     .fpl-footer {
       padding: 10px 16px; background: #f9fafb; border-top: 1px solid #f1f5f9;
       display: flex; align-items: center; justify-content: space-between;
@@ -13642,6 +13655,8 @@ export function mainPage(): string {
         <button class="fpl-head-btn" onclick="toggleFplSettings()" title="단가 설정"><i class="fas fa-cog"></i></button>
         <button class="fpl-head-btn" onclick="toggleFplPanel()"><i class="fas fa-times"></i></button>
       </div>
+    </div>
+    <div id="fpl-machine-tabs" style="display:flex;padding:0 16px;gap:0;background:#f9fafb;border-bottom:1px solid #e5e7eb;">
     </div>
     <div style="position:relative;">
       <div class="fpl-content" id="fpl-content">
@@ -13680,9 +13695,38 @@ export function mainPage(): string {
       productionTon: null      // null이면 CAPA에서 자동
     };
 
+    // 호기 선택 (전체/개별)
+    var _fplMachine = 'ALL'; // 'ALL', 'PM2', 'PM3' 등
+    var _fplCapaCache = {};  // { 'PM2': [...], 'PM3': [...] } 호기별 CAPA 캐시
+
     // 기준 손익 (첫 로드 시 캡처, 이후 변경분 비교)
     var _fplBaseline = null;
     var _fplCurrentMonth = null;
+
+    // 호기 탭 초기화
+    function initFplMachineTabs() {
+      var container = document.getElementById('fpl-machine-tabs');
+      if (!container) return;
+      var currentDiv = typeof CC !== 'undefined' && CC.currentDivision ? CC.currentDivision : 'PS';
+      var machines = currentDiv === 'HL' ? ['TM5','PD1'] : ['PM2','PM3'];
+      var tabs = ['ALL'].concat(machines);
+      var html = '';
+      tabs.forEach(function(mc) {
+        var label = mc === 'ALL' ? '전체' : mc;
+        var cls = mc === _fplMachine ? 'fpl-mtab active' : 'fpl-mtab';
+        html += '<div class="' + cls + '" data-mc="' + mc + '" onclick="selectFplMachine(\'' + mc + '\')">' + label + '</div>';
+      });
+      container.innerHTML = html;
+    }
+
+    // 호기 선택 변경
+    function selectFplMachine(mc) {
+      if (_fplMachine === mc) return;
+      _fplMachine = mc;
+      _fplBaseline = null; // 호기 변경 시 baseline 리셋
+      initFplMachineTabs(); // 탭 활성 상태 갱신
+      renderFplPL();
+    }
 
     function toggleFplPanel() {
       _fplOpen = !_fplOpen;
@@ -13691,7 +13735,8 @@ export function mainPage(): string {
       if (_fplOpen) {
         panel.classList.add('open');
         toggle.style.display = 'none';
-        renderFplPL();
+        initFplMachineTabs();
+        loadFplAllMachines().then(function() { renderFplPL(); });
       } else {
         panel.classList.remove('open');
         toggle.style.display = 'flex';
@@ -13801,10 +13846,42 @@ export function mainPage(): string {
 
     // CAPA 총 생산량 (톤)
     function getFplCapaProduction() {
-      if (typeof capaData === 'undefined' || !capaData || !capaData.length) return 0;
-      var total = 0;
-      capaData.forEach(function(r) { total += (r.planned_qty || 0); });
-      return total;
+      if (_fplManual.productionTon) return _fplManual.productionTon;
+
+      // 호기별 캐시에서 합산
+      if (_fplMachine === 'ALL') {
+        var total = 0;
+        var keys = Object.keys(_fplCapaCache);
+        if (keys.length === 0) {
+          // 캐시 비어있으면 현재 capaData라도 사용
+          if (typeof capaData !== 'undefined' && capaData && capaData.length) {
+            capaData.forEach(function(r) { total += (r.planned_qty || 0); });
+          }
+          return total;
+        }
+        keys.forEach(function(k) {
+          (_fplCapaCache[k] || []).forEach(function(r) { total += (r.planned_qty || 0); });
+        });
+        return total;
+      } else {
+        // 특정 호기
+        var rows = _fplCapaCache[_fplMachine];
+        if (!rows || !rows.length) {
+          // 캐시 없으면 현재 capaData가 해당 호기면 사용
+          if (typeof capaData !== 'undefined' && capaData && capaData.length) {
+            var curMc = typeof getCapaMachine === 'function' ? getCapaMachine() : '';
+            if (curMc === _fplMachine) {
+              var t = 0;
+              capaData.forEach(function(r) { t += (r.planned_qty || 0); });
+              return t;
+            }
+          }
+          return 0;
+        }
+        var sum = 0;
+        rows.forEach(function(r) { sum += (r.planned_qty || 0); });
+        return sum;
+      }
     }
 
     // 시뮬레이션에서 톤당 재료비 평균 (천원/톤)
@@ -13850,6 +13927,27 @@ export function mainPage(): string {
       };
     }
 
+    // 모든 호기 CAPA 데이터 캐시 로드
+    async function loadFplAllMachines() {
+      var globalYearEl = document.getElementById('analysisYear');
+      var globalMonthEl = document.getElementById('analysisMonth');
+      var year = _fplManual.year || (globalYearEl ? parseInt(globalYearEl.value) : new Date().getFullYear());
+      var month = _fplManual.month || (globalMonthEl ? parseInt(globalMonthEl.value) : new Date().getMonth() + 1);
+      var division = typeof CC !== 'undefined' && CC.currentDivision ? CC.currentDivision : 'PS';
+      var machines = division === 'HL' ? ['TM5','PD1'] : ['PM2','PM3'];
+
+      for (var i = 0; i < machines.length; i++) {
+        var mc = machines[i];
+        try {
+          var res = await fetch('/api/capa-plan?year=' + year + '&month=' + month + '&machine=' + mc + '&division=' + division);
+          var json = await res.json();
+          _fplCapaCache[mc] = json.data || [];
+        } catch(e) {
+          _fplCapaCache[mc] = [];
+        }
+      }
+    }
+
     // 손익 패널 렌더링 — 증감(±) 중심 표시
     function renderFplPL() {
       var content = document.getElementById('fpl-content');
@@ -13877,7 +13975,8 @@ export function mainPage(): string {
       var sub = document.getElementById('fpl-head-sub');
       if (sub) {
         if (curYear && curMonth) {
-          var src = isManual ? ' (수동)' : ' · ' + curMachine;
+          var mcLabel = _fplMachine === 'ALL' ? '전체 라인' : _fplMachine;
+          var src = isManual ? ' (수동)' : ' · ' + mcLabel;
           sub.textContent = curYear + '년 ' + curMonth + '월' + src;
         } else {
           sub.textContent = '설정에서 월/생산량을 입력하세요';
