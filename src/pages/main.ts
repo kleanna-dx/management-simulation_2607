@@ -2145,17 +2145,8 @@ export function mainPage(): string {
           </div>
         </div>
 
-        <!-- 호기 + 연도 선택 -->
+        <!-- 호기 선택 (연도는 상단 글로벌 기준월 사용) -->
         <div class="flex items-center gap-4 mb-4 p-3 bg-slate-50 rounded-lg">
-          <div class="flex items-center gap-2">
-            <label class="text-xs font-medium text-gray-500">연도:</label>
-            <select id="ls-year-select" onchange="loadLineSpeedData()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-mono focus:ring-1 focus:ring-blue-200">
-              <option value="2024">2024</option>
-              <option value="2025">2025</option>
-              <option value="2026" selected>2026</option>
-              <option value="2027">2027</option>
-            </select>
-          </div>
           <div class="flex items-center gap-2">
             <label class="text-xs font-medium text-gray-500">호기:</label>
             <select id="ls-machine-select" onchange="loadLineSpeedData()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-blue-200">
@@ -2228,26 +2219,8 @@ export function mainPage(): string {
           </div>
         </div>
 
-        <!-- 연도 + 월 + 호기 선택 -->
+        <!-- 호기 선택 (연도/월은 상단 글로벌 기준월 사용) -->
         <div class="flex items-center gap-4 mb-4 p-3 bg-slate-50 rounded-lg">
-          <div class="flex items-center gap-2">
-            <label class="text-xs font-medium text-gray-500">연도:</label>
-            <select id="capa-year-select" onchange="loadCapaAnalysis()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-mono focus:ring-1 focus:ring-blue-200">
-              <option value="2024">2024</option>
-              <option value="2025">2025</option>
-              <option value="2026" selected>2026</option>
-              <option value="2027">2027</option>
-            </select>
-          </div>
-          <div class="flex items-center gap-2">
-            <label class="text-xs font-medium text-gray-500">월:</label>
-            <select id="capa-month-select" onchange="loadCapaAnalysis()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-blue-200">
-              <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
-              <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
-              <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
-              <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
-            </select>
-          </div>
           <div class="flex items-center gap-2">
             <label class="text-xs font-medium text-gray-500">호기:</label>
             <select id="capa-machine-select" onchange="loadCapaAnalysis()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-blue-200">
@@ -6661,8 +6634,8 @@ export function mainPage(): string {
     }
 
     function getLsYear() {
-      var sel = document.getElementById('ls-year-select');
-      return sel ? parseInt(sel.value) || 2026 : 2026;
+      var s = document.getElementById('analysisYear');
+      return s ? parseInt(s.value) || new Date().getFullYear() : new Date().getFullYear();
     }
 
     async function loadLineSpeedData() {
@@ -6686,7 +6659,7 @@ export function mainPage(): string {
       if (!tbody) return;
 
       // 현재 연도/호기 라벨 표시
-      var yearSel = document.getElementById('ls-year-select');
+      var yearSel = document.getElementById('analysisYear');
       var machineSel = document.getElementById('ls-machine-select');
       var labelEl = document.getElementById('ls-current-label');
       var countEl = document.getElementById('ls-row-count');
@@ -6918,14 +6891,11 @@ export function mainPage(): string {
     }
 
     function initCapaMonth() {
-      var sel = document.getElementById('capa-month-select');
-      if (!sel) return;
-      var now = new Date();
-      sel.value = String(now.getMonth() + 1);
+      // 글로벌 기준월 사용 — 별도 초기화 불필요
     }
 
-    function getCapaYear() { var s = document.getElementById('capa-year-select'); return s ? parseInt(s.value) : 2026; }
-    function getCapaMonth() { var s = document.getElementById('capa-month-select'); return s ? parseInt(s.value) : 1; }
+    function getCapaYear() { var s = document.getElementById('analysisYear'); return s ? parseInt(s.value) : new Date().getFullYear(); }
+    function getCapaMonth() { var s = document.getElementById('analysisMonth'); return s ? parseInt(s.value) : new Date().getMonth() + 1; }
     function getCapaMachine() { var s = document.getElementById('capa-machine-select'); return s ? s.value : 'PM2'; }
 
     async function loadCapaAnalysis() {
@@ -13688,10 +13658,8 @@ export function mainPage(): string {
       sgaFixed: 2800           // 판관비 (백만원/월, 고정)
     };
 
-    // 월/생산량 수동 설정
+    // 생산량 수동 설정
     var _fplManual = {
-      year: null,              // null이면 CAPA에서 자동
-      month: null,             // null이면 CAPA에서 자동
       productionTon: null      // null이면 CAPA에서 자동
     };
 
@@ -13763,25 +13731,9 @@ export function mainPage(): string {
       if (!overlay) return;
       var html = '<div class="fpl-settings-title"><i class="fas fa-sliders-h mr-1"></i>손익 시뮬레이션 설정</div>';
 
-      // 기간 및 생산량 설정
-      html += '<div class="fpl-setting-section">기간 / 생산량</div>';
-      var gYearEl = document.getElementById('analysisYear');
-      var gMonthEl = document.getElementById('analysisMonth');
-      var curYear = _fplManual.year || (gYearEl ? parseInt(gYearEl.value) : null) || (typeof getCapaYear === 'function' ? getCapaYear() : 2026);
-      var curMonth = _fplManual.month || (gMonthEl ? parseInt(gMonthEl.value) : null) || (typeof getCapaMonth === 'function' ? getCapaMonth() : new Date().getMonth() + 1);
+      // 생산량 설정
+      html += '<div class="fpl-setting-section">생산량</div>';
       var curProd = _fplManual.productionTon || getFplCapaProduction() || 0;
-
-      html += '<div class="fpl-setting-row">';
-      html += '<span class="fpl-setting-label">년/월</span>';
-      html += '<div style="display:flex;align-items:center;gap:4px;">';
-      html += '<input class="fpl-setting-input" type="number" id="fpl-set-year" value="' + curYear + '" style="width:60px;" min="2020" max="2030">';
-      html += '<span style="font-size:10px;color:#6b7280;">년</span>';
-      html += '<select class="fpl-setting-input" id="fpl-set-month" style="width:52px;padding:4px 2px;">';
-      for (var m = 1; m <= 12; m++) {
-        html += '<option value="' + m + '"' + (m === curMonth ? ' selected' : '') + '>' + m + '월</option>';
-      }
-      html += '</select>';
-      html += '</div></div>';
 
       html += '<div class="fpl-setting-row">';
       html += '<span class="fpl-setting-label">생산량</span>';
@@ -13790,6 +13742,7 @@ export function mainPage(): string {
       html += '<span class="fpl-setting-unit">톤/월</span>';
       html += '</div></div>';
       html += '<div style="font-size:9px;color:#9ca3af;margin-bottom:4px;"><i class="fas fa-info-circle mr-1"></i>비워두면 CAPA 데이터에서 자동 반영</div>';
+      html += '<div style="font-size:9px;color:#6b7280;margin-bottom:8px;"><i class="fas fa-calendar mr-1"></i>기준월: 상단 글로벌 기준월 사용</div>';
 
       // 변동비
       html += '<div class="fpl-setting-section">변동비 (톤당)</div>';
@@ -13818,12 +13771,8 @@ export function mainPage(): string {
     }
 
     function applyFplSettings() {
-      // 년/월/생산량
-      var yearEl = document.getElementById('fpl-set-year');
-      var monthEl = document.getElementById('fpl-set-month');
+      // 생산량
       var prodEl = document.getElementById('fpl-set-production');
-      if (yearEl) _fplManual.year = parseInt(yearEl.value) || null;
-      if (monthEl) _fplManual.month = parseInt(monthEl.value) || null;
       if (prodEl) {
         var pVal = parseFloat(prodEl.value);
         _fplManual.productionTon = pVal > 0 ? pVal : null;
@@ -13931,8 +13880,8 @@ export function mainPage(): string {
     async function loadFplAllMachines() {
       var globalYearEl = document.getElementById('analysisYear');
       var globalMonthEl = document.getElementById('analysisMonth');
-      var year = _fplManual.year || (globalYearEl ? parseInt(globalYearEl.value) : new Date().getFullYear());
-      var month = _fplManual.month || (globalMonthEl ? parseInt(globalMonthEl.value) : new Date().getMonth() + 1);
+      var year = globalYearEl ? parseInt(globalYearEl.value) : new Date().getFullYear();
+      var month = globalMonthEl ? parseInt(globalMonthEl.value) : new Date().getMonth() + 1;
       var division = typeof CC !== 'undefined' && CC.currentDivision ? CC.currentDivision : 'PS';
       var machines = division === 'HL' ? ['TM5','PD1'] : ['PM2','PM3'];
 
@@ -13953,15 +13902,12 @@ export function mainPage(): string {
       var content = document.getElementById('fpl-content');
       if (!content) return;
 
-      // 우선순위: 수동설정 > 상단 글로벌 기준월 > CAPA 탭 선택
+      // 상단 글로벌 기준월 사용
       var prodTon = _fplManual.productionTon || getFplCapaProduction();
       var globalYearEl = document.getElementById('analysisYear');
       var globalMonthEl = document.getElementById('analysisMonth');
-      var globalYear = globalYearEl ? parseInt(globalYearEl.value) : null;
-      var globalMonth = globalMonthEl ? parseInt(globalMonthEl.value) : null;
-      var curMonth = _fplManual.month || globalMonth || (typeof getCapaMonth === 'function' ? getCapaMonth() : '');
-      var curYear = _fplManual.year || globalYear || (typeof getCapaYear === 'function' ? getCapaYear() : '');
-      var curMachine = typeof getCapaMachine === 'function' ? getCapaMachine() : '';
+      var curYear = globalYearEl ? parseInt(globalYearEl.value) : new Date().getFullYear();
+      var curMonth = globalMonthEl ? parseInt(globalMonthEl.value) : new Date().getMonth() + 1;
 
       // 월 변경 시 baseline 리셋
       var monthKey = curYear + '-' + curMonth;
@@ -13971,7 +13917,7 @@ export function mainPage(): string {
       _fplCurrentMonth = monthKey;
 
       // sub 라벨 갱신
-      var isManual = _fplManual.productionTon || _fplManual.month;
+      var isManual = _fplManual.productionTon;
       var sub = document.getElementById('fpl-head-sub');
       if (sub) {
         if (curYear && curMonth) {
