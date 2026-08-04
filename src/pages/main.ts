@@ -4887,6 +4887,8 @@ export function mainPage(): string {
     // 메인 날짜 변경 시 현재 보이는 탭에 따라 데이터 갱신
     function onMainDateChange() {
       refreshActiveTab();
+      // 손익 시뮬레이션 패널도 글로벌 기준월 연동 갱신
+      if (typeof _fplOpen !== 'undefined' && _fplOpen && typeof renderFplPL === 'function') renderFplPL();
     }
     // 데이터 조회 (dv-year / dv-month)
     function stepDvYear(dir) {
@@ -13714,8 +13716,10 @@ export function mainPage(): string {
 
       // 기간 및 생산량 설정
       html += '<div class="fpl-setting-section">기간 / 생산량</div>';
-      var curYear = _fplManual.year || (typeof getCapaYear === 'function' ? getCapaYear() : 2026);
-      var curMonth = _fplManual.month || (typeof getCapaMonth === 'function' ? getCapaMonth() : new Date().getMonth() + 1);
+      var gYearEl = document.getElementById('analysisYear');
+      var gMonthEl = document.getElementById('analysisMonth');
+      var curYear = _fplManual.year || (gYearEl ? parseInt(gYearEl.value) : null) || (typeof getCapaYear === 'function' ? getCapaYear() : 2026);
+      var curMonth = _fplManual.month || (gMonthEl ? parseInt(gMonthEl.value) : null) || (typeof getCapaMonth === 'function' ? getCapaMonth() : new Date().getMonth() + 1);
       var curProd = _fplManual.productionTon || getFplCapaProduction() || 0;
 
       html += '<div class="fpl-setting-row">';
@@ -13847,10 +13851,14 @@ export function mainPage(): string {
       var content = document.getElementById('fpl-content');
       if (!content) return;
 
-      // 수동 설정이 있으면 우선 사용, 없으면 CAPA에서 자동
+      // 우선순위: 수동설정 > 상단 글로벌 기준월 > CAPA 탭 선택
       var prodTon = _fplManual.productionTon || getFplCapaProduction();
-      var curMonth = _fplManual.month || (typeof getCapaMonth === 'function' ? getCapaMonth() : '');
-      var curYear = _fplManual.year || (typeof getCapaYear === 'function' ? getCapaYear() : '');
+      var globalYearEl = document.getElementById('analysisYear');
+      var globalMonthEl = document.getElementById('analysisMonth');
+      var globalYear = globalYearEl ? parseInt(globalYearEl.value) : null;
+      var globalMonth = globalMonthEl ? parseInt(globalMonthEl.value) : null;
+      var curMonth = _fplManual.month || globalMonth || (typeof getCapaMonth === 'function' ? getCapaMonth() : '');
+      var curYear = _fplManual.year || globalYear || (typeof getCapaYear === 'function' ? getCapaYear() : '');
       var curMachine = typeof getCapaMachine === 'function' ? getCapaMachine() : '';
 
       // 월 변경 시 baseline 리셋
