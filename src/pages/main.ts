@@ -13510,6 +13510,9 @@ export function mainPage(): string {
       display: none;
       flex-direction: column;
       overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Noto Sans KR', sans-serif;
+      font-size: 12px;
+      line-height: 1.5;
     }
     #fpl-panel.open { display: flex; animation: fplSlideIn 0.3s cubic-bezier(0.4,0,0.2,1); }
     @keyframes fplSlideIn { from{opacity:0;transform:translateY(16px) scale(0.96)} to{opacity:1;transform:translateY(0) scale(1)} }
@@ -13556,8 +13559,9 @@ export function mainPage(): string {
       border-bottom: 1px solid #f3f4f6;
     }
     .fpl-pl-table .fpl-pl-label { color: #374151; font-weight: 500; }
-    .fpl-pl-table .fpl-pl-val { text-align: right; font-family: 'SF Mono','Roboto Mono',monospace; font-weight: 600; color: #111827; }
-    .fpl-pl-table .fpl-pl-delta { text-align: right; font-family: 'SF Mono','Roboto Mono',monospace; font-size: 10px; font-weight: 600; }
+    .fpl-pl-table .fpl-pl-val { text-align: right; font-family: 'SF Mono','Roboto Mono','Menlo',monospace; font-weight: 600; color: #111827; }
+    .fpl-pl-table .fpl-pl-delta { text-align: right; font-family: 'SF Mono','Roboto Mono','Menlo',monospace; font-size: 10px; font-weight: 600; }
+    .fpl-mono { font-family: 'SF Mono','Roboto Mono','Menlo',monospace; }
     .fpl-pl-table .fpl-pl-sub { padding-left: 16px; color: #6b7280; font-size: 10px; }
     .fpl-pl-table .fpl-pl-total { background: #f8fafc; font-weight: 700; }
     .fpl-pl-table .fpl-pl-profit { background: linear-gradient(135deg, #eef2ff, #e0e7ff); font-weight: 800; font-size: 12px; }
@@ -13904,7 +13908,7 @@ export function mainPage(): string {
       html += '<div style="padding:10px 12px;background:' + (hasChange ? 'linear-gradient(135deg,#fef3c7,#fde68a)' : 'linear-gradient(135deg,#f0fdf4,#dcfce7)') + ';border-radius:10px;margin-bottom:12px;text-align:center;">';
       html += '<div style="font-size:9px;color:#6b7280;margin-bottom:2px;">생산량 변동 (전월 대비)</div>';
       if (hasChange) {
-        html += '<div style="font-size:22px;font-weight:800;color:' + (prodDelta > 0 ? '#b45309' : '#dc2626') + ';font-family:SF Mono,Roboto Mono,monospace;">' + (prodDelta > 0 ? '+' : '') + prodDelta.toFixed(0) + ' <span style="font-size:12px;">톤</span></div>';
+        html += '<div class="fpl-mono" style="font-size:22px;font-weight:800;color:' + (prodDelta > 0 ? '#b45309' : '#dc2626') + ';">' + (prodDelta > 0 ? '+' : '') + prodDelta.toFixed(0) + ' <span style="font-size:12px;">톤</span></div>';
         html += '<div style="font-size:9px;color:#92400e;">' + base.production.toFixed(0) + '톤 → ' + pl.production.toFixed(0) + '톤</div>';
       } else {
         html += '<div style="font-size:18px;font-weight:800;color:#16a34a;">0 <span style="font-size:11px;">변동 없음</span></div>';
@@ -13935,7 +13939,7 @@ export function mainPage(): string {
       var profitBg = profitDelta > 0 ? '#f0fdf4' : profitDelta < 0 ? '#fef2f2' : '#f9fafb';
       html += '<div style="margin-top:12px;padding:14px;background:' + profitBg + ';border:2px solid ' + profitColor + '33;border-radius:12px;text-align:center;">';
       html += '<div style="font-size:9px;color:#6b7280;margin-bottom:4px;">영업이익 증감</div>';
-      html += '<div style="font-size:24px;font-weight:900;color:' + profitColor + ';font-family:SF Mono,Roboto Mono,monospace;">';
+      html += '<div class="fpl-mono" style="font-size:24px;font-weight:900;color:' + profitColor + ';">';
       if (Math.abs(profitDelta) < 0.5) {
         html += '0';
       } else {
@@ -13987,14 +13991,14 @@ export function mainPage(): string {
     // 증감 셀: 0이면 "0", 양수면 +금액, 음수면 △금액
     function fplDeltaCell(delta, isCost) {
       if (Math.abs(delta) < 0.5) {
-        return '<span style="color:#9ca3af;font-family:SF Mono,Roboto Mono,monospace;font-weight:600;">0</span>';
+        return '<span class="fpl-mono" style="color:#9ca3af;font-weight:600;">0</span>';
       }
       // 색상: 비용은 증가=빨강(나쁨), 감소=녹색(좋음) / 매출/이익은 반대
       var isGood = isCost ? (delta < 0) : (delta > 0);
       var color = isGood ? '#16a34a' : '#dc2626';
       var sign = delta > 0 ? '+' : (delta < 0 ? String.fromCharCode(9651) : ''); // △ for decrease
       var display = fplFmtDelta(delta);
-      return '<span style="color:' + color + ';font-family:SF Mono,Roboto Mono,monospace;font-weight:700;">' + sign + display + '</span>';
+      return '<span class="fpl-mono" style="color:' + color + ';font-weight:700;">' + sign + display + '</span>';
     }
 
     // 증감액 포맷: 백만원 단위 → 억 또는 백만원 표시 (절대값)
