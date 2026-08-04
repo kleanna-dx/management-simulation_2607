@@ -13714,7 +13714,7 @@ export function mainPage(): string {
       tabs.forEach(function(mc) {
         var label = mc === 'ALL' ? '전체' : mc;
         var cls = mc === _fplMachine ? 'fpl-mtab active' : 'fpl-mtab';
-        html += '<div class="' + cls + '" data-mc="' + mc + '" onclick="selectFplMachine(\'' + mc + '\')">' + label + '</div>';
+        html += '<div class="' + cls + '" data-mc="' + mc + '" onclick="selectFplMachine(&#39;' + mc + '&#39;)">' + label + '</div>';
       });
       container.innerHTML = html;
     }
