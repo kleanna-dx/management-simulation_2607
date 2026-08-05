@@ -3818,6 +3818,7 @@ export function mainPage(): string {
         case 'costforecast': loadCostForecast(); break;
         case 'simflow': loadUnifiedSim(); break;
         case 'optime': loadOperatingTime(); break;
+        case 'capa': loadCapaAnalysis(); break;
         case 'prodplan': loadProdPlan(); break;
         case 'scenario': loadScenarioAnalysis(); break;
         case 'datainput':
