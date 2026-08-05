@@ -12972,7 +12972,9 @@ export function mainPage(): string {
       right: 24px;
       z-index: 9999;
       width: 380px;
-      max-height: 600px;
+      min-width: 280px;
+      min-height: 300px;
+      max-height: 90vh;
       border-radius: 20px;
       background: #ffffff;
       box-shadow: 0 10px 50px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.06);
@@ -12983,6 +12985,8 @@ export function mainPage(): string {
       font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Noto Sans KR', sans-serif;
       font-size: 12px;
       line-height: 1.5;
+      resize: both;
+      overflow: hidden;
     }
     #fpl-panel.open { display: flex; animation: fplSlideIn 0.3s cubic-bezier(0.4,0,0.2,1); }
     @keyframes fplSlideIn { from{opacity:0;transform:translateY(16px) scale(0.96)} to{opacity:1;transform:translateY(0) scale(1)} }
@@ -12992,7 +12996,28 @@ export function mainPage(): string {
       background: linear-gradient(135deg, #312e81, #4f46e5);
       color: white;
       display: flex; align-items: center; justify-content: space-between;
+      cursor: grab;
+      user-select: none;
     }
+    .fpl-head:active { cursor: grabbing; }
+    #fpl-panel .fpl-resize-handle {
+      position: absolute;
+      width: 16px; height: 16px;
+      bottom: 0; left: 0;
+      cursor: sw-resize;
+      z-index: 10;
+    }
+    #fpl-panel .fpl-resize-handle::after {
+      content: '';
+      position: absolute;
+      bottom: 4px; left: 4px;
+      width: 8px; height: 8px;
+      border-left: 2px solid #9ca3af;
+      border-bottom: 2px solid #9ca3af;
+      border-radius: 0 0 0 2px;
+      opacity: 0.5;
+    }
+    #fpl-panel:hover .fpl-resize-handle::after { opacity: 1; }
     .fpl-head-title { font-size: 13px; font-weight: 700; }
     .fpl-head-sub { font-size: 10px; opacity: 0.75; margin-top: 2px; }
     .fpl-head-actions { display: flex; gap: 4px; }
@@ -13008,7 +13033,6 @@ export function mainPage(): string {
       padding: 14px 16px;
       overflow-y: auto;
       flex: 1;
-      max-height: 480px;
     }
 
     .fpl-pl-table {
@@ -13110,7 +13134,8 @@ export function mainPage(): string {
 
   <!-- 플로팅 패널 -->
   <div id="fpl-panel">
-    <div class="fpl-head">
+    <div class="fpl-resize-handle" id="fpl-resize-handle"></div>
+    <div class="fpl-head" id="fpl-drag-handle">
       <div>
         <div class="fpl-head-title"><i class="fas fa-calculator mr-1.5"></i>손익 시뮬레이션</div>
         <div class="fpl-head-sub" id="fpl-head-sub">CAPA 생산량 기반 손익 추정</div>
@@ -13141,6 +13166,160 @@ export function mainPage(): string {
     // ======== 손익 시뮬레이션 패널 ========
     var _fplOpen = false;
     var _fplSettingsOpen = false;
+
+    // ---- 패널 드래그 이동 ----
+    (function() {
+      var panel, handle, isDragging = false, startX, startY, origLeft, origTop;
+
+      function initDrag() {
+        panel = document.getElementById('fpl-panel');
+        handle = document.getElementById('fpl-drag-handle');
+        if (!panel || !handle) return;
+
+        handle.addEventListener('mousedown', dragStart);
+        handle.addEventListener('touchstart', dragStartTouch, {passive:false});
+      }
+
+      function dragStart(e) {
+        if (e.target.closest('.fpl-head-btn')) return; // 버튼 클릭은 무시
+        isDragging = true;
+        var rect = panel.getBoundingClientRect();
+        startX = e.clientX; startY = e.clientY;
+        origLeft = rect.left; origTop = rect.top;
+        // position을 top/left로 전환
+        panel.style.bottom = 'auto';
+        panel.style.right = 'auto';
+        panel.style.left = origLeft + 'px';
+        panel.style.top = origTop + 'px';
+        document.addEventListener('mousemove', dragMove);
+        document.addEventListener('mouseup', dragEnd);
+        e.preventDefault();
+      }
+
+      function dragStartTouch(e) {
+        if (e.target.closest('.fpl-head-btn')) return;
+        var touch = e.touches[0];
+        isDragging = true;
+        var rect = panel.getBoundingClientRect();
+        startX = touch.clientX; startY = touch.clientY;
+        origLeft = rect.left; origTop = rect.top;
+        panel.style.bottom = 'auto';
+        panel.style.right = 'auto';
+        panel.style.left = origLeft + 'px';
+        panel.style.top = origTop + 'px';
+        document.addEventListener('touchmove', dragMoveTouch, {passive:false});
+        document.addEventListener('touchend', dragEndTouch);
+        e.preventDefault();
+      }
+
+      function dragMove(e) {
+        if (!isDragging) return;
+        var dx = e.clientX - startX, dy = e.clientY - startY;
+        panel.style.left = Math.max(0, origLeft + dx) + 'px';
+        panel.style.top = Math.max(0, origTop + dy) + 'px';
+      }
+
+      function dragMoveTouch(e) {
+        if (!isDragging) return;
+        var touch = e.touches[0];
+        var dx = touch.clientX - startX, dy = touch.clientY - startY;
+        panel.style.left = Math.max(0, origLeft + dx) + 'px';
+        panel.style.top = Math.max(0, origTop + dy) + 'px';
+        e.preventDefault();
+      }
+
+      function dragEnd() {
+        isDragging = false;
+        document.removeEventListener('mousemove', dragMove);
+        document.removeEventListener('mouseup', dragEnd);
+      }
+
+      function dragEndTouch() {
+        isDragging = false;
+        document.removeEventListener('touchmove', dragMoveTouch);
+        document.removeEventListener('touchend', dragEndTouch);
+      }
+
+      // ---- 패널 리사이즈 (좌하단 핸들) ----
+      var resHandle, isResizing = false, resStartX, resStartY, resOrigW, resOrigH, resOrigLeft;
+
+      function initResize() {
+        resHandle = document.getElementById('fpl-resize-handle');
+        if (!resHandle || !panel) return;
+        resHandle.addEventListener('mousedown', resizeStart);
+        resHandle.addEventListener('touchstart', resizeStartTouch, {passive:false});
+      }
+
+      function resizeStart(e) {
+        isResizing = true;
+        var rect = panel.getBoundingClientRect();
+        resStartX = e.clientX; resStartY = e.clientY;
+        resOrigW = rect.width; resOrigH = rect.height; resOrigLeft = rect.left;
+        // 위치 고정 (top/left 모드)
+        panel.style.bottom = 'auto'; panel.style.right = 'auto';
+        panel.style.left = rect.left + 'px'; panel.style.top = rect.top + 'px';
+        document.addEventListener('mousemove', resizeMove);
+        document.addEventListener('mouseup', resizeEnd);
+        e.preventDefault(); e.stopPropagation();
+      }
+
+      function resizeStartTouch(e) {
+        isResizing = true;
+        var touch = e.touches[0];
+        var rect = panel.getBoundingClientRect();
+        resStartX = touch.clientX; resStartY = touch.clientY;
+        resOrigW = rect.width; resOrigH = rect.height; resOrigLeft = rect.left;
+        panel.style.bottom = 'auto'; panel.style.right = 'auto';
+        panel.style.left = rect.left + 'px'; panel.style.top = rect.top + 'px';
+        document.addEventListener('touchmove', resizeMoveTouch, {passive:false});
+        document.addEventListener('touchend', resizeEndTouch);
+        e.preventDefault(); e.stopPropagation();
+      }
+
+      function resizeMove(e) {
+        if (!isResizing) return;
+        var dx = e.clientX - resStartX;
+        var dy = e.clientY - resStartY;
+        // 좌하단 핸들: 왼쪽으로 드래그 → 넓어짐, 아래로 → 높아짐
+        var newW = Math.max(280, resOrigW - dx);
+        var newH = Math.max(300, resOrigH + dy);
+        panel.style.width = newW + 'px';
+        panel.style.height = newH + 'px';
+        panel.style.left = (resOrigLeft + dx) + 'px';
+      }
+
+      function resizeMoveTouch(e) {
+        if (!isResizing) return;
+        var touch = e.touches[0];
+        var dx = touch.clientX - resStartX;
+        var dy = touch.clientY - resStartY;
+        var newW = Math.max(280, resOrigW - dx);
+        var newH = Math.max(300, resOrigH + dy);
+        panel.style.width = newW + 'px';
+        panel.style.height = newH + 'px';
+        panel.style.left = (resOrigLeft + dx) + 'px';
+        e.preventDefault();
+      }
+
+      function resizeEnd() {
+        isResizing = false;
+        document.removeEventListener('mousemove', resizeMove);
+        document.removeEventListener('mouseup', resizeEnd);
+      }
+
+      function resizeEndTouch() {
+        isResizing = false;
+        document.removeEventListener('touchmove', resizeMoveTouch);
+        document.removeEventListener('touchend', resizeEndTouch);
+      }
+
+      // DOM 로드 후 초기화
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() { initDrag(); initResize(); });
+      } else {
+        setTimeout(function() { initDrag(); initResize(); }, 0);
+      }
+    })();
 
     // 단가 설정 (천원/톤 or 백만원/월)
     var _fplRates = {
