@@ -13565,6 +13565,13 @@ export function mainPage(): string {
       if (!origFn) return;
       var wrapped = function() {
         origFn.apply(this, arguments);
+        // CAPA 테이블 변경 시 현재 호기의 캐시를 실시간 capaData로 갱신
+        if (typeof capaData !== 'undefined' && capaData) {
+          var curMc = typeof getCapaMachine === 'function' ? getCapaMachine() : '';
+          if (curMc) {
+            _fplCapaCache[curMc] = JSON.parse(JSON.stringify(capaData));
+          }
+        }
         if (_fplOpen) renderFplPL();
       };
       window.renderCapaTable = wrapped;
