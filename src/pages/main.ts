@@ -2953,12 +2953,16 @@ export function mainPage(): string {
           <!-- 워터폴 차트 -->
           <div class="card px-4 py-3">
             <h4 class="text-xs font-semibold text-gray-600 mb-2"><i class="fas fa-chart-bar text-indigo-400 mr-1.5"></i>영업이익 Waterfall</h4>
-            <canvas id="plsim-waterfall-chart" height="200"></canvas>
+            <div style="position:relative;height:200px;width:100%;">
+              <canvas id="plsim-waterfall-chart"></canvas>
+            </div>
           </div>
           <!-- 비용 구성 파이 -->
           <div class="card px-4 py-3">
             <h4 class="text-xs font-semibold text-gray-600 mb-2"><i class="fas fa-chart-pie text-emerald-400 mr-1.5"></i>비용 구성</h4>
-            <canvas id="plsim-pie-chart" height="180"></canvas>
+            <div style="position:relative;height:180px;width:100%;">
+              <canvas id="plsim-pie-chart"></canvas>
+            </div>
           </div>
         </div>
       </div>
