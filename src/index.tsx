@@ -4718,4 +4718,392 @@ app.post('/api/capa-plan', async (c) => {
   return c.json({ success: true, count: data ? data.length : 0 })
 })
 
+// ============ 전력비 이동계획 시스템 API ============
+
+// --- 호기(라인) 마스터 조회 ---
+app.get('/api/power/lines', async (c) => {
+  const db = c.env.DB
+  const division = c.req.query('division') || 'PS'
+  const rows = await db.prepare(
+    `SELECT * FROM power_lines WHERE division = ? AND is_active = 1 ORDER BY display_order`
+  ).bind(division).all()
+  return c.json({ data: rows.results || [] })
+})
+
+// --- 호기 마스터 업데이트 (표준원단위 등) ---
+app.post('/api/power/lines', async (c) => {
+  const db = c.env.DB
+  const body = await c.req.json() as any
+  const { line_code, standard_kwh_per_ton, line_name, category, unit } = body
+  if (!line_code) return c.json({ error: 'line_code required' }, 400)
+  
+  await db.prepare(`
+    UPDATE power_lines SET 
+      standard_kwh_per_ton = COALESCE(?, standard_kwh_per_ton),
+      line_name = COALESCE(?, line_name),
+      category = COALESCE(?, category),
+      unit = COALESCE(?, unit),
+      created_at = CURRENT_TIMESTAMP
+    WHERE line_code = ?
+  `).bind(standard_kwh_per_ton || null, line_name || null, category || null, unit || null, line_code).run()
+  return c.json({ success: true })
+})
+
+// --- 배분율 조회/저장 ---
+app.get('/api/power/allocation', async (c) => {
+  const db = c.env.DB
+  const division = c.req.query('division') || 'PS'
+  const ym = c.req.query('year_month') || ''
+  
+  let query = `SELECT * FROM power_allocation WHERE division = ?`
+  const params: any[] = [division]
+  if (ym) { query += ` AND year_month = ?`; params.push(ym) }
+  query += ` ORDER BY line_code, year_month`
+  
+  const rows = await db.prepare(query).bind(...params).all()
+  return c.json({ data: rows.results || [] })
+})
+
+app.post('/api/power/allocation', async (c) => {
+  const db = c.env.DB
+  const body = await c.req.json() as any
+  const { data, year_month, division } = body
+  if (!data || !year_month) return c.json({ error: 'data and year_month required' }, 400)
+  
+  const div = division || 'PS'
+  const stmt = db.prepare(`
+    INSERT INTO power_allocation (line_code, year_month, cost_ratio, ess_ratio, division, updated_at)
+    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(division, line_code, year_month) 
+    DO UPDATE SET cost_ratio = excluded.cost_ratio, ess_ratio = excluded.ess_ratio, updated_at = CURRENT_TIMESTAMP
+  `)
+  const batch = data.map((r: any) => stmt.bind(r.line_code, year_month, r.cost_ratio || 0, r.ess_ratio || 0, div))
+  await db.batch(batch)
+  return c.json({ success: true, count: data.length })
+})
+
+// --- 한전 고지서 조회/저장 ---
+app.get('/api/power/bill', async (c) => {
+  const db = c.env.DB
+  const factory = c.req.query('factory') || 'cheongju'
+  const ym = c.req.query('year_month') || ''
+  const year = c.req.query('year') || ''
+  
+  let query = `SELECT * FROM power_bill WHERE factory_code = ?`
+  const params: any[] = [factory]
+  if (ym) { query += ` AND year_month = ?`; params.push(ym) }
+  else if (year) { query += ` AND year_month LIKE ?`; params.push(year + '%') }
+  query += ` ORDER BY year_month`
+  
+  const rows = await db.prepare(query).bind(...params).all()
+  return c.json({ data: rows.results || [] })
+})
+
+app.post('/api/power/bill', async (c) => {
+  const db = c.env.DB
+  const body = await c.req.json() as any
+  const { factory_code, year_month, total_kwh_main, total_kwh_ess, fee_main, fee_ess, fee_spc, fee_dr_settlement, fee_boiler_deduct, fee_samsung_comp, division } = body
+  if (!factory_code || !year_month) return c.json({ error: 'factory_code and year_month required' }, 400)
+  
+  await db.prepare(`
+    INSERT INTO power_bill (factory_code, year_month, total_kwh_main, total_kwh_ess, fee_main, fee_ess, fee_spc, fee_dr_settlement, fee_boiler_deduct, fee_samsung_comp, division, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(factory_code, year_month)
+    DO UPDATE SET total_kwh_main=excluded.total_kwh_main, total_kwh_ess=excluded.total_kwh_ess,
+      fee_main=excluded.fee_main, fee_ess=excluded.fee_ess, fee_spc=excluded.fee_spc,
+      fee_dr_settlement=excluded.fee_dr_settlement, fee_boiler_deduct=excluded.fee_boiler_deduct,
+      fee_samsung_comp=excluded.fee_samsung_comp, updated_at=CURRENT_TIMESTAMP
+  `).bind(factory_code, year_month, total_kwh_main||0, total_kwh_ess||0, fee_main||0, fee_ess||0, fee_spc||0, fee_dr_settlement||0, fee_boiler_deduct||0, fee_samsung_comp||0, division||'PS').run()
+  return c.json({ success: true })
+})
+
+// --- 생산계획 조회/저장 ---
+app.get('/api/power/production-plan', async (c) => {
+  const db = c.env.DB
+  const division = c.req.query('division') || 'PS'
+  const ym = c.req.query('year_month') || ''
+  const year = c.req.query('year') || ''
+  
+  let query = `SELECT * FROM power_production_plan WHERE division = ?`
+  const params: any[] = [division]
+  if (ym) { query += ` AND year_month = ?`; params.push(ym) }
+  else if (year) { query += ` AND year_month LIKE ?`; params.push(year + '%') }
+  query += ` ORDER BY line_code, year_month`
+  
+  const rows = await db.prepare(query).bind(...params).all()
+  return c.json({ data: rows.results || [] })
+})
+
+app.post('/api/power/production-plan', async (c) => {
+  const db = c.env.DB
+  const body = await c.req.json() as any
+  const { data, division } = body
+  if (!data || !data.length) return c.json({ error: 'data required' }, 400)
+  
+  const div = division || 'PS'
+  const stmt = db.prepare(`
+    INSERT INTO power_production_plan (line_code, year_month, planned_qty, planned_hours, planned_downtime, division, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(division, line_code, year_month)
+    DO UPDATE SET planned_qty=excluded.planned_qty, planned_hours=excluded.planned_hours, 
+      planned_downtime=excluded.planned_downtime, updated_at=CURRENT_TIMESTAMP
+  `)
+  const batch = data.map((r: any) => stmt.bind(r.line_code, r.year_month, r.planned_qty||0, r.planned_hours||0, r.planned_downtime||0, div))
+  await db.batch(batch)
+  return c.json({ success: true, count: data.length })
+})
+
+// --- 🔥 핵심: 롤링계획 자동 계산 엔진 ---
+app.post('/api/power/calculate', async (c) => {
+  const db = c.env.DB
+  const body = await c.req.json() as any
+  const { year_month, factory_code, division, plan_name } = body
+  if (!year_month) return c.json({ error: 'year_month required' }, 400)
+  
+  const factory = factory_code || 'cheongju'
+  const div = division || 'PS'
+  
+  // 1. 고지서 데이터 로드
+  const billRow = await db.prepare(
+    `SELECT * FROM power_bill WHERE factory_code = ? AND year_month = ?`
+  ).bind(factory, year_month).first()
+  
+  if (!billRow) return c.json({ error: `No bill data for ${year_month}` }, 404)
+  
+  // 2. 배분율 로드
+  const allocRows = await db.prepare(
+    `SELECT * FROM power_allocation WHERE division = ? AND year_month = ?`
+  ).bind(div, year_month).all()
+  const allocMap: Record<string, any> = {}
+  ;(allocRows.results || []).forEach((r: any) => { allocMap[r.line_code] = r })
+  
+  // 3. 호기 마스터 로드
+  const lineRows = await db.prepare(
+    `SELECT * FROM power_lines WHERE division = ? AND is_active = 1`
+  ).bind(div).all()
+  
+  // 4. 생산계획 로드
+  const planRows = await db.prepare(
+    `SELECT * FROM power_production_plan WHERE division = ? AND year_month = ?`
+  ).bind(div, year_month).all()
+  const planMap: Record<string, any> = {}
+  ;(planRows.results || []).forEach((r: any) => { planMap[r.line_code] = r })
+  
+  // 5. 롤링계획 헤더 생성
+  // 기존 active 비활성화
+  await db.prepare(
+    `UPDATE power_rolling_plan SET is_active = 0 WHERE division = ? AND base_month = ? AND is_active = 1`
+  ).bind(div, year_month).run()
+  
+  const planResult = await db.prepare(`
+    INSERT INTO power_rolling_plan (plan_name, base_month, revision_no, factory_code, is_active, division, created_at)
+    VALUES (?, ?, (SELECT COALESCE(MAX(revision_no),0)+1 FROM power_rolling_plan WHERE division=? AND base_month=?), ?, 1, ?, CURRENT_TIMESTAMP)
+  `).bind(plan_name || `${year_month} 이동계획`, year_month, div, year_month, factory, div).run()
+  
+  const planId = planResult.meta.last_row_id
+  
+  // 6. 호기별 계산 실행
+  const bill: any = billRow
+  const details: any[] = []
+  
+  for (const line of (lineRows.results || []) as any[]) {
+    const alloc = allocMap[line.line_code]
+    if (!alloc) continue
+    
+    const costRatio = (alloc.cost_ratio || 0) / 100
+    const essRatio = (alloc.ess_ratio || 0) / 100
+    
+    // Step 1: 호기별 kWh
+    const kwhEss = (bill.total_kwh_ess || 0) * essRatio
+    const kwhMain = (bill.total_kwh_main || 0) * costRatio - kwhEss
+    const kwhTotal = kwhMain + kwhEss
+    
+    // Step 2: 호기별 요금 배분
+    const costMain = (bill.fee_main || 0) * costRatio
+    const costEss = (bill.fee_ess || 0) * costRatio
+    const costSpc = (bill.fee_spc || 0) * costRatio
+    const costDr = (bill.fee_dr_settlement || 0) * costRatio
+    const costBoiler = (bill.fee_boiler_deduct || 0) * costRatio
+    const costSamsung = (bill.fee_samsung_comp || 0) * costRatio
+    
+    // Step 3: 합계
+    const costKepco = costMain + costEss
+    const costKepcoSpc = costKepco + costSpc
+    const costAccounting = costMain + costEss + costSpc - costDr - costBoiler - costSamsung
+    
+    // Step 4: 단가
+    const rateKepco = kwhTotal > 0 ? costKepco / kwhTotal : 0
+    const rateSpc = kwhTotal > 0 ? costKepcoSpc / kwhTotal : 0
+    const rateAccounting = kwhTotal > 0 ? costAccounting / kwhTotal : 0
+    
+    // Step 5: 파생 지표
+    const prod = planMap[line.line_code]
+    const productionQty = prod ? (prod.planned_qty || 0) : 0
+    const productionTon = line.unit === 'kg' ? productionQty / 1000 : productionQty
+    const powerUnitKwhPerTon = productionTon > 0 ? kwhTotal / productionTon : (line.standard_kwh_per_ton || 0)
+    const powerCostPerTon = productionTon > 0 ? costAccounting / productionTon : 0
+    const operatingHours = prod ? (prod.planned_hours || 0) : 0
+    const daysInMonth = operatingHours > 0 ? operatingHours / 24 : 30
+    const productivityPerDay = daysInMonth > 0 ? productionQty / daysInMonth : 0
+    
+    const detail = {
+      line_code: line.line_code,
+      year_month,
+      kwh_main: Math.round(kwhMain),
+      kwh_ess: Math.round(kwhEss),
+      kwh_total: Math.round(kwhTotal),
+      cost_main: Math.round(costMain),
+      cost_ess: Math.round(costEss),
+      cost_spc: Math.round(costSpc),
+      cost_dr: Math.round(costDr),
+      cost_boiler: Math.round(costBoiler),
+      cost_samsung: Math.round(costSamsung),
+      cost_kepco: Math.round(costKepco),
+      cost_kepco_spc: Math.round(costKepcoSpc),
+      cost_accounting: Math.round(costAccounting),
+      rate_kepco: Math.round(rateKepco * 100) / 100,
+      rate_spc: Math.round(rateSpc * 100) / 100,
+      rate_accounting: Math.round(rateAccounting * 100) / 100,
+      production_qty: productionQty,
+      power_unit_kwh_per_ton: Math.round(powerUnitKwhPerTon * 100) / 100,
+      power_cost_per_ton: Math.round(powerCostPerTon),
+      operating_hours: operatingHours,
+      productivity_per_day: Math.round(productivityPerDay)
+    }
+    details.push(detail)
+    
+    // DB 저장
+    await db.prepare(`
+      INSERT INTO power_rolling_detail (plan_id, line_code, year_month, kwh_main, kwh_ess, kwh_total,
+        cost_main, cost_ess, cost_spc, cost_dr, cost_boiler, cost_samsung,
+        cost_kepco, cost_kepco_spc, cost_accounting, rate_kepco, rate_spc, rate_accounting,
+        production_qty, power_unit_kwh_per_ton, power_cost_per_ton, operating_hours, productivity_per_day)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(plan_id, line_code, year_month) DO UPDATE SET
+        kwh_main=excluded.kwh_main, kwh_ess=excluded.kwh_ess, kwh_total=excluded.kwh_total,
+        cost_main=excluded.cost_main, cost_ess=excluded.cost_ess, cost_spc=excluded.cost_spc,
+        cost_dr=excluded.cost_dr, cost_boiler=excluded.cost_boiler, cost_samsung=excluded.cost_samsung,
+        cost_kepco=excluded.cost_kepco, cost_kepco_spc=excluded.cost_kepco_spc, cost_accounting=excluded.cost_accounting,
+        rate_kepco=excluded.rate_kepco, rate_spc=excluded.rate_spc, rate_accounting=excluded.rate_accounting,
+        production_qty=excluded.production_qty, power_unit_kwh_per_ton=excluded.power_unit_kwh_per_ton,
+        power_cost_per_ton=excluded.power_cost_per_ton, operating_hours=excluded.operating_hours,
+        productivity_per_day=excluded.productivity_per_day
+    `).bind(planId, detail.line_code, detail.year_month, detail.kwh_main, detail.kwh_ess, detail.kwh_total,
+      detail.cost_main, detail.cost_ess, detail.cost_spc, detail.cost_dr, detail.cost_boiler, detail.cost_samsung,
+      detail.cost_kepco, detail.cost_kepco_spc, detail.cost_accounting, detail.rate_kepco, detail.rate_spc, detail.rate_accounting,
+      detail.production_qty, detail.power_unit_kwh_per_ton, detail.power_cost_per_ton, detail.operating_hours, detail.productivity_per_day
+    ).run()
+  }
+  
+  // 전사 합계 계산
+  const totals = details.reduce((acc, d) => ({
+    kwh_total: acc.kwh_total + d.kwh_total,
+    cost_accounting: acc.cost_accounting + d.cost_accounting,
+    cost_kepco: acc.cost_kepco + d.cost_kepco,
+    production_qty: acc.production_qty + d.production_qty
+  }), { kwh_total: 0, cost_accounting: 0, cost_kepco: 0, production_qty: 0 })
+  
+  return c.json({
+    success: true,
+    plan_id: planId,
+    year_month,
+    factory_code: factory,
+    totals,
+    details
+  })
+})
+
+// --- 롤링계획 결과 조회 ---
+app.get('/api/power/rolling', async (c) => {
+  const db = c.env.DB
+  const division = c.req.query('division') || 'PS'
+  const ym = c.req.query('year_month') || ''
+  const planId = c.req.query('plan_id') || ''
+  
+  let plan: any = null
+  if (planId) {
+    plan = await db.prepare(`SELECT * FROM power_rolling_plan WHERE id = ?`).bind(planId).first()
+  } else if (ym) {
+    plan = await db.prepare(
+      `SELECT * FROM power_rolling_plan WHERE division = ? AND base_month = ? AND is_active = 1 ORDER BY id DESC LIMIT 1`
+    ).bind(division, ym).first()
+  } else {
+    plan = await db.prepare(
+      `SELECT * FROM power_rolling_plan WHERE division = ? AND is_active = 1 ORDER BY id DESC LIMIT 1`
+    ).bind(division).first()
+  }
+  
+  if (!plan) return c.json({ data: null, details: [] })
+  
+  const details = await db.prepare(
+    `SELECT d.*, l.line_name, l.category, l.standard_kwh_per_ton
+     FROM power_rolling_detail d
+     LEFT JOIN power_lines l ON d.line_code = l.line_code
+     WHERE d.plan_id = ?
+     ORDER BY l.display_order`
+  ).bind(plan.id).all()
+  
+  return c.json({ data: plan, details: details.results || [] })
+})
+
+// --- 시뮬레이터용: 호기별 전력비 원단위 조회 (천원/톤) ---
+app.get('/api/power/cost-per-ton', async (c) => {
+  const db = c.env.DB
+  const division = c.req.query('division') || 'PS'
+  const ym = c.req.query('year_month') || ''
+  const machine = c.req.query('machine') || ''
+  
+  // 최신 활성 롤링계획에서 가져옴
+  const plan = await db.prepare(
+    `SELECT id FROM power_rolling_plan WHERE division = ? AND is_active = 1 ${ym ? 'AND base_month = ?' : ''} ORDER BY id DESC LIMIT 1`
+  ).bind(...(ym ? [division, ym] : [division])).first() as any
+  
+  if (!plan) {
+    // 롤링계획 없으면 표준원단위 기반 추정
+    const lines = await db.prepare(
+      `SELECT line_code, standard_kwh_per_ton FROM power_lines WHERE division = ? AND is_active = 1`
+    ).bind(division).all()
+    const defaultRate = 182 // 원/kWh 기본값
+    const result: Record<string, number> = {}
+    ;(lines.results || []).forEach((l: any) => {
+      result[l.line_code] = Math.round(l.standard_kwh_per_ton * defaultRate / 1000) // 천원/톤
+    })
+    return c.json({ source: 'estimated', rate_won_per_kwh: defaultRate, data: result })
+  }
+  
+  let query = `SELECT line_code, power_cost_per_ton, rate_accounting, kwh_total, production_qty FROM power_rolling_detail WHERE plan_id = ?`
+  const params: any[] = [plan.id]
+  if (machine && machine !== 'ALL') { query += ` AND line_code = ?`; params.push(machine) }
+  
+  const rows = await db.prepare(query).bind(...params).all()
+  const result: Record<string, any> = {}
+  let totalCost = 0, totalProd = 0
+  ;(rows.results || []).forEach((r: any) => {
+    result[r.line_code] = {
+      power_cost_per_ton: r.power_cost_per_ton, // 원/톤
+      power_cost_per_ton_1000: Math.round(r.power_cost_per_ton / 1000), // 천원/톤 (시뮬레이터용)
+      rate_accounting: r.rate_accounting,
+      kwh_total: r.kwh_total,
+      production_qty: r.production_qty
+    }
+    totalCost += r.power_cost_per_ton * (r.production_qty / 1000)
+    totalProd += r.production_qty / 1000
+  })
+  
+  const avgCostPerTon1000 = totalProd > 0 ? Math.round(totalCost / totalProd / 1000) : 45
+  
+  return c.json({ source: 'rolling_plan', plan_id: plan.id, avg_cost_per_ton_1000: avgCostPerTon1000, data: result })
+})
+
+// --- 롤링계획 이력 목록 ---
+app.get('/api/power/rolling-history', async (c) => {
+  const db = c.env.DB
+  const division = c.req.query('division') || 'PS'
+  const rows = await db.prepare(
+    `SELECT id, plan_name, base_month, revision_no, factory_code, is_active, created_at
+     FROM power_rolling_plan WHERE division = ? ORDER BY id DESC LIMIT 50`
+  ).bind(division).all()
+  return c.json({ data: rows.results || [] })
+})
+
 export default app

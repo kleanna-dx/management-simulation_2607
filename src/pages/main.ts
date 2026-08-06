@@ -190,6 +190,14 @@ export function mainPage(): string {
           </button>
         </div>
 
+        <!-- 에너지 관리 섹션 -->
+        <div class="mb-4">
+          <p class="px-3 mb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">에너지 관리</p>
+          <button onclick="switchTab('powercost')" id="tab-powercost" class="nav-item w-full">
+            <i class="fas fa-bolt w-4 text-center"></i><span>전력비 관리</span>
+          </button>
+        </div>
+
         <!-- 데이터 관리 섹션 -->
         <div class="mb-4">
           <p class="px-3 mb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">데이터 관리</p>
@@ -3047,6 +3055,177 @@ export function mainPage(): string {
       </div>
     </div><!-- /content-optime -->
 
+    <!-- ============ 전력비 관리 (Power Cost Management) ============ -->
+    <div id="content-powercost" class="hidden fade-in w-full space-y-4">
+      <!-- 헤더 -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-gray-800"><i class="fas fa-bolt text-yellow-500 mr-2"></i>전력비 관리</h2>
+          <p class="text-xs text-gray-500 mt-1">호기별 전력 배분율, 한전 고지서, 생산계획을 입력하고 롤링계획을 자동 계산합니다.</p>
+        </div>
+        <div class="flex gap-2">
+          <select id="pw-year" class="text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white" onchange="pwLoadAll()">
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+          </select>
+          <select id="pw-month" class="text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white" onchange="pwLoadAll()">
+            <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
+            <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
+            <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
+            <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 서브탭 -->
+      <div class="flex gap-1 bg-slate-100 p-1 rounded-lg">
+        <button onclick="pwSwitchSub('alloc')" id="pw-sub-alloc" class="flex-1 px-3 py-2 text-xs font-medium rounded-md bg-white shadow-sm text-gray-800">배분율 관리</button>
+        <button onclick="pwSwitchSub('bill')" id="pw-sub-bill" class="flex-1 px-3 py-2 text-xs font-medium rounded-md text-gray-500 hover:text-gray-700">한전 고지서</button>
+        <button onclick="pwSwitchSub('prod')" id="pw-sub-prod" class="flex-1 px-3 py-2 text-xs font-medium rounded-md text-gray-500 hover:text-gray-700">생산계획</button>
+        <button onclick="pwSwitchSub('calc')" id="pw-sub-calc" class="flex-1 px-3 py-2 text-xs font-medium rounded-md text-gray-500 hover:text-gray-700">계산/결과</button>
+      </div>
+
+      <!-- 서브: 배분율 관리 -->
+      <div id="pw-panel-alloc" class="card p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-percentage mr-1 text-blue-500"></i>호기별 전력 배분율</h3>
+          <button onclick="pwSaveAllocation()" class="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition"><i class="fas fa-save mr-1"></i>저장</button>
+        </div>
+        <p class="text-[11px] text-gray-500">각 호기의 요금/ESS 배분비율(%)을 입력합니다. 전사 합계 100% 맞추기를 권장합니다.</p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs border-collapse" id="pw-alloc-table">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200">
+                <th class="px-3 py-2 text-left font-semibold text-gray-600">호기</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600">요금 배분율(%)</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600">ESS 배분율(%)</th>
+              </tr>
+            </thead>
+            <tbody id="pw-alloc-tbody"></tbody>
+          </table>
+        </div>
+        <div id="pw-alloc-msg" class="text-xs text-green-600 hidden"><i class="fas fa-check-circle mr-1"></i>저장 완료</div>
+      </div>
+
+      <!-- 서브: 한전 고지서 -->
+      <div id="pw-panel-bill" class="card p-4 space-y-3 hidden">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-file-invoice-dollar mr-1 text-green-500"></i>한전 고지서 입력</h3>
+          <button onclick="pwSaveBill()" class="px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition"><i class="fas fa-save mr-1"></i>저장</button>
+        </div>
+        <p class="text-[11px] text-gray-500">해당 월의 한전 고지서 데이터를 입력합니다. (전사 기준)</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <label class="text-[10px] text-gray-500 font-medium">본전 kWh (Main)</label>
+            <input id="pw-bill-kwh-main" type="number" class="w-full mt-1 px-3 py-2 text-xs border border-slate-200 rounded-lg" placeholder="0">
+          </div>
+          <div>
+            <label class="text-[10px] text-gray-500 font-medium">ESS kWh</label>
+            <input id="pw-bill-kwh-ess" type="number" class="w-full mt-1 px-3 py-2 text-xs border border-slate-200 rounded-lg" placeholder="0">
+          </div>
+          <div>
+            <label class="text-[10px] text-gray-500 font-medium">본전 요금(원)</label>
+            <input id="pw-bill-fee-main" type="number" class="w-full mt-1 px-3 py-2 text-xs border border-slate-200 rounded-lg" placeholder="0">
+          </div>
+          <div>
+            <label class="text-[10px] text-gray-500 font-medium">ESS 요금(원)</label>
+            <input id="pw-bill-fee-ess" type="number" class="w-full mt-1 px-3 py-2 text-xs border border-slate-200 rounded-lg" placeholder="0">
+          </div>
+          <div>
+            <label class="text-[10px] text-gray-500 font-medium">SPC 전력비(원)</label>
+            <input id="pw-bill-fee-spc" type="number" class="w-full mt-1 px-3 py-2 text-xs border border-slate-200 rounded-lg" placeholder="0">
+          </div>
+          <div>
+            <label class="text-[10px] text-gray-500 font-medium">DR 정산수익(원)</label>
+            <input id="pw-bill-fee-dr" type="number" class="w-full mt-1 px-3 py-2 text-xs border border-slate-200 rounded-lg" placeholder="0">
+          </div>
+          <div>
+            <label class="text-[10px] text-gray-500 font-medium">보일러 차감(원)</label>
+            <input id="pw-bill-fee-boiler" type="number" class="w-full mt-1 px-3 py-2 text-xs border border-slate-200 rounded-lg" placeholder="0">
+          </div>
+          <div>
+            <label class="text-[10px] text-gray-500 font-medium">삼성 보전(원)</label>
+            <input id="pw-bill-fee-samsung" type="number" class="w-full mt-1 px-3 py-2 text-xs border border-slate-200 rounded-lg" placeholder="0">
+          </div>
+        </div>
+        <div id="pw-bill-msg" class="text-xs text-green-600 hidden"><i class="fas fa-check-circle mr-1"></i>저장 완료</div>
+      </div>
+
+      <!-- 서브: 생산계획 -->
+      <div id="pw-panel-prod" class="card p-4 space-y-3 hidden">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-industry mr-1 text-amber-500"></i>호기별 생산계획(톤)</h3>
+          <button onclick="pwSaveProd()" class="px-3 py-1.5 bg-amber-600 text-white text-xs rounded-lg hover:bg-amber-700 transition"><i class="fas fa-save mr-1"></i>저장</button>
+        </div>
+        <p class="text-[11px] text-gray-500">해당 월의 호기별 생산계획(톤)을 입력합니다. 전력비 원단위 계산에 사용됩니다.</p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs border-collapse" id="pw-prod-table">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200">
+                <th class="px-3 py-2 text-left font-semibold text-gray-600">호기</th>
+                <th class="px-3 py-2 text-center font-semibold text-gray-600">생산계획(톤)</th>
+              </tr>
+            </thead>
+            <tbody id="pw-prod-tbody"></tbody>
+          </table>
+        </div>
+        <div id="pw-prod-msg" class="text-xs text-green-600 hidden"><i class="fas fa-check-circle mr-1"></i>저장 완료</div>
+      </div>
+
+      <!-- 서브: 계산/결과 -->
+      <div id="pw-panel-calc" class="card p-4 space-y-4 hidden">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-calculator mr-1 text-purple-500"></i>롤링계획 계산 / 결과</h3>
+          <button onclick="pwRunCalculate()" class="px-4 py-2 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition font-semibold"><i class="fas fa-play mr-1"></i>계산 실행</button>
+        </div>
+        <p class="text-[11px] text-gray-500">배분율 + 고지서 + 생산계획을 기반으로 5단계 전력비 계산을 자동 수행합니다.</p>
+        <div id="pw-calc-status" class="text-xs text-gray-400"></div>
+
+        <!-- 결과 요약 카드 -->
+        <div id="pw-calc-summary" class="hidden">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 text-center">
+              <div class="text-[10px] text-blue-600 font-semibold uppercase">전사 kWh</div>
+              <div class="text-base font-bold text-blue-800 mt-1" id="pw-r-total-kwh">-</div>
+            </div>
+            <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3 text-center">
+              <div class="text-[10px] text-green-600 font-semibold uppercase">전사 회계비용</div>
+              <div class="text-base font-bold text-green-800 mt-1" id="pw-r-total-cost">-</div>
+            </div>
+            <div class="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-3 text-center">
+              <div class="text-[10px] text-amber-600 font-semibold uppercase">평균 단가(원/kWh)</div>
+              <div class="text-base font-bold text-amber-800 mt-1" id="pw-r-avg-price">-</div>
+            </div>
+            <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-3 text-center">
+              <div class="text-[10px] text-purple-600 font-semibold uppercase">평균 원단위(천원/톤)</div>
+              <div class="text-base font-bold text-purple-800 mt-1" id="pw-r-avg-unit">-</div>
+            </div>
+          </div>
+
+          <!-- 호기별 결과 테이블 -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200">
+                  <th class="px-2 py-2 text-left font-semibold text-gray-600 sticky left-0 bg-slate-50">호기</th>
+                  <th class="px-2 py-2 text-right font-semibold text-gray-600">kWh</th>
+                  <th class="px-2 py-2 text-right font-semibold text-gray-600">한전요금</th>
+                  <th class="px-2 py-2 text-right font-semibold text-gray-600">회계비용</th>
+                  <th class="px-2 py-2 text-right font-semibold text-gray-600">한전단가</th>
+                  <th class="px-2 py-2 text-right font-semibold text-gray-600">SPC포함단가</th>
+                  <th class="px-2 py-2 text-right font-semibold text-gray-600">회계단가</th>
+                  <th class="px-2 py-2 text-right font-semibold text-gray-600">생산량(톤)</th>
+                  <th class="px-2 py-2 text-right font-semibold text-gray-600">전력원단위</th>
+                  <th class="px-2 py-2 text-right font-semibold text-gray-600">전력비원단위</th>
+                </tr>
+              </thead>
+              <tbody id="pw-result-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div><!-- /content-powercost -->
+
     <!-- ============ 생산량 이동계획 (Production Movement Plan) ============ -->
     <div id="content-prodplan" class="hidden fade-in w-full space-y-4">
       <!-- 서브탭 -->
@@ -3999,7 +4178,7 @@ export function mainPage(): string {
     }
 
     function switchTab(tab) {
-      ['workflow','pldashboard','dashboard','detail','upload','dataview','master','mapping','linespeed','capa','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime','costforecast','prodplan','scenario'].forEach(t => {
+      ['workflow','pldashboard','dashboard','detail','upload','dataview','master','mapping','linespeed','capa','simulation','forecast','datainput','manual','calcresult','profitanalysis','simflow','optime','costforecast','prodplan','scenario','powercost'].forEach(t => {
         document.getElementById('content-' + t)?.classList.add('hidden');
         const el = document.getElementById('tab-' + t);
         if (el) { el.classList.remove('pill-tab-active'); el.classList.remove('nav-item-active'); el.classList.add('pill-tab-inactive'); }
@@ -4011,7 +4190,7 @@ export function mainPage(): string {
       // 열린 탭 히스토리에 추가
       addOpenTab(tab);
       // 페이지 제목 업데이트
-      const titles = { workflow:'업무 플로우', pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'원부재료 전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', mapping:'자재 카테고리 매핑', linespeed:'제지 생산 선속', capa:'생산 CAPA 분석', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측', prodplan:'생산량 이동계획', scenario:'시나리오 분석' };
+      const titles = { workflow:'업무 플로우', pldashboard:'손익 대시보드', dashboard:'사용현황 분석', forecast:'원부재료 전월 대비 예상 손익', datainput:'데이터 입력', master:'기준정보', mapping:'자재 카테고리 매핑', linespeed:'제지 생산 선속', capa:'생산 CAPA 분석', simflow:'통합 시뮬레이션', optime:'가동시간', costforecast:'원가 변수 예측', prodplan:'생산량 이동계획', scenario:'시나리오 분석', powercost:'전력비 관리' };
       const titleEl = document.getElementById('page-title');
       if (titleEl) titleEl.textContent = titles[tab] || tab;
       if (tab === 'pldashboard') {
@@ -4033,6 +4212,9 @@ export function mainPage(): string {
       } else if (tab === 'costforecast') {
         document.getElementById('content-costforecast')?.classList.remove('hidden');
         loadCostForecast();
+      } else if (tab === 'powercost') {
+        document.getElementById('content-powercost')?.classList.remove('hidden');
+        pwLoadAll();
       } else if (tab === 'optime') {
         document.getElementById('content-optime')?.classList.remove('hidden');
         initOtMachineSelect();
@@ -9972,6 +10154,15 @@ export function mainPage(): string {
         }
       } catch(e) { /* fallback to default */ }
 
+      // 전력비 DB에서 에너지 원단위 자동 반영
+      try {
+        var pwRes = await fetch('/api/power/cost-per-ton?year_month=' + year + '-' + month + '&machine=' + (machine === 'ALL' ? '' : machine));
+        var pwData = await pwRes.json();
+        if (pwData.avg_cost_per_ton_1000 && pwData.avg_cost_per_ton_1000 > 0) {
+          _plsimRates.energyPerTon = Math.round(pwData.avg_cost_per_ton_1000);
+        }
+      } catch(e) { /* fallback to default energy rate */ }
+
       _plsimBaseProd = totalProd > 0 ? totalProd : 20000;
       _plsimMaxCapa = totalCapa > 0 ? Math.round(totalCapa) : Math.round(_plsimBaseProd * 1.5);
       _plsimSimProd = _plsimBaseProd;
@@ -13484,6 +13675,281 @@ export function mainPage(): string {
       };
       window.calcSimProfit = wrapped;
       calcSimProfit = wrapped;
+    })();
+
+    /* ============================================================
+       전력비 관리 (Power Cost Management) — JS Logic
+    ============================================================ */
+    (function(){
+      var _pwLines = []; // [{id, line_code, line_name, factory_code, category, standard_kwh_per_ton}]
+      var _pwAlloc = []; // [{line_code, cost_ratio, ess_ratio}]
+      var _pwBill = null; // {total_kwh_main, total_kwh_ess, fee_main, fee_ess, ...}
+      var _pwProd = [];  // [{line_code, planned_qty}]
+      var _pwResult = []; // rolling details
+
+      function pwGetYM() {
+        var y = document.getElementById('pw-year')?.value || '2026';
+        var m = document.getElementById('pw-month')?.value || '1';
+        var mm = parseInt(m) < 10 ? '0'+parseInt(m) : ''+parseInt(m);
+        return { year: parseInt(y), month: parseInt(m), year_month: y + '-' + mm };
+      }
+
+      // 서브탭 전환
+      window.pwSwitchSub = function(sub) {
+        ['alloc','bill','prod','calc'].forEach(function(s){
+          var panel = document.getElementById('pw-panel-'+s);
+          var btn = document.getElementById('pw-sub-'+s);
+          if(panel) panel.classList.add('hidden');
+          if(btn) { btn.classList.remove('bg-white','shadow-sm','text-gray-800'); btn.classList.add('text-gray-500'); }
+        });
+        var activePanel = document.getElementById('pw-panel-'+sub);
+        var activeBtn = document.getElementById('pw-sub-'+sub);
+        if(activePanel) activePanel.classList.remove('hidden');
+        if(activeBtn) { activeBtn.classList.add('bg-white','shadow-sm','text-gray-800'); activeBtn.classList.remove('text-gray-500'); }
+      };
+
+      // 전체 데이터 로드
+      window.pwLoadAll = async function() {
+        var ym = pwGetYM();
+        try {
+          // 호기 마스터
+          var lRes = await fetch('/api/power/lines');
+          var lData = await lRes.json();
+          _pwLines = lData.data || [];
+
+          // 배분율
+          var aRes = await fetch('/api/power/allocation?year_month='+ym.year_month);
+          var aData = await aRes.json();
+          _pwAlloc = aData.data || [];
+
+          // 고지서
+          var bRes = await fetch('/api/power/bill?year_month='+ym.year_month);
+          var bData = await bRes.json();
+          _pwBill = (bData.data && bData.data.length > 0) ? bData.data[0] : null;
+
+          // 생산계획
+          var pRes = await fetch('/api/power/production-plan?year_month='+ym.year_month);
+          var pData = await pRes.json();
+          _pwProd = pData.data || [];
+
+          // 롤링결과
+          var rRes = await fetch('/api/power/rolling?year_month='+ym.year_month);
+          var rData = await rRes.json();
+          _pwResult = rData.details || [];
+
+          pwRenderAlloc();
+          pwRenderBill();
+          pwRenderProd();
+          pwRenderResult();
+        } catch(e) {
+          console.error('pwLoadAll error:', e);
+        }
+      };
+
+      // 배분율 테이블 렌더
+      function pwRenderAlloc() {
+        var tbody = document.getElementById('pw-alloc-tbody');
+        if (!tbody) return;
+        var html = '';
+        _pwLines.forEach(function(ln) {
+          var alloc = _pwAlloc.find(function(a){ return a.line_code === ln.line_code; }) || {};
+          html += '<tr class="border-b border-slate-100 hover:bg-slate-50">';
+          html += '<td class="px-3 py-2 font-medium text-gray-700">' + ln.line_name + ' <span class="text-gray-400 text-[10px]">('+ln.line_code+')</span></td>';
+          html += '<td class="px-3 py-2 text-center"><input type="number" step="0.1" class="w-20 text-center text-xs border border-slate-200 rounded px-2 py-1 pw-alloc-cost" data-line="'+ln.line_code+'" value="'+(alloc.cost_ratio||0)+'"></td>';
+          html += '<td class="px-3 py-2 text-center"><input type="number" step="0.1" class="w-20 text-center text-xs border border-slate-200 rounded px-2 py-1 pw-alloc-ess" data-line="'+ln.line_code+'" value="'+(alloc.ess_ratio||0)+'"></td>';
+          html += '</tr>';
+        });
+        // 합계행
+        var sumCost = _pwAlloc.reduce(function(s,a){return s+(a.cost_ratio||0);},0);
+        var sumEss = _pwAlloc.reduce(function(s,a){return s+(a.ess_ratio||0);},0);
+        html += '<tr class="bg-slate-100 font-semibold"><td class="px-3 py-2">합계</td>';
+        html += '<td class="px-3 py-2 text-center '+(Math.abs(sumCost-100)<0.1?'text-green-600':'text-red-600')+'">'+sumCost.toFixed(1)+'%</td>';
+        html += '<td class="px-3 py-2 text-center '+(Math.abs(sumEss-100)<0.1?'text-green-600':'text-red-600')+'">'+sumEss.toFixed(1)+'%</td>';
+        html += '</tr>';
+        tbody.innerHTML = html;
+      }
+
+      // 배분율 저장
+      window.pwSaveAllocation = async function() {
+        var ym = pwGetYM();
+        var data = [];
+        document.querySelectorAll('.pw-alloc-cost').forEach(function(el) {
+          var lineCode = el.getAttribute('data-line');
+          var costRatio = parseFloat(el.value) || 0;
+          var essEl = document.querySelector('.pw-alloc-ess[data-line="'+lineCode+'"]');
+          data.push({ line_code: lineCode, cost_ratio: costRatio, ess_ratio: parseFloat(essEl?.value) || 0 });
+        });
+        try {
+          var res = await fetch('/api/power/allocation', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ year_month: ym.year_month, division: 'PS', data: data })
+          });
+          if (res.ok) {
+            var msg = document.getElementById('pw-alloc-msg');
+            if(msg){msg.classList.remove('hidden'); setTimeout(function(){msg.classList.add('hidden');},2000);}
+          }
+        } catch(e) { alert('저장 실패: '+e.message); }
+      };
+
+      // 고지서 렌더
+      function pwRenderBill() {
+        if(!_pwBill) {
+          ['kwh-main','kwh-ess','fee-main','fee-ess','fee-spc','fee-dr','fee-boiler','fee-samsung'].forEach(function(f){
+            var el = document.getElementById('pw-bill-'+f);
+            if(el) el.value = '';
+          });
+          return;
+        }
+        document.getElementById('pw-bill-kwh-main').value = _pwBill.total_kwh_main || '';
+        document.getElementById('pw-bill-kwh-ess').value = _pwBill.total_kwh_ess || '';
+        document.getElementById('pw-bill-fee-main').value = _pwBill.fee_main || '';
+        document.getElementById('pw-bill-fee-ess').value = _pwBill.fee_ess || '';
+        document.getElementById('pw-bill-fee-spc').value = _pwBill.fee_spc || '';
+        document.getElementById('pw-bill-fee-dr').value = _pwBill.fee_dr_settlement || '';
+        document.getElementById('pw-bill-fee-boiler').value = _pwBill.fee_boiler_deduct || '';
+        document.getElementById('pw-bill-fee-samsung').value = _pwBill.fee_samsung_comp || '';
+      }
+
+      // 고지서 저장
+      window.pwSaveBill = async function() {
+        var ym = pwGetYM();
+        var body = {
+          factory_code: 'cheongju',
+          year_month: ym.year_month,
+          total_kwh_main: parseFloat(document.getElementById('pw-bill-kwh-main')?.value) || 0,
+          total_kwh_ess: parseFloat(document.getElementById('pw-bill-kwh-ess')?.value) || 0,
+          fee_main: parseFloat(document.getElementById('pw-bill-fee-main')?.value) || 0,
+          fee_ess: parseFloat(document.getElementById('pw-bill-fee-ess')?.value) || 0,
+          fee_spc: parseFloat(document.getElementById('pw-bill-fee-spc')?.value) || 0,
+          fee_dr_settlement: parseFloat(document.getElementById('pw-bill-fee-dr')?.value) || 0,
+          fee_boiler_deduct: parseFloat(document.getElementById('pw-bill-fee-boiler')?.value) || 0,
+          fee_samsung_comp: parseFloat(document.getElementById('pw-bill-fee-samsung')?.value) || 0,
+          division: 'PS'
+        };
+        try {
+          var res = await fetch('/api/power/bill', {
+            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+          });
+          if(res.ok) {
+            var msg = document.getElementById('pw-bill-msg');
+            if(msg){msg.classList.remove('hidden'); setTimeout(function(){msg.classList.add('hidden');},2000);}
+          }
+        } catch(e) { alert('저장 실패: '+e.message); }
+      };
+
+      // 생산계획 렌더
+      function pwRenderProd() {
+        var tbody = document.getElementById('pw-prod-tbody');
+        if(!tbody) return;
+        var html = '';
+        _pwLines.forEach(function(ln){
+          var plan = _pwProd.find(function(p){return p.line_code===ln.line_code;}) || {};
+          html += '<tr class="border-b border-slate-100 hover:bg-slate-50">';
+          html += '<td class="px-3 py-2 font-medium text-gray-700">'+ln.line_name+' <span class="text-gray-400 text-[10px]">('+ln.line_code+')</span></td>';
+          html += '<td class="px-3 py-2 text-center"><input type="number" step="1" class="w-28 text-center text-xs border border-slate-200 rounded px-2 py-1 pw-prod-qty" data-line="'+ln.line_code+'" value="'+(plan.planned_qty||'')+'"></td>';
+          html += '</tr>';
+        });
+        tbody.innerHTML = html;
+      }
+
+      // 생산계획 저장
+      window.pwSaveProd = async function() {
+        var ym = pwGetYM();
+        var data = [];
+        document.querySelectorAll('.pw-prod-qty').forEach(function(el){
+          data.push({ line_code: el.getAttribute('data-line'), year_month: ym.year_month, planned_qty: parseFloat(el.value)||0 });
+        });
+        try {
+          var res = await fetch('/api/power/production-plan', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({ division:'PS', data:data })
+          });
+          if(res.ok) {
+            var msg = document.getElementById('pw-prod-msg');
+            if(msg){msg.classList.remove('hidden'); setTimeout(function(){msg.classList.add('hidden');},2000);}
+          }
+        } catch(e) { alert('저장 실패: '+e.message); }
+      };
+
+      // 계산 실행
+      window.pwRunCalculate = async function() {
+        var ym = pwGetYM();
+        var statusEl = document.getElementById('pw-calc-status');
+        if(statusEl) statusEl.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>계산 중...';
+        try {
+          var res = await fetch('/api/power/calculate', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({ year_month: ym.year_month, factory_code:'cheongju', division:'PS' })
+          });
+          var data = await res.json();
+          if(res.ok && data.success) {
+            if(statusEl) statusEl.innerHTML = '<span class="text-green-600"><i class="fas fa-check-circle mr-1"></i>계산 완료 (plan_id: '+data.plan_id+')</span>';
+            // 결과 재조회
+            var rRes = await fetch('/api/power/rolling?year_month='+ym.year_month);
+            var rData = await rRes.json();
+            _pwResult = rData.details || [];
+            pwRenderResult();
+          } else {
+            if(statusEl) statusEl.innerHTML = '<span class="text-red-600"><i class="fas fa-exclamation-circle mr-1"></i>'+(data.error||'계산 실패')+'</span>';
+          }
+        } catch(e) {
+          if(statusEl) statusEl.innerHTML = '<span class="text-red-600">오류: '+e.message+'</span>';
+        }
+      };
+
+      // 결과 렌더
+      function pwRenderResult() {
+        var summary = document.getElementById('pw-calc-summary');
+        var tbody = document.getElementById('pw-result-tbody');
+        if(!tbody || !_pwResult.length) { if(summary) summary.classList.add('hidden'); return; }
+        if(summary) summary.classList.remove('hidden');
+
+        var totalKwh=0, totalCostAcc=0, totalProd=0;
+        var html = '';
+        _pwResult.forEach(function(r){
+          var lineName = r.line_name || r.line_code;
+          totalKwh += (r.kwh_total||0);
+          totalCostAcc += (r.cost_accounting||0);
+          var prodTon = (r.production_qty||0) / 1000;
+          totalProd += prodTon;
+          html += '<tr class="border-b border-slate-100 hover:bg-slate-50">';
+          html += '<td class="px-2 py-1.5 font-medium text-gray-700 sticky left-0 bg-white">'+lineName+'</td>';
+          html += '<td class="px-2 py-1.5 text-right text-gray-600">'+fmtN(r.kwh_total)+'</td>';
+          html += '<td class="px-2 py-1.5 text-right text-gray-600">'+fmtN(r.cost_kepco)+'</td>';
+          html += '<td class="px-2 py-1.5 text-right font-semibold text-gray-800">'+fmtN(r.cost_accounting)+'</td>';
+          html += '<td class="px-2 py-1.5 text-right text-gray-600">'+fmtD(r.rate_kepco)+'</td>';
+          html += '<td class="px-2 py-1.5 text-right text-gray-600">'+fmtD(r.rate_spc)+'</td>';
+          html += '<td class="px-2 py-1.5 text-right text-gray-600">'+fmtD(r.rate_accounting)+'</td>';
+          html += '<td class="px-2 py-1.5 text-right text-gray-600">'+fmtN(r.production_qty)+'</td>';
+          html += '<td class="px-2 py-1.5 text-right text-gray-600">'+fmtD(r.power_unit_kwh_per_ton)+'</td>';
+          html += '<td class="px-2 py-1.5 text-right font-semibold text-purple-700">'+fmtN(r.power_cost_per_ton)+'</td>';
+          html += '</tr>';
+        });
+        // 합계
+        var avgPrice = totalKwh>0 ? totalCostAcc/totalKwh : 0;
+        var avgUnit = totalProd>0 ? totalCostAcc/totalProd/1000 : 0;
+        html += '<tr class="bg-slate-100 font-semibold border-t-2 border-slate-300">';
+        html += '<td class="px-2 py-2 sticky left-0 bg-slate-100">합계/평균</td>';
+        html += '<td class="px-2 py-2 text-right">'+fmtN(totalKwh)+'</td>';
+        html += '<td class="px-2 py-2 text-right">-</td>';
+        html += '<td class="px-2 py-2 text-right">'+fmtN(totalCostAcc)+'</td>';
+        html += '<td colspan="3" class="px-2 py-2 text-center text-gray-500">-</td>';
+        html += '<td class="px-2 py-2 text-right">'+fmtN(totalProd*1000)+'</td>';
+        html += '<td class="px-2 py-2 text-right">'+fmtD(totalProd>0?totalKwh/totalProd:0)+'</td>';
+        html += '<td class="px-2 py-2 text-right text-purple-700">'+fmtD(avgUnit)+'</td>';
+        html += '</tr>';
+        tbody.innerHTML = html;
+
+        // 요약 카드
+        document.getElementById('pw-r-total-kwh').textContent = fmtN(totalKwh) + ' kWh';
+        document.getElementById('pw-r-total-cost').textContent = fmtBil(totalCostAcc) + '원';
+        document.getElementById('pw-r-avg-price').textContent = fmtD(avgPrice);
+        document.getElementById('pw-r-avg-unit').textContent = fmtD(avgUnit);
+      }
+
+      function fmtN(v) { return v ? Math.round(v).toLocaleString('ko-KR') : '0'; }
+      function fmtD(v) { return v ? v.toFixed(2) : '0.00'; }
+      function fmtBil(v) { if(!v) return '0'; if(Math.abs(v)>=100000000) return (v/100000000).toFixed(1)+'억'; if(Math.abs(v)>=10000) return (v/10000).toFixed(0)+'만'; return Math.round(v).toLocaleString('ko-KR'); }
     })();
   </script>
 </body>
