@@ -3081,7 +3081,6 @@ export function mainPage(): string {
       <div class="flex gap-1 bg-slate-100 p-1 rounded-lg">
         <button onclick="pwSwitchSub('alloc')" id="pw-sub-alloc" class="flex-1 px-3 py-2 text-xs font-medium rounded-md bg-white shadow-sm text-gray-800">배분율 관리</button>
         <button onclick="pwSwitchSub('bill')" id="pw-sub-bill" class="flex-1 px-3 py-2 text-xs font-medium rounded-md text-gray-500 hover:text-gray-700">한전 고지서</button>
-        <button onclick="pwSwitchSub('prod')" id="pw-sub-prod" class="flex-1 px-3 py-2 text-xs font-medium rounded-md text-gray-500 hover:text-gray-700">생산계획</button>
         <button onclick="pwSwitchSub('calc')" id="pw-sub-calc" class="flex-1 px-3 py-2 text-xs font-medium rounded-md text-gray-500 hover:text-gray-700">계산/결과</button>
       </div>
 
@@ -3151,34 +3150,13 @@ export function mainPage(): string {
         <div id="pw-bill-msg" class="text-xs text-green-600 hidden"><i class="fas fa-check-circle mr-1"></i>저장 완료</div>
       </div>
 
-      <!-- 서브: 생산계획 -->
-      <div id="pw-panel-prod" class="card p-4 space-y-3 hidden">
-        <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-industry mr-1 text-amber-500"></i>호기별 생산계획(톤)</h3>
-          <button onclick="pwSaveProd()" class="px-3 py-1.5 bg-amber-600 text-white text-xs rounded-lg hover:bg-amber-700 transition"><i class="fas fa-save mr-1"></i>저장</button>
-        </div>
-        <p class="text-[11px] text-gray-500">해당 월의 호기별 생산계획(톤)을 입력합니다. 전력비 원단위 계산에 사용됩니다.</p>
-        <div class="overflow-x-auto">
-          <table class="w-full text-xs border-collapse" id="pw-prod-table">
-            <thead>
-              <tr class="bg-slate-50 border-b border-slate-200">
-                <th class="px-3 py-2 text-left font-semibold text-gray-600">호기</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600">생산계획(톤)</th>
-              </tr>
-            </thead>
-            <tbody id="pw-prod-tbody"></tbody>
-          </table>
-        </div>
-        <div id="pw-prod-msg" class="text-xs text-green-600 hidden"><i class="fas fa-check-circle mr-1"></i>저장 완료</div>
-      </div>
-
       <!-- 서브: 계산/결과 -->
       <div id="pw-panel-calc" class="card p-4 space-y-4 hidden">
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-calculator mr-1 text-purple-500"></i>롤링계획 계산 / 결과</h3>
           <button onclick="pwRunCalculate()" class="px-4 py-2 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition font-semibold"><i class="fas fa-play mr-1"></i>계산 실행</button>
         </div>
-        <p class="text-[11px] text-gray-500">배분율 + 고지서 + 생산계획을 기반으로 5단계 전력비 계산을 자동 수행합니다.</p>
+        <p class="text-[11px] text-gray-500">배분율 + 고지서 + CAPA 생산계획을 기반으로 5단계 전력비 계산을 자동 수행합니다. (생산량은 CAPA 분석에서 자동 연동)</p>
         <div id="pw-calc-status" class="text-xs text-gray-400"></div>
 
         <!-- 결과 요약 카드 -->
@@ -13684,7 +13662,6 @@ export function mainPage(): string {
       var _pwLines = []; // [{id, line_code, line_name, factory_code, category, standard_kwh_per_ton}]
       var _pwAlloc = []; // [{line_code, cost_ratio, ess_ratio}]
       var _pwBill = null; // {total_kwh_main, total_kwh_ess, fee_main, fee_ess, ...}
-      var _pwProd = [];  // [{line_code, planned_qty}]
       var _pwResult = []; // rolling details
 
       function pwGetYM() {
@@ -13727,11 +13704,6 @@ export function mainPage(): string {
           var bData = await bRes.json();
           _pwBill = (bData.data && bData.data.length > 0) ? bData.data[0] : null;
 
-          // 생산계획
-          var pRes = await fetch('/api/power/production-plan?year_month='+ym.year_month);
-          var pData = await pRes.json();
-          _pwProd = pData.data || [];
-
           // 롤링결과
           var rRes = await fetch('/api/power/rolling?year_month='+ym.year_month);
           var rData = await rRes.json();
@@ -13739,7 +13711,6 @@ export function mainPage(): string {
 
           pwRenderAlloc();
           pwRenderBill();
-          pwRenderProd();
           pwRenderResult();
         } catch(e) {
           console.error('pwLoadAll error:', e);
@@ -13832,40 +13803,6 @@ export function mainPage(): string {
           });
           if(res.ok) {
             var msg = document.getElementById('pw-bill-msg');
-            if(msg){msg.classList.remove('hidden'); setTimeout(function(){msg.classList.add('hidden');},2000);}
-          }
-        } catch(e) { alert('저장 실패: '+e.message); }
-      };
-
-      // 생산계획 렌더
-      function pwRenderProd() {
-        var tbody = document.getElementById('pw-prod-tbody');
-        if(!tbody) return;
-        var html = '';
-        _pwLines.forEach(function(ln){
-          var plan = _pwProd.find(function(p){return p.line_code===ln.line_code;}) || {};
-          html += '<tr class="border-b border-slate-100 hover:bg-slate-50">';
-          html += '<td class="px-3 py-2 font-medium text-gray-700">'+ln.line_name+' <span class="text-gray-400 text-[10px]">('+ln.line_code+')</span></td>';
-          html += '<td class="px-3 py-2 text-center"><input type="number" step="1" class="w-28 text-center text-xs border border-slate-200 rounded px-2 py-1 pw-prod-qty" data-line="'+ln.line_code+'" value="'+(plan.planned_qty||'')+'"></td>';
-          html += '</tr>';
-        });
-        tbody.innerHTML = html;
-      }
-
-      // 생산계획 저장
-      window.pwSaveProd = async function() {
-        var ym = pwGetYM();
-        var data = [];
-        document.querySelectorAll('.pw-prod-qty').forEach(function(el){
-          data.push({ line_code: el.getAttribute('data-line'), year_month: ym.year_month, planned_qty: parseFloat(el.value)||0 });
-        });
-        try {
-          var res = await fetch('/api/power/production-plan', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({ division:'PS', data:data })
-          });
-          if(res.ok) {
-            var msg = document.getElementById('pw-prod-msg');
             if(msg){msg.classList.remove('hidden'); setTimeout(function(){msg.classList.add('hidden');},2000);}
           }
         } catch(e) { alert('저장 실패: '+e.message); }

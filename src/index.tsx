@@ -4882,12 +4882,25 @@ app.post('/api/power/calculate', async (c) => {
     `SELECT * FROM power_lines WHERE division = ? AND is_active = 1`
   ).bind(div).all()
   
-  // 4. 생산계획 로드
+  // 4. 생산계획: CAPA 분석 데이터에서 자동 로드 (호기별 합산)
+  const [yearNum, monthNum] = year_month.split('-').map(Number)
+  const capaRows = await db.prepare(
+    `SELECT machine_code, SUM(CAST(planned_qty AS REAL)) as total_qty 
+     FROM capa_plan WHERE division = ? AND year = ? AND month = ?
+     GROUP BY machine_code`
+  ).bind(div, yearNum, monthNum).all()
+  const planMap: Record<string, any> = {}
+  ;(capaRows.results || []).forEach((r: any) => { planMap[r.machine_code] = { planned_qty: r.total_qty || 0 } })
+  
+  // fallback: power_production_plan 테이블도 확인 (수동 입력분)
   const planRows = await db.prepare(
     `SELECT * FROM power_production_plan WHERE division = ? AND year_month = ?`
   ).bind(div, year_month).all()
-  const planMap: Record<string, any> = {}
-  ;(planRows.results || []).forEach((r: any) => { planMap[r.line_code] = r })
+  ;(planRows.results || []).forEach((r: any) => { 
+    if (!planMap[r.line_code] || !planMap[r.line_code].planned_qty) {
+      planMap[r.line_code] = r 
+    }
+  })
   
   // 5. 롤링계획 헤더 생성
   // 기존 active 비활성화
