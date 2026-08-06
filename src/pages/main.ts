@@ -13641,11 +13641,11 @@ export function mainPage(): string {
       html += '<div style="padding:10px 12px;background:' + (hasChange ? 'linear-gradient(135deg,#fef3c7,#fde68a)' : 'linear-gradient(135deg,#f0fdf4,#dcfce7)') + ';border-radius:10px;margin-bottom:12px;text-align:center;">';
       html += '<div style="font-size:9px;color:#6b7280;margin-bottom:2px;">생산량 변동 (전월 대비)</div>';
       if (hasChange) {
-        html += '<div class="fpl-mono" style="font-size:22px;font-weight:800;color:' + (prodDelta > 0 ? '#b45309' : '#dc2626') + ';">' + (prodDelta > 0 ? '+' : '') + prodDelta.toFixed(0) + ' <span style="font-size:12px;">톤</span></div>';
-        html += '<div style="font-size:9px;color:#92400e;">' + base.production.toFixed(0) + '톤 → ' + pl.production.toFixed(0) + '톤</div>';
+        html += '<div class="fpl-mono" style="font-size:20px;font-weight:800;color:' + (prodDelta > 0 ? '#b45309' : '#dc2626') + ';">' + (prodDelta > 0 ? '+' : '') + Math.round(prodDelta).toLocaleString('ko-KR') + ' <span style="font-size:11px;">톤</span></div>';
+        html += '<div style="font-size:9px;color:#92400e;">' + Math.round(base.production).toLocaleString('ko-KR') + '톤 → ' + Math.round(pl.production).toLocaleString('ko-KR') + '톤</div>';
       } else {
         html += '<div style="font-size:18px;font-weight:800;color:#16a34a;">0 <span style="font-size:11px;">변동 없음</span></div>';
-        html += '<div style="font-size:9px;color:#6b7280;">기준: ' + base.production.toFixed(0) + '톤</div>';
+        html += '<div style="font-size:9px;color:#6b7280;">기준: ' + Math.round(base.production).toLocaleString('ko-KR') + '톤</div>';
       }
       html += '</div>';
 
@@ -13672,7 +13672,7 @@ export function mainPage(): string {
       var profitBg = profitDelta > 0 ? '#f0fdf4' : profitDelta < 0 ? '#fef2f2' : '#f9fafb';
       html += '<div style="margin-top:12px;padding:14px;background:' + profitBg + ';border:2px solid ' + profitColor + '33;border-radius:12px;text-align:center;">';
       html += '<div style="font-size:9px;color:#6b7280;margin-bottom:4px;">영업이익 증감</div>';
-      html += '<div class="fpl-mono" style="font-size:24px;font-weight:900;color:' + profitColor + ';">';
+      html += '<div class="fpl-mono" style="font-size:22px;font-weight:900;color:' + profitColor + ';letter-spacing:-0.5px;">';
       if (Math.abs(profitDelta) < 0.5) {
         html += '0';
       } else {
@@ -13737,10 +13737,22 @@ export function mainPage(): string {
     // 증감액 포맷: 백만원 단위 → 억 또는 백만원 표시 (절대값)
     function fplFmtDelta(val) {
       var abs = Math.abs(val);
-      if (abs >= 1000) {
-        return (abs / 100).toFixed(0) + '억';
+      if (abs >= 10000) {
+        // 1조 이상
+        return (abs / 10000).toFixed(1).replace(/\.0$/, '') + '조';
       }
-      return abs.toFixed(0) + '백만';
+      if (abs >= 1000) {
+        // 10억 이상
+        return (abs / 100).toFixed(1).replace(/\.0$/, '') + '억';
+      }
+      if (abs >= 100) {
+        // 1억 이상
+        return (abs / 100).toFixed(2).replace(/0$/, '').replace(/\.$/, '') + '억';
+      }
+      if (abs >= 1) {
+        return abs.toFixed(0) + '백만';
+      }
+      return '0';
     }
 
     // 기준 리셋
