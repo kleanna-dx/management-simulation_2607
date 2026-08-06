@@ -2256,6 +2256,11 @@ export function mainPage(): string {
             <p class="text-[10px] text-emerald-400">톤</p>
           </div>
         </div>
+        <!-- 가동일수 미입력 경고 -->
+        <div id="capa-opdays-warn" class="hidden mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
+          <i class="fas fa-exclamation-triangle text-amber-500"></i>
+          <span class="text-[11px] text-amber-700">해당 호기/월의 가동일수가 미입력 상태입니다. <button onclick="switchTab(&#39;optime&#39;)" class="underline font-semibold text-amber-800 hover:text-amber-900">가동시간 탭</button>에서 먼저 입력해주세요.</span>
+        </div>
 
         <!-- CAPA 분석 테이블 -->
         <div class="overflow-auto max-h-[450px] border border-slate-200 rounded-lg">
@@ -6873,7 +6878,7 @@ export function mainPage(): string {
 
       // 가동일수 표시
       var odLabel = document.getElementById('capa-opdays-label');
-      if (odLabel) odLabel.textContent = capaOpDays || '-';
+      if (odLabel) odLabel.textContent = (capaOpDays != null && capaOpDays > 0) ? capaOpDays + '일' : '미입력';
 
       if (capaData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="16" class="text-center text-gray-400 py-8">품목을 추가하세요. 선속 마스터에 등록된 지종/평량 조합이 자동 참조됩니다.</td></tr>';
@@ -7087,7 +7092,17 @@ export function mainPage(): string {
       var sumJudgeDesc = document.getElementById('capa-sum-judge-desc');
 
       if (sumDays) sumDays.textContent = totalDays > 0 ? totalDays.toFixed(1) + '일' : '-';
-      if (sumOpdays) sumOpdays.textContent = capaOpDays;
+      if (sumOpdays) sumOpdays.textContent = capaOpDays > 0 ? capaOpDays : '미입력';
+
+      // 가동일수 미입력 경고
+      var opdayWarn = document.getElementById('capa-opdays-warn');
+      if (opdayWarn) {
+        if (capaOpDays <= 0 && capaData.length > 0) {
+          opdayWarn.classList.remove('hidden');
+        } else {
+          opdayWarn.classList.add('hidden');
+        }
+      }
 
 
       if (sumGap) {
