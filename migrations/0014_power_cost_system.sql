@@ -145,50 +145,28 @@ VALUES
   ('cheongju', '청주공장', 110000, '산업용고압B-III', 'PS'),
   ('eumseong', '음성공장', 4500, '산업용고압A-I', 'PS');
 
--- 호기(라인) 마스터
+-- 호기(라인) 마스터 — PS사업부: 제지2/제지3/라미네이팅만 전력비 관리 대상
 INSERT OR IGNORE INTO power_lines (factory_code, line_code, line_name, category, unit, standard_kwh_per_ton, display_order, division)
 VALUES
   ('cheongju', 'PM2', '제지2', '제지', 'kg', 580, 1, 'PS'),
   ('cheongju', 'PM3', '제지3', '제지', 'kg', 568, 2, 'PS'),
-  ('cheongju', 'TM3', '화장지3', '화장지', 'kg', 2371, 3, 'PS'),
-  ('cheongju', 'TM4', '화장지4', '화장지', 'kg', 2200, 4, 'PS'),
-  ('cheongju', 'TM5', '화장지5', '화장지', 'kg', 2100, 5, 'PS'),
-  ('cheongju', 'GA2', '가공2', '가공', 'EA', 150, 6, 'PS'),
-  ('cheongju', 'GA3', '가공3', '가공', 'EA', 160, 7, 'PS'),
-  ('cheongju', 'GA4', '가공4', '가공', 'EA', 155, 8, 'PS'),
-  ('cheongju', 'GA5', '가공5', '가공', 'EA', 170, 9, 'PS'),
-  ('cheongju', 'GA6', '가공6', '가공', 'EA', 165, 10, 'PS'),
-  ('cheongju', 'SD5', '생리대5', '생리대', 'EA', 120, 11, 'PS'),
-  ('cheongju', 'SD6', '생리대6', '생리대', 'EA', 125, 12, 'PS'),
-  ('cheongju', 'LAM', '라미네이팅', '라미네이팅', 'kg', 300, 13, 'PS');
+  ('cheongju', 'LAM', '라미네이팅', '라미네이팅', 'kg', 300, 3, 'PS');
 
--- 샘플 배분율 (2026-01 기준)
+-- 샘플 배분율 (2026-01 기준, 3호기 합계 100%)
 INSERT OR IGNORE INTO power_allocation (line_code, year_month, cost_ratio, ess_ratio, division)
 VALUES
   ('PM2', '2026-01', 21.5, 22.0, 'PS'),
   ('PM3', '2026-01', 69.0, 68.0, 'PS'),
-  ('TM3', '2026-01', 2.8, 3.0, 'PS'),
-  ('TM4', '2026-01', 8.8, 9.0, 'PS'),
-  ('TM5', '2026-01', 14.6, 15.0, 'PS'),
-  ('GA2', '2026-01', 1.2, 1.0, 'PS'),
-  ('GA3', '2026-01', 1.5, 1.2, 'PS'),
-  ('GA4', '2026-01', 1.3, 1.1, 'PS'),
-  ('GA5', '2026-01', 1.8, 1.5, 'PS'),
-  ('GA6', '2026-01', 1.6, 1.3, 'PS'),
-  ('SD5', '2026-01', 0.8, 0.7, 'PS'),
-  ('SD6', '2026-01', 0.9, 0.8, 'PS'),
-  ('LAM', '2026-01', 0.5, 0.4, 'PS');
+  ('LAM', '2026-01', 9.5, 10.0, 'PS');
 
 -- 샘플 고지서 데이터 (2026-01)
 INSERT OR IGNORE INTO power_bill (factory_code, year_month, total_kwh_main, total_kwh_ess, fee_main, fee_ess, fee_spc, fee_dr_settlement, fee_boiler_deduct, fee_samsung_comp, division)
 VALUES
   ('cheongju', '2026-01', 21340000, 1850000, 3520000000, 285000000, 134000000, 28000000, 15000000, 5000000, 'PS');
 
--- 샘플 생산계획 (2026-01)
+-- 샘플 생산계획 (2026-01) — CAPA 분석에서 자동 연동되므로 fallback용
 INSERT OR IGNORE INTO power_production_plan (line_code, year_month, planned_qty, planned_hours, planned_downtime, division)
 VALUES
   ('PM2', '2026-01', 8500000, 696, 24, 'PS'),
   ('PM3', '2026-01', 25918232, 696, 24, 'PS'),
-  ('TM3', '2026-01', 1200000, 672, 48, 'PS'),
-  ('TM4', '2026-01', 2800000, 696, 24, 'PS'),
-  ('TM5', '2026-01', 4500000, 696, 24, 'PS');
+  ('LAM', '2026-01', 3200000, 672, 48, 'PS');
