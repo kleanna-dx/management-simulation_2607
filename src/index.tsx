@@ -4730,23 +4730,41 @@ app.get('/api/power/lines', async (c) => {
   return c.json({ data: rows.results || [] })
 })
 
-// --- 호기 마스터 업데이트 (표준원단위 등) ---
+// --- 호기 마스터 업데이트 (표준원단위 + 시간당 kWh) ---
 app.post('/api/power/lines', async (c) => {
   const db = c.env.DB
   const body = await c.req.json() as any
-  const { line_code, standard_kwh_per_ton, line_name, category, unit } = body
-  if (!line_code) return c.json({ error: 'line_code required' }, 400)
-  
-  await db.prepare(`
-    UPDATE power_lines SET 
-      standard_kwh_per_ton = COALESCE(?, standard_kwh_per_ton),
-      line_name = COALESCE(?, line_name),
-      category = COALESCE(?, category),
-      unit = COALESCE(?, unit),
-      created_at = CURRENT_TIMESTAMP
-    WHERE line_code = ?
-  `).bind(standard_kwh_per_ton || null, line_name || null, category || null, unit || null, line_code).run()
-  return c.json({ success: true })
+  // 단건 업데이트
+  if (body.line_code) {
+    const { line_code, standard_kwh_per_ton, line_name, category, unit, kwh_per_hour_running, kwh_per_hour_standby } = body
+    await db.prepare(`
+      UPDATE power_lines SET 
+        standard_kwh_per_ton = COALESCE(?, standard_kwh_per_ton),
+        line_name = COALESCE(?, line_name),
+        category = COALESCE(?, category),
+        unit = COALESCE(?, unit),
+        kwh_per_hour_running = COALESCE(?, kwh_per_hour_running),
+        kwh_per_hour_standby = COALESCE(?, kwh_per_hour_standby),
+        created_at = CURRENT_TIMESTAMP
+      WHERE line_code = ?
+    `).bind(standard_kwh_per_ton || null, line_name || null, category || null, unit || null, 
+            kwh_per_hour_running ?? null, kwh_per_hour_standby ?? null, line_code).run()
+    return c.json({ success: true })
+  }
+  // 다건 배치 업데이트 (배분율 저장 시 마스터 kWh도 함께)
+  if (body.data && Array.isArray(body.data)) {
+    const stmt = db.prepare(`
+      UPDATE power_lines SET 
+        kwh_per_hour_running = ?,
+        kwh_per_hour_standby = ?,
+        created_at = CURRENT_TIMESTAMP
+      WHERE line_code = ?
+    `)
+    const batch = body.data.map((d: any) => stmt.bind(d.kwh_per_hour_running ?? 0, d.kwh_per_hour_standby ?? 0, d.line_code))
+    await db.batch(batch)
+    return c.json({ success: true })
+  }
+  return c.json({ error: 'line_code or data[] required' }, 400)
 })
 
 // --- 배분율 조회/저장 ---
@@ -4802,18 +4820,20 @@ app.get('/api/power/bill', async (c) => {
 app.post('/api/power/bill', async (c) => {
   const db = c.env.DB
   const body = await c.req.json() as any
-  const { factory_code, year_month, total_kwh_main, total_kwh_ess, fee_main, fee_ess, fee_spc, fee_dr_settlement, fee_boiler_deduct, fee_samsung_comp, division } = body
+  const { factory_code, year_month, total_kwh_main, total_kwh_ess, fee_main, fee_ess, fee_spc, fee_dr_settlement, fee_boiler_deduct, fee_samsung_comp, division, rate_peak, rate_mid, rate_off, rate_avg } = body
   if (!factory_code || !year_month) return c.json({ error: 'factory_code and year_month required' }, 400)
   
   await db.prepare(`
-    INSERT INTO power_bill (factory_code, year_month, total_kwh_main, total_kwh_ess, fee_main, fee_ess, fee_spc, fee_dr_settlement, fee_boiler_deduct, fee_samsung_comp, division, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    INSERT INTO power_bill (factory_code, year_month, total_kwh_main, total_kwh_ess, fee_main, fee_ess, fee_spc, fee_dr_settlement, fee_boiler_deduct, fee_samsung_comp, division, rate_peak, rate_mid, rate_off, rate_avg, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     ON CONFLICT(factory_code, year_month)
     DO UPDATE SET total_kwh_main=excluded.total_kwh_main, total_kwh_ess=excluded.total_kwh_ess,
       fee_main=excluded.fee_main, fee_ess=excluded.fee_ess, fee_spc=excluded.fee_spc,
       fee_dr_settlement=excluded.fee_dr_settlement, fee_boiler_deduct=excluded.fee_boiler_deduct,
-      fee_samsung_comp=excluded.fee_samsung_comp, updated_at=CURRENT_TIMESTAMP
-  `).bind(factory_code, year_month, total_kwh_main||0, total_kwh_ess||0, fee_main||0, fee_ess||0, fee_spc||0, fee_dr_settlement||0, fee_boiler_deduct||0, fee_samsung_comp||0, division||'PS').run()
+      fee_samsung_comp=excluded.fee_samsung_comp, 
+      rate_peak=excluded.rate_peak, rate_mid=excluded.rate_mid, rate_off=excluded.rate_off, rate_avg=excluded.rate_avg,
+      updated_at=CURRENT_TIMESTAMP
+  `).bind(factory_code, year_month, total_kwh_main||0, total_kwh_ess||0, fee_main||0, fee_ess||0, fee_spc||0, fee_dr_settlement||0, fee_boiler_deduct||0, fee_samsung_comp||0, division||'PS', rate_peak||0, rate_mid||0, rate_off||0, rate_avg||0).run()
   return c.json({ success: true })
 })
 
@@ -4853,7 +4873,7 @@ app.post('/api/power/production-plan', async (c) => {
   return c.json({ success: true, count: data.length })
 })
 
-// --- 🔥 핵심: 롤링계획 자동 계산 엔진 ---
+// --- 🔥 핵심: 롤링계획 자동 계산 엔진 (v2 — 시간당kWh 기반) ---
 app.post('/api/power/calculate', async (c) => {
   const db = c.env.DB
   const body = await c.req.json() as any
@@ -4877,12 +4897,23 @@ app.post('/api/power/calculate', async (c) => {
   const allocMap: Record<string, any> = {}
   ;(allocRows.results || []).forEach((r: any) => { allocMap[r.line_code] = r })
   
-  // 3. 호기 마스터 로드
+  // 3. 호기 마스터 로드 (시간당 kWh 포함)
   const lineRows = await db.prepare(
     `SELECT * FROM power_lines WHERE division = ? AND is_active = 1`
   ).bind(div).all()
   
-  // 4. 생산계획: CAPA 분석 데이터에서 자동 로드 (호기별 합산)
+  // 4. 가동시간 로드 (machine_operating_time)
+  // year_month format: "2026-01" → ym format in DB: "202601"
+  const ymCompact = year_month.replace('-', '')
+  const otRows = await db.prepare(
+    `SELECT machine_code, total_days, operation_subtotal, planned_shutdown_days,
+            operation_normal_days, operation_waste_days
+     FROM machine_operating_time WHERE division = ? AND ym = ?`
+  ).bind(div, ymCompact).all()
+  const otMap: Record<string, any> = {}
+  ;(otRows.results || []).forEach((r: any) => { otMap[r.machine_code] = r })
+  
+  // 5. 생산계획 from CAPA
   const [yearNum, monthNum] = year_month.split('-').map(Number)
   const capaRows = await db.prepare(
     `SELECT machine_code, SUM(CAST(planned_qty AS REAL)) as total_qty 
@@ -4892,7 +4923,7 @@ app.post('/api/power/calculate', async (c) => {
   const planMap: Record<string, any> = {}
   ;(capaRows.results || []).forEach((r: any) => { planMap[r.machine_code] = { planned_qty: r.total_qty || 0 } })
   
-  // fallback: power_production_plan 테이블도 확인 (수동 입력분)
+  // fallback: power_production_plan
   const planRows = await db.prepare(
     `SELECT * FROM power_production_plan WHERE division = ? AND year_month = ?`
   ).bind(div, year_month).all()
@@ -4902,8 +4933,7 @@ app.post('/api/power/calculate', async (c) => {
     }
   })
   
-  // 5. 롤링계획 헤더 생성
-  // 기존 active 비활성화
+  // 6. 롤링계획 헤더 생성
   await db.prepare(
     `UPDATE power_rolling_plan SET is_active = 0 WHERE division = ? AND base_month = ? AND is_active = 1`
   ).bind(div, year_month).run()
@@ -4915,7 +4945,7 @@ app.post('/api/power/calculate', async (c) => {
   
   const planId = planResult.meta.last_row_id
   
-  // 6. 호기별 계산 실행
+  // 7. 호기별 계산 실행 (v2: 시간당kWh 기반)
   const bill: any = billRow
   const details: any[] = []
   
@@ -4926,12 +4956,29 @@ app.post('/api/power/calculate', async (c) => {
     const costRatio = (alloc.cost_ratio || 0) / 100
     const essRatio = (alloc.ess_ratio || 0) / 100
     
-    // Step 1: 호기별 kWh
-    const kwhEss = (bill.total_kwh_ess || 0) * essRatio
-    const kwhMain = (bill.total_kwh_main || 0) * costRatio - kwhEss
-    const kwhTotal = kwhMain + kwhEss
+    // --- Step 1: 호기별 kWh 산출 (시간당kWh × 시간) ---
+    const ot = otMap[line.line_code] || {}
+    const runningDays = ot.operation_subtotal || 0  // 가동일수
+    const totalDays = ot.total_days || 30
+    const standbyDays = totalDays - runningDays - (ot.planned_shutdown_days || 0) // 운휴일수 (정기정지 제외)
     
-    // Step 2: 호기별 요금 배분
+    const runningHours = runningDays * 24
+    const standbyHours = Math.max(0, standbyDays) * 24
+    
+    const kwhRunning = runningHours * (line.kwh_per_hour_running || 0)
+    const kwhStandby = standbyHours * (line.kwh_per_hour_standby || 0)
+    const kwhTotal = kwhRunning + kwhStandby
+    
+    // kWh가 0이면 (가동시간 미입력 시) 배분율 기반 fallback
+    let kwhFinal = kwhTotal
+    if (kwhFinal <= 0) {
+      // fallback: 전사 kWh × 배분율
+      const kwhEss = (bill.total_kwh_ess || 0) * essRatio
+      const kwhMain = (bill.total_kwh_main || 0) * costRatio
+      kwhFinal = kwhMain + kwhEss
+    }
+    
+    // --- Step 2: 호기별 요금 배분 ---
     const costMain = (bill.fee_main || 0) * costRatio
     const costEss = (bill.fee_ess || 0) * costRatio
     const costSpc = (bill.fee_spc || 0) * costRatio
@@ -4939,32 +4986,30 @@ app.post('/api/power/calculate', async (c) => {
     const costBoiler = (bill.fee_boiler_deduct || 0) * costRatio
     const costSamsung = (bill.fee_samsung_comp || 0) * costRatio
     
-    // Step 3: 합계
+    // --- Step 3: 회계비용 ---
     const costKepco = costMain + costEss
     const costKepcoSpc = costKepco + costSpc
     const costAccounting = costMain + costEss + costSpc - costDr - costBoiler - costSamsung
     
-    // Step 4: 단가
-    const rateKepco = kwhTotal > 0 ? costKepco / kwhTotal : 0
-    const rateSpc = kwhTotal > 0 ? costKepcoSpc / kwhTotal : 0
-    const rateAccounting = kwhTotal > 0 ? costAccounting / kwhTotal : 0
+    // --- Step 4: 단가 3종 ---
+    const rateKepco = kwhFinal > 0 ? costKepco / kwhFinal : 0
+    const rateSpc = kwhFinal > 0 ? costKepcoSpc / kwhFinal : 0
+    const rateAccounting = kwhFinal > 0 ? costAccounting / kwhFinal : 0
     
-    // Step 5: 파생 지표
+    // --- Step 5: 원단위 ---
     const prod = planMap[line.line_code]
     const productionQty = prod ? (prod.planned_qty || 0) : 0
     const productionTon = line.unit === 'kg' ? productionQty / 1000 : productionQty
-    const powerUnitKwhPerTon = productionTon > 0 ? kwhTotal / productionTon : (line.standard_kwh_per_ton || 0)
+    const powerUnitKwhPerTon = productionTon > 0 ? kwhFinal / productionTon : (line.standard_kwh_per_ton || 0)
     const powerCostPerTon = productionTon > 0 ? costAccounting / productionTon : 0
-    const operatingHours = prod ? (prod.planned_hours || 0) : 0
-    const daysInMonth = operatingHours > 0 ? operatingHours / 24 : 30
-    const productivityPerDay = daysInMonth > 0 ? productionQty / daysInMonth : 0
+    const productivityPerDay = runningDays > 0 ? productionQty / runningDays : 0
     
     const detail = {
       line_code: line.line_code,
       year_month,
-      kwh_main: Math.round(kwhMain),
-      kwh_ess: Math.round(kwhEss),
-      kwh_total: Math.round(kwhTotal),
+      kwh_main: Math.round(kwhRunning),
+      kwh_ess: Math.round(kwhStandby),
+      kwh_total: Math.round(kwhFinal),
       cost_main: Math.round(costMain),
       cost_ess: Math.round(costEss),
       cost_spc: Math.round(costSpc),
@@ -4980,7 +5025,7 @@ app.post('/api/power/calculate', async (c) => {
       production_qty: productionQty,
       power_unit_kwh_per_ton: Math.round(powerUnitKwhPerTon * 100) / 100,
       power_cost_per_ton: Math.round(powerCostPerTon),
-      operating_hours: operatingHours,
+      operating_hours: Math.round(runningHours),
       productivity_per_day: Math.round(productivityPerDay)
     }
     details.push(detail)

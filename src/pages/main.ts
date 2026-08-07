@@ -3087,17 +3087,19 @@ export function mainPage(): string {
       <!-- 서브: 배분율 관리 -->
       <div id="pw-panel-alloc" class="card p-4 space-y-3">
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-percentage mr-1 text-blue-500"></i>호기별 전력 배분율</h3>
+          <h3 class="text-sm font-semibold text-gray-700"><i class="fas fa-percentage mr-1 text-blue-500"></i>호기별 배분율 &amp; 마스터</h3>
           <button onclick="pwSaveAllocation()" class="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition"><i class="fas fa-save mr-1"></i>저장</button>
         </div>
-        <p class="text-[11px] text-gray-500">각 호기의 요금/ESS 배분비율(%)을 입력합니다. 전사 합계 100% 맞추기를 권장합니다.</p>
+        <p class="text-[11px] text-gray-500">배분율(요금/ESS)과 마스터 데이터(시간당 kWh)를 설정합니다. 가동시간은 가동시간 탭에서 자동 연동됩니다.</p>
         <div class="overflow-x-auto">
           <table class="w-full text-xs border-collapse" id="pw-alloc-table">
             <thead>
               <tr class="bg-slate-50 border-b border-slate-200">
-                <th class="px-3 py-2 text-left font-semibold text-gray-600">호기</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600">요금 배분율(%)</th>
-                <th class="px-3 py-2 text-center font-semibold text-gray-600">ESS 배분율(%)</th>
+                <th class="px-2 py-2 text-left font-semibold text-gray-600">호기</th>
+                <th class="px-2 py-2 text-center font-semibold text-gray-600">요금배분(%)</th>
+                <th class="px-2 py-2 text-center font-semibold text-gray-600">ESS배분(%)</th>
+                <th class="px-2 py-2 text-center font-semibold text-blue-600">가동kWh/h</th>
+                <th class="px-2 py-2 text-center font-semibold text-blue-600">운휴kWh/h</th>
               </tr>
             </thead>
             <tbody id="pw-alloc-tbody"></tbody>
@@ -3145,6 +3147,27 @@ export function mainPage(): string {
           <div>
             <label class="text-[10px] text-gray-500 font-medium">삼성 보전(원)</label>
             <input id="pw-bill-fee-samsung" type="number" class="w-full mt-1 px-3 py-2 text-xs border border-slate-200 rounded-lg" placeholder="0">
+          </div>
+        </div>
+        <div class="border-t border-slate-200 pt-3 mt-3">
+          <p class="text-[10px] text-gray-400 font-semibold mb-2">부하별 요금단가 (원/kWh) — 참고용</p>
+          <div class="grid grid-cols-4 gap-3">
+            <div>
+              <label class="text-[10px] text-gray-500">첨두부하</label>
+              <input id="pw-bill-rate-peak" type="number" step="0.1" class="w-full mt-1 px-3 py-2 text-xs border border-slate-200 rounded-lg" placeholder="0">
+            </div>
+            <div>
+              <label class="text-[10px] text-gray-500">중간부하</label>
+              <input id="pw-bill-rate-mid" type="number" step="0.1" class="w-full mt-1 px-3 py-2 text-xs border border-slate-200 rounded-lg" placeholder="0">
+            </div>
+            <div>
+              <label class="text-[10px] text-gray-500">경부하</label>
+              <input id="pw-bill-rate-off" type="number" step="0.1" class="w-full mt-1 px-3 py-2 text-xs border border-slate-200 rounded-lg" placeholder="0">
+            </div>
+            <div>
+              <label class="text-[10px] text-gray-500">평균단가</label>
+              <input id="pw-bill-rate-avg" type="number" step="0.1" class="w-full mt-1 px-3 py-2 text-xs border border-slate-200 rounded-lg bg-blue-50 font-semibold" placeholder="0">
+            </div>
           </div>
         </div>
         <div id="pw-bill-msg" class="text-xs text-green-600 hidden"><i class="fas fa-check-circle mr-1"></i>저장 완료</div>
@@ -13717,7 +13740,7 @@ export function mainPage(): string {
         }
       };
 
-      // 배분율 테이블 렌더
+      // 배분율 테이블 렌더 (+ 마스터 kWh/h)
       function pwRenderAlloc() {
         var tbody = document.getElementById('pw-alloc-tbody');
         if (!tbody) return;
@@ -13725,35 +13748,48 @@ export function mainPage(): string {
         _pwLines.forEach(function(ln) {
           var alloc = _pwAlloc.find(function(a){ return a.line_code === ln.line_code; }) || {};
           html += '<tr class="border-b border-slate-100 hover:bg-slate-50">';
-          html += '<td class="px-3 py-2 font-medium text-gray-700">' + ln.line_name + ' <span class="text-gray-400 text-[10px]">('+ln.line_code+')</span></td>';
-          html += '<td class="px-3 py-2 text-center"><input type="number" step="0.1" class="w-20 text-center text-xs border border-slate-200 rounded px-2 py-1 pw-alloc-cost" data-line="'+ln.line_code+'" value="'+(alloc.cost_ratio||0)+'"></td>';
-          html += '<td class="px-3 py-2 text-center"><input type="number" step="0.1" class="w-20 text-center text-xs border border-slate-200 rounded px-2 py-1 pw-alloc-ess" data-line="'+ln.line_code+'" value="'+(alloc.ess_ratio||0)+'"></td>';
+          html += '<td class="px-2 py-2 font-medium text-gray-700">' + ln.line_name + ' <span class="text-gray-400 text-[10px]">('+ln.line_code+')</span></td>';
+          html += '<td class="px-2 py-2 text-center"><input type="number" step="0.1" class="w-16 text-center text-xs border border-slate-200 rounded px-1 py-1 pw-alloc-cost" data-line="'+ln.line_code+'" value="'+(alloc.cost_ratio||0)+'"></td>';
+          html += '<td class="px-2 py-2 text-center"><input type="number" step="0.1" class="w-16 text-center text-xs border border-slate-200 rounded px-1 py-1 pw-alloc-ess" data-line="'+ln.line_code+'" value="'+(alloc.ess_ratio||0)+'"></td>';
+          html += '<td class="px-2 py-2 text-center"><input type="number" step="1" class="w-20 text-center text-xs border border-blue-200 rounded px-1 py-1 bg-blue-50 pw-master-run" data-line="'+ln.line_code+'" value="'+(ln.kwh_per_hour_running||0)+'"></td>';
+          html += '<td class="px-2 py-2 text-center"><input type="number" step="1" class="w-20 text-center text-xs border border-blue-200 rounded px-1 py-1 bg-blue-50 pw-master-standby" data-line="'+ln.line_code+'" value="'+(ln.kwh_per_hour_standby||0)+'"></td>';
           html += '</tr>';
         });
         // 합계행
         var sumCost = _pwAlloc.reduce(function(s,a){return s+(a.cost_ratio||0);},0);
         var sumEss = _pwAlloc.reduce(function(s,a){return s+(a.ess_ratio||0);},0);
-        html += '<tr class="bg-slate-100 font-semibold"><td class="px-3 py-2">합계</td>';
-        html += '<td class="px-3 py-2 text-center '+(Math.abs(sumCost-100)<0.1?'text-green-600':'text-red-600')+'">'+sumCost.toFixed(1)+'%</td>';
-        html += '<td class="px-3 py-2 text-center '+(Math.abs(sumEss-100)<0.1?'text-green-600':'text-red-600')+'">'+sumEss.toFixed(1)+'%</td>';
+        html += '<tr class="bg-slate-100 font-semibold"><td class="px-2 py-2">합계</td>';
+        html += '<td class="px-2 py-2 text-center '+(Math.abs(sumCost-100)<0.1?'text-green-600':'text-red-600')+'">'+sumCost.toFixed(1)+'%</td>';
+        html += '<td class="px-2 py-2 text-center '+(Math.abs(sumEss-100)<0.1?'text-green-600':'text-red-600')+'">'+sumEss.toFixed(1)+'%</td>';
+        html += '<td colspan="2" class="px-2 py-2 text-center text-gray-400 text-[10px]">마스터 데이터</td>';
         html += '</tr>';
         tbody.innerHTML = html;
       }
 
-      // 배분율 저장
+      // 배분율 저장 (+ 마스터 kWh/h도 함께 저장)
       window.pwSaveAllocation = async function() {
         var ym = pwGetYM();
         var data = [];
+        var masterData = [];
         document.querySelectorAll('.pw-alloc-cost').forEach(function(el) {
           var lineCode = el.getAttribute('data-line');
           var costRatio = parseFloat(el.value) || 0;
           var essEl = document.querySelector('.pw-alloc-ess[data-line="'+lineCode+'"]');
+          var runEl = document.querySelector('.pw-master-run[data-line="'+lineCode+'"]');
+          var stdbyEl = document.querySelector('.pw-master-standby[data-line="'+lineCode+'"]');
           data.push({ line_code: lineCode, cost_ratio: costRatio, ess_ratio: parseFloat(essEl?.value) || 0 });
+          masterData.push({ line_code: lineCode, kwh_per_hour_running: parseFloat(runEl?.value) || 0, kwh_per_hour_standby: parseFloat(stdbyEl?.value) || 0 });
         });
         try {
+          // 배분율 저장
           var res = await fetch('/api/power/allocation', {
             method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ year_month: ym.year_month, division: 'PS', data: data })
+          });
+          // 마스터 kWh/h 저장
+          await fetch('/api/power/lines', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ data: masterData })
           });
           if (res.ok) {
             var msg = document.getElementById('pw-alloc-msg');
@@ -13769,6 +13805,10 @@ export function mainPage(): string {
             var el = document.getElementById('pw-bill-'+f);
             if(el) el.value = '';
           });
+          ['rate-peak','rate-mid','rate-off','rate-avg'].forEach(function(f){
+            var el = document.getElementById('pw-bill-'+f);
+            if(el) el.value = '';
+          });
           return;
         }
         document.getElementById('pw-bill-kwh-main').value = _pwBill.total_kwh_main || '';
@@ -13779,6 +13819,11 @@ export function mainPage(): string {
         document.getElementById('pw-bill-fee-dr').value = _pwBill.fee_dr_settlement || '';
         document.getElementById('pw-bill-fee-boiler').value = _pwBill.fee_boiler_deduct || '';
         document.getElementById('pw-bill-fee-samsung').value = _pwBill.fee_samsung_comp || '';
+        // 부하별 요금단가
+        document.getElementById('pw-bill-rate-peak').value = _pwBill.rate_peak || '';
+        document.getElementById('pw-bill-rate-mid').value = _pwBill.rate_mid || '';
+        document.getElementById('pw-bill-rate-off').value = _pwBill.rate_off || '';
+        document.getElementById('pw-bill-rate-avg').value = _pwBill.rate_avg || '';
       }
 
       // 고지서 저장
@@ -13795,6 +13840,10 @@ export function mainPage(): string {
           fee_dr_settlement: parseFloat(document.getElementById('pw-bill-fee-dr')?.value) || 0,
           fee_boiler_deduct: parseFloat(document.getElementById('pw-bill-fee-boiler')?.value) || 0,
           fee_samsung_comp: parseFloat(document.getElementById('pw-bill-fee-samsung')?.value) || 0,
+          rate_peak: parseFloat(document.getElementById('pw-bill-rate-peak')?.value) || 0,
+          rate_mid: parseFloat(document.getElementById('pw-bill-rate-mid')?.value) || 0,
+          rate_off: parseFloat(document.getElementById('pw-bill-rate-off')?.value) || 0,
+          rate_avg: parseFloat(document.getElementById('pw-bill-rate-avg')?.value) || 0,
           division: 'PS'
         };
         try {
